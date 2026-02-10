@@ -8,9 +8,14 @@ set(CMAKE_PROJECT_VERSION_PATCH 0)
 set(CMAKE_PROJECT_VERSION "${CMAKE_PROJECT_VERSION_MAJOR}.${CMAKE_PROJECT_VERSION_MINOR}.${CMAKE_PROJECT_VERSION_PATCH}")
 PROJECT(otterbrix VERSION "${CMAKE_PROJECT_VERSION}" LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Coroutines support for GCC (Clang enables coroutines by default in C++20)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(-fcoroutines)
+endif()
 
 message (STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 message (STATUS "CXX_STANDARD = ${CMAKE_CXX_STANDARD}")
@@ -20,10 +25,12 @@ message(STATUS "ARCH : ${CMAKE_SYSTEM_NAME}")
 
 option(DEV_MODE "developer mode" OFF)
 option(ENABLE_ASAN "address sanitizer" OFF)
+option(ENABLE_TSAN "thread sanitizer" OFF)
+option(ENABLE_UBSAN "undefined behavior sanitizer" OFF)
 option(EXAMPLE "Example" OFF)
 option(ALLOW_BENCHMARK "Allow benchmark" OFF)
+option(BUILD_PYTHON "Build Python bindings" OFF)
 option(CONAN_EXPERIMENTAL_INCLUDE "CONAN EXPERIMENT INCLUDE" ON)
-option(APPLICATION_SERVER "application server" OFF)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_definitions(-D_GNU_SOURCE)
@@ -51,7 +58,7 @@ endif()
 # We do not use -Werror flag with sanitizers for the following reasons:
 # 1) Sanitizers force us to build absl locally, which does contains warnings
 # 2) Incomplete support of macOS makes development too cumbersome with -Werror enabled
-set(USE_Werror "$<NOT:$<OR:$<BOOL:${APPLE}>,$<BOOL:${ENABLE_ASAN}>>>")
+set(USE_Werror "$<NOT:$<OR:$<BOOL:${APPLE}>,$<BOOL:${ENABLE_ASAN}>,$<BOOL:${ENABLE_UBSAN}>>>")
 
 if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
     add_compile_options(
@@ -88,13 +95,22 @@ find_package(Sanitizers REQUIRED)
 
 if (ENABLE_ASAN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -fno-omit-frame-pointer -fsanitize=address")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O0 -g -DNDEBUG" CACHE STRING "" FORCE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+    # Guarantee -O0 comes last (overrides any -O3 from toolchain/build-type defaults)
+    add_compile_options(-O0)
 endif()
 
-# TODO remove
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -fno-omit-frame-pointer -fsanitize=thread")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -fno-omit-frame-pointer -fsanitize=address")
-# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+if (ENABLE_TSAN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -fno-omit-frame-pointer -fsanitize=thread")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+    add_compile_definitions(OTTERBRIX_TSAN_ENABLED)
+endif()
+
+if (ENABLE_UBSAN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -fno-omit-frame-pointer -fsanitize=undefined -fno-sanitize-recover=undefined")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined")
+endif()
 
 
 #clang tools
@@ -108,7 +124,6 @@ endif()
 find_package(Boost 1.86.0 REQUIRED)
 find_package(fmt 11.1.3 REQUIRED)
 find_package(spdlog 1.15.1 REQUIRED)
-find_package(pybind11 2.10.0 REQUIRED)
 find_package(msgpack 4.1.1 REQUIRED)
 find_package(Catch2 2.13.7 REQUIRED)
 find_package(benchmark 1.6.1 REQUIRED)
@@ -117,14 +132,37 @@ find_package(BZip2 1.0.8 REQUIRED)
 find_package(magic_enum 0.8.1 REQUIRED)
 find_package(actor-zeta REQUIRED)
 
-if (ENABLE_ASAN)
-    # build abseil-cpp locally to avoid ABI issues
+if(BUILD_PYTHON)
+    set(PYBIND11_FINDPYTHON ON)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
+    find_package(pybind11 CONFIG REQUIRED)
+    find_package(utf8proc CONFIG REQUIRED)
+    find_package(tabulate CONFIG REQUIRED)
+endif()
+
+if (ENABLE_ASAN AND NOT APPLE)
+    # build abseil-cpp locally to avoid ABI issues (skip on macOS ARM64 due to SSE flags)
     include(FetchContent)
     FetchContent_Declare(
             absl
             URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20230802.1.zip
     )
     FetchContent_MakeAvailable(absl)
+    # Fix: abseil 20230802.1 on Apple ARM64 produces -Xarch_x86_64 -maes -msse4.1
+    # where CMake deduplicates the second -Xarch_x86_64, leaving bare -msse4.1
+    # which fails on ARM64. Override to ARM64-only flags on affected targets.
+    if(APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+        get_target_property(_opts absl_random_internal_randen_hwaes_impl COMPILE_OPTIONS)
+        if(_opts)
+            list(REMOVE_ITEM _opts "-Xarch_x86_64" "-maes" "-msse4.1")
+            set_target_properties(absl_random_internal_randen_hwaes_impl PROPERTIES COMPILE_OPTIONS "${_opts}")
+        endif()
+        get_target_property(_opts2 absl_random_internal_randen_hwaes COMPILE_OPTIONS)
+        if(_opts2)
+            list(REMOVE_ITEM _opts2 "-Xarch_x86_64" "-maes" "-msse4.1")
+            set_target_properties(absl_random_internal_randen_hwaes PROPERTIES COMPILE_OPTIONS "${_opts2}")
+        endif()
+    endif()
 else()
     find_package(absl 20230802.1 REQUIRED)
 endif()
@@ -144,13 +182,6 @@ endif(CCACHE_FOUND)
 
 # ccache
 #############################################################################################
-# wasm
-if(WASM_BUILD)
-
-endif()
-# wasm
-#############################################################################################
-
 #set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 #set( CMAKE_SKIP_RPATH ON)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
@@ -170,16 +201,15 @@ include_directories(components)
 add_subdirectory(core)
 add_subdirectory(components)
 
-if (APPLICATION_SERVER)
-    set(WASM_OBJECT OFF)
-    set(WASM_BUILD OFF)
-endif ()
-
 include_directories(services)
 add_subdirectory(services)
 add_subdirectory(integration)
 if(EXAMPLE)
     add_subdirectory(example)
+endif()
+
+if(ALLOW_BENCHMARK)
+    add_subdirectory(benchmark)
 endif()
 
 

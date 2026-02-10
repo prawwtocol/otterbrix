@@ -27,13 +27,15 @@ jobs:
       - name: conan installation and configuration
         run: |
           conan profile detect --force
-          conan remote add otterbrix http://conan.otterbrix.com
+          git clone --depth 1 https://github.com/duckstax/conan-duckstax.git /tmp/conan-duckstax
+          conan remote add duckstax /tmp/conan-duckstax --type=local-recipes-index
 
       - name: download dependencies
         run: |
           mkdir build && cd build
           cp ../conanfile.py .
-          conan install . --build missing -s build_type=Release -s compiler.cppstd=gnu17
+#          todo 1 does this test pythonpkg integration?
+          conan install . --build missing -s build_type=Release -s compiler.cppstd=gnu20 -o build_python=True
 
       - name: build
         env:
@@ -47,3 +49,4 @@ jobs:
         run: |
           cd build
           ctest -C Release -V --output-on-failure
+      # todo 1 Создать workflow для того, чтобы гонять Python-тесты.

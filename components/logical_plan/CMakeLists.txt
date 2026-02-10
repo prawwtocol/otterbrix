@@ -21,6 +21,7 @@ set(SOURCE_${PROJECT_NAME}
         node_match.cpp
         node_sort.cpp
         node_update.cpp
+        optimizer.cpp
         param_storage.cpp
 )
 
@@ -34,7 +35,6 @@ set_property(TARGET otterbrix_${PROJECT_NAME} PROPERTY EXPORT_NAME ${PROJECT_NAM
 
 target_link_libraries(
         otterbrix_${PROJECT_NAME} PRIVATE
-        otterbrix::document
         otterbrix::types
         otterbrix::expressions
         otterbrix::serialization

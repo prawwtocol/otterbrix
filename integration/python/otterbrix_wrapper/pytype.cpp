@@ -314,7 +314,7 @@ namespace otterbrix {
     		children.push_back(std::move(type));
             children.back().set_alias(name);
     	}
-    	return complex_logical_type::create_struct(std::move(children));
+    	return complex_logical_type::create_struct("struct", std::move(children));
     }
     
     static complex_logical_type FromObject(const py::object &object) {
