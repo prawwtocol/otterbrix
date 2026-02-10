@@ -3,6 +3,7 @@
 #include "relation_factory.hpp"
 #include <components/expressions/sort_expression.hpp>
 #include <components/logical_plan/node_match.hpp>
+#include <components/logical_plan/node_limit.hpp>
 #include <integration/cpp/otterbrix.hpp>
 #include <scan/python_replacement_scan.hpp>
 #include <core/types/string.hpp>
@@ -26,7 +27,7 @@ namespace otterbrix {
         return make_shared<Relation>(data, external_dependency, std::move(columns));
     }
     
-    shared_ptr<Relation> RelationFactory::make_aggregate_relation(shared_ptr<Relation> from, node_group_ptr group, 
+    shared_ptr<Relation> RelationFactory::make_aggregate_relation(shared_ptr<Relation> from, node_group_ptr group,
             node_match_ptr match, node_sort_ptr sort) {
         static int indx = 0;
         auto session = otterbrix::session_id_t();
@@ -162,6 +163,10 @@ namespace otterbrix {
     //     return Relation{aggregator};
     // }
 
+    shared_ptr<Relation> RelationFactory::LimitRelation(shared_ptr<Relation> relation, int64_t count) {
+        return make_shared<Relation>(relation, count);
+    }
+
     shared_ptr<Relation> RelationFactory::CreateFromSelect(components::logical_plan::node_ptr plan) {
         //return Relation::make_relation(boost::static_pointer_cast<components::logical_plan::node_aggregate_t>(plan));
         return nullptr;
@@ -210,6 +215,11 @@ namespace otterbrix {
                     }
                 }
                 return boost::static_pointer_cast<node_t>(join_node);
+            } else if constexpr (std::is_same_v<plan_type, Relation::Limit>) {
+                auto child = RelationFactory::Execute(*(rel.resource));
+                auto limit_node = logical_plan::make_node_limit(resource, {}, limit_t(rel.count));
+                limit_node->append_child(child);
+                return boost::static_pointer_cast<node_t>(limit_node);
             }
             throw std::runtime_error("Implementation error. Undefined executed node");
         }, rel.relation);

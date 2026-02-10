@@ -13,6 +13,7 @@
 #include <components/logical_plan/node_match.hpp>
 #include <components/logical_plan/node_sort.hpp>
 #include <components/logical_plan/node_aggregate.hpp>
+#include <components/logical_plan/node_limit.hpp>
 #include <core/types/string.hpp>
 #include <variant>
 
@@ -23,6 +24,7 @@ namespace otterbrix {
     struct Relation {
         friend class RelationFactory;
         friend class ColumnVisitor;
+        friend class ConnectionEnvironment;
 
     public:
 
@@ -35,9 +37,11 @@ namespace otterbrix {
                 components::logical_plan::node_match_ptr match,
                 components::logical_plan::node_sort_ptr sort, string name);
 
-        Relation(shared_ptr<Relation> left, shared_ptr<Relation> right, 
+        Relation(shared_ptr<Relation> left, shared_ptr<Relation> right,
                 unique_ptr<vector<components::expressions::expression_ptr>> conditions,
                 components::logical_plan::join_type join_type);
+
+        Relation(shared_ptr<Relation> resource, int64_t limit_count);
 
     public:
 
@@ -65,16 +69,23 @@ namespace otterbrix {
         };
 
         struct Join {
-            Join(shared_ptr<Relation> left, shared_ptr<Relation> right, 
+            Join(shared_ptr<Relation> left, shared_ptr<Relation> right,
                 unique_ptr<vector<components::expressions::expression_ptr>> conditions,
-                components::logical_plan::join_type join_type) 
+                components::logical_plan::join_type join_type)
                 : conditions(std::move(conditions)), left(left), right(right), join_type(join_type) {}
             shared_ptr<Relation> left;
             shared_ptr<Relation> right;
             unique_ptr<vector<components::expressions::expression_ptr>> conditions;
             components::logical_plan::join_type join_type;
         };
-    
+
+        struct Limit {
+            Limit(shared_ptr<Relation> resource, int64_t count)
+                : resource(resource), count(count) {}
+            shared_ptr<Relation> resource;
+            int64_t count;
+        };
+
         Relation(Relation&& other) noexcept;
 
         vector<components::table::column_definition_t> GetColumns();
@@ -82,7 +93,7 @@ namespace otterbrix {
 
     private:
 
-        std::variant<Aggregate, Data, Join> relation;
+        std::variant<Aggregate, Data, Join, Limit> relation;
         
 
     };

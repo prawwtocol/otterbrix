@@ -45,7 +45,7 @@ namespace otterbrix {
         Expression SortExpression(const Expression& arg);
             
 
-        Expression AggregationUnaryExpression(components::expressions::aggregate_type type, 
+        Expression AggregationUnaryExpression(const string& function_name,
                 const Expression& expr);
 
         Expression ScalarUnaryExpression(components::expressions::scalar_type type, 

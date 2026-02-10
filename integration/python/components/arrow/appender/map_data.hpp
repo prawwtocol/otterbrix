@@ -26,10 +26,10 @@ namespace components::arrow::appender {
     		// the main buffer holds the null values and the offsets
     		// then we have a single child, which is a struct of the map_type, and the key_type
     		result.GetMainBuffer().reserve((capacity + 1) * sizeof(BUFTYPE));
-            auto map_extention = static_cast<types::map_logical_type_extention*>(type.extention());
+            auto map_extension = static_cast<types::map_logical_type_extension*>(type.extension());
     
-    		auto &key_type = map_extention->key();
-    		auto &value_type = map_extention->value(); 
+    		auto &key_type = map_extension->key();
+    		auto &value_type = map_extension->value();
     		auto internal_struct = std::make_unique<ArrowAppendData>();
     		internal_struct->child_data.push_back(ArrowAppender::InitializeChild(key_type, capacity));
     		internal_struct->child_data.push_back(ArrowAppender::InitializeChild(value_type, capacity));
@@ -94,9 +94,9 @@ namespace components::arrow::appender {
     
     		assert(struct_data.child_data[0]->row_count == struct_data.child_data[1]->row_count);
     
-            auto map_extention = static_cast<types::map_logical_type_extention*>(type.extention());
-    		auto &key_type = map_extention->key();
-    		auto &value_type = map_extention->value();
+            auto map_extension = static_cast<types::map_logical_type_extension*>(type.extension());
+    		auto &key_type = map_extension->key();
+    		auto &value_type = map_extension->value();
     		auto key_data = ArrowAppender::FinalizeChild(key_type, std::move(struct_data.child_data[0]));
     		struct_data.child_arrays[0] = *key_data;
     		struct_data.child_arrays[1] = *ArrowAppender::FinalizeChild(value_type, std::move(struct_data.child_data[1]));
