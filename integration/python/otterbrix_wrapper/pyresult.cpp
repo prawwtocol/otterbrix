@@ -96,7 +96,7 @@ namespace otterbrix {
         while (result->has_next()) {
             result->advance();
             auto row_idx = result->current_index();
-            py::dict row = util::CursorRowToPythonDict(result, row_idx, columns);
+            py::dict row = util::CursorRowToPythonDict(result, static_cast<uint64_t>(row_idx), columns);
             df_param.append(row);
         }
         PandasDataFrame df = py::cast<PandasDataFrame>(

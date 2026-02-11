@@ -83,10 +83,11 @@ namespace otterbrix {
     PyConnection::PyConnection(const boost::intrusive_ptr<otterbrix_t>& space) 
         : ConnectionEnvironment(space) {}
 
-    PyConnection::PyConnection(const PyConnection& other) : ConnectionEnvironment(other) {}
+    PyConnection::PyConnection(const PyConnection& other)
+        : ConnectionEnvironment(other), std::enable_shared_from_this<PyConnection>(other) {}
 
-    pyconnection_ptr PyConnection::Connect(const py::object &database_p, bool read_only, 
-            const py::dict &config_options) {
+    pyconnection_ptr PyConnection::Connect(const py::object &database_p, bool /*read_only*/,
+            const py::dict & /*config_options*/) {
         string db_str;
         if (py::isinstance<py::str>(database_p)) {
             db_str = py::str(database_p);
@@ -135,8 +136,8 @@ namespace otterbrix {
         return shared_from_this();
     }
 
-    void PyConnection::Exit(const py::object& exc_type, const py::object& exc, 
-            const py::object& traceback) {
+    void PyConnection::Exit(const py::object& exc_type, const py::object& exc,
+            const py::object& /*traceback*/) {
         this->Close();
         if (exc_type.ptr() != Py_None) {
             // Propagate the exception if any occurred
@@ -146,22 +147,18 @@ namespace otterbrix {
     }
 
     pyconnection_ptr PyConnection::Begin() {
-        ("BEGIN TRANSACTION");
         return shared_from_this();
     }
 
     pyconnection_ptr PyConnection::Commit() {
-        ("COMMIT");
         return shared_from_this();
     }
 
     pyconnection_ptr PyConnection::Rollback() {
-        ("ROLLBACK");
         return shared_from_this();
     }
 
     pyconnection_ptr PyConnection::Checkpoint() {
-        ("CHECKPOINT");
         return shared_from_this();
     }
 
@@ -179,7 +176,7 @@ namespace otterbrix {
         return res;
     }
 
-    pycursor_ptr PyConnection::Execute(const py::object& query, py::object params) {
+    pycursor_ptr PyConnection::Execute(const py::object& query, py::object /*params*/) {
         py::gil_scoped_acquire gil;
         result = nullptr;
         if (py::isinstance<py::str>(query)) {
@@ -189,7 +186,7 @@ namespace otterbrix {
 
     }
 
-    unique_ptr<PyRelation> PyConnection::RunQuery(const py::object& query, string alias, py::object params) {
+    unique_ptr<PyRelation> PyConnection::RunQuery(const py::object& query, string alias, py::object /*params*/) {
         if (alias.empty()) {
             alias = "unnamed_relation";
         }

@@ -26,7 +26,7 @@ struct RegularConvert {
 	template <class OTTERBRIX_T, class NUMPY_T>
 	static NUMPY_T ConvertValue(OTTERBRIX_T val, NumpyAppendData &append_data) {
 		(void)append_data;
-		return (NUMPY_T)val;
+		return static_cast<NUMPY_T>(val);
 	}
 
 	template <class NUMPY_T, bool PANDAS>
@@ -56,7 +56,7 @@ struct StringConvert {
 		(void)append_data;
 		auto data = const_data_ptr_cast(val.data());
 		auto len = val.size();
-		return PyUnicode_FromStringAndSize(const_char_ptr_cast(data), len);
+		return PyUnicode_FromStringAndSize(const_char_ptr_cast(data), static_cast<Py_ssize_t>(len));
 	}
 	template <class NUMPY_T, bool PANDAS>
 	static NUMPY_T NullValue(bool &set_mask) {
@@ -73,7 +73,7 @@ struct BlobConvert {
 	template <class OTTERBRIX_T, class NUMPY_T>
 	static PyObject *ConvertValue(std::string_view val, NumpyAppendData &append_data) {
 		(void)append_data;
-		return PyByteArray_FromStringAndSize(val.data(), val.size());
+		return PyByteArray_FromStringAndSize(val.data(), static_cast<Py_ssize_t>(val.size()));
 	}
 
 	template <class NUMPY_T, bool PANDAS>
@@ -87,7 +87,7 @@ struct BitConvert {
 	template <class OTTERBRIX_T, class NUMPY_T>
 	static PyObject *ConvertValue(std::string_view val, NumpyAppendData &append_data) {
 		(void)append_data;
-		return PyBytes_FromStringAndSize(val.data(), val.size());
+		return PyBytes_FromStringAndSize(val.data(), static_cast<Py_ssize_t>(val.size()));
 	}
 
 	template <class NUMPY_T, bool PANDAS>
@@ -166,7 +166,7 @@ struct ArrayConvert {
 };
 
 struct StructConvert {
-	static py::dict ConvertValue(vector_t &input, idx_t chunk_offset, NumpyAppendData &append_data) {
+	static py::dict ConvertValue(vector_t &input, idx_t chunk_offset, NumpyAppendData & /*append_data*/) {
 
 		py::dict py_struct;
 		auto val = input.value(chunk_offset);
@@ -194,8 +194,8 @@ struct UnionConvert {
 };
 */
 struct MapConvert {
-	static py::dict ConvertValue(vector_t &input, idx_t chunk_offset, 
-        NumpyAppendData &append_data) {
+	static py::dict ConvertValue(vector_t &input, idx_t chunk_offset,
+        NumpyAppendData & /*append_data*/) {
 		auto val = input.value(chunk_offset);
 		return PythonObject::FromValue(val, input.type());
 	}
@@ -257,12 +257,8 @@ static bool ConvertColumnTemplated(NumpyAppendData &append_data) {
 
 template <class OTTERBRIX_T, class NUMPY_T, class CONVERT>
 static bool ConvertColumn(NumpyAppendData &append_data) {
-	auto target_offset = append_data.target_offset;
-	auto target_data = append_data.target_data;
 	auto &idata = append_data.idata;
 
-	auto src_ptr = idata.get_data<OTTERBRIX_T>();
-	auto out_ptr = reinterpret_cast<NUMPY_T *>(target_data);
 	if (!idata.validity.all_valid()) {
 		if (append_data.pandas) {
 			return ConvertColumnTemplated<OTTERBRIX_T, NUMPY_T, CONVERT, /*has_nulls=*/true, /*pandas=*/true>(append_data);
@@ -562,7 +558,7 @@ void ArrayWrapper::Append(idx_t current_offset, vector_t &input, idx_t source_si
 		break;
 
 	default:
-		throw std::runtime_error("Unsupported type "+to_string((int)input.type().type()));
+		throw std::runtime_error("Unsupported type "+to_string(static_cast<int>(input.type().type())));
 	}
 	if (may_have_null) {
 		requires_mask = true;

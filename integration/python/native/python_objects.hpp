@@ -79,7 +79,8 @@ namespace otterbrix {
 				if (signed_value) {
 					value = -value;
 				}
-				return components::types::logical_value_t::create_decimal(r, value, width, scale);
+				return components::types::logical_value_t::create_decimal(
+					r, components::types::complex_logical_type::create_decimal(width, scale), value);
 			}
 		};
 
@@ -89,7 +90,7 @@ namespace otterbrix {
 			static constexpr auto make_pow10_sequence(std::index_sequence<Ints...>) {
 				auto pow10 = [](std::size_t index) constexpr {
 					int64_t res = 1;
-					for (int i = 0; i < index; ++i) {
+					for (std::size_t i = 0; i < index; ++i) {
 						res *= 10;
 					}
 					return res;
@@ -123,7 +124,8 @@ namespace otterbrix {
 				if (signed_value) {
 					value = -value;
 				}
-				return components::types::logical_value_t::create_decimal(r, value, width, scale);
+				return components::types::logical_value_t::create_decimal(
+					r, components::types::complex_logical_type::create_decimal(width, scale), value);
 			}
 		};
 
