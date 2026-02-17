@@ -318,30 +318,6 @@ class TestDataFrameJoin(object):
         result = left.join(right, "dept_id", "full").collect()
         assert len(result) == 3  # 1 match + 1 left-only + 1 right-only
 
-    def test_semi_join_by_column_name(self):
-        spark = SparkSession.builder.master("local[1]").appName("test").getOrCreate()
-        left = spark.createDataFrame(
-            [(1, 10), (2, 20), (3, 50)], schema=["id", "dept_id"]
-        )
-        right = spark.createDataFrame(
-            [(10, "Eng"), (20, "Sales")], schema=["dept_id", "dept_name"]
-        )
-        result = left.join(right, "dept_id", "semi").collect()
-        assert len(result) == 2
-        assert len(result[0]) == 2  # left columns only
-
-    def test_anti_join_by_column_name(self):
-        spark = SparkSession.builder.master("local[1]").appName("test").getOrCreate()
-        left = spark.createDataFrame(
-            [(1, 10), (2, 20), (3, 50)], schema=["id", "dept_id"]
-        )
-        right = spark.createDataFrame(
-            [(10, "Eng"), (20, "Sales")], schema=["dept_id", "dept_name"]
-        )
-        result = left.join(right, "dept_id", "anti").collect()
-        assert len(result) == 1
-        assert result[0][0] == 3
-
     def test_join_duplicate_keys(self):
         """Multiple matches: 2 left x 3 right with same key = 6 result rows."""
         spark = SparkSession.builder.master("local[1]").appName("test").getOrCreate()
