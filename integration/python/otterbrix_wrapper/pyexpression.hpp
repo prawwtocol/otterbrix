@@ -26,7 +26,7 @@ namespace otterbrix {
         ~PyExpression();
         static void Initialize(py::module_ &m);
 
-        static pyexpr_ptr ColumnExpression(const string& column_name, PyConnection& conn);
+        static pyexpr_ptr ColumnExpression(const string& column_name, PyConnection& conn, const string& side = "");
 
         static pyexpr_ptr ConstantExpression(const py::object& value, PyConnection& conn);
         

@@ -611,10 +611,14 @@ class DataFrame:
             assert isinstance(on, list)
             all_strings = all(isinstance(x, str) for x in on)
             if all_strings:
-                # Build C++ equality condition from string column names
+                # Build C++ equality condition from string column names.
+                # Qualify each side with side="left"/"right" so the engine's
+                # validator does not see the unqualified key as ambiguous
+                # (both schemas have the same column name in equi-join).
                 cond_expr = None
                 for key in on:
-                    eq = ColumnExpression(key, sc).__eq__(ColumnExpression(key, sc))
+                    eq = ColumnExpression(key, sc, "left").__eq__(
+                        ColumnExpression(key, sc, "right"))
                     cond_expr = eq if cond_expr is None else cond_expr.__and__(eq)
                 new_relation = self.relation.join(other.relation, cond_expr, join_type)
             else:
