@@ -210,8 +210,8 @@ TEST_CASE("integration::cpp::test_collection::logical_plan") {
         REQUIRE(cur->chunk_data().value(1, 1).value<uint64_t>() == 50);
         REQUIRE(cur->chunk_data().value(2, 0).value<int64_t>() == 2550);
         REQUIRE(cur->chunk_data().value(2, 1).value<int64_t>() == 2500);
-        REQUIRE(cur->chunk_data().value(3, 0).value<int64_t>() == 51);
-        REQUIRE(cur->chunk_data().value(3, 1).value<int64_t>() == 50);
+        REQUIRE(core::is_equals(cur->chunk_data().value(3, 0).value<double>(), 51.0));
+        REQUIRE(core::is_equals(cur->chunk_data().value(3, 1).value<double>(), 50.0));
     }
 
     INFO("insert from select") {
