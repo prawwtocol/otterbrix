@@ -78,6 +78,7 @@ class TestDataFrameGroupBy(object):
         df2 = df.groupBy("department").mean("salary").sort("department")
         res = df2.collect()
         expected_res_str = "[Row(department='Finance', avg(salary)=87750.0), Row(department='Marketing', avg(salary)=85500.0), Row(department='Sales', avg(salary)=85666.66666666667)]"
+        assert str(res) == expected_res_str
 
         df2 = df.groupBy("department", "state").sum("salary", "bonus").sort("department", "state")
         res = df2.collect()
@@ -114,7 +115,6 @@ class TestDataFrameGroupBy(object):
             .sort("department")
         )
         res = df2.collect()
-        print(str(res))
         assert (
             str(res)
             == "[Row(department='Finance', sum_salary=351000, avg_salary=87750.0, sum_bonus=81000, max_bonus=24000), Row(department='Sales', sum_salary=257000, avg_salary=85666.66666666667, sum_bonus=53000, max_bonus=23000)]"
