@@ -198,12 +198,12 @@ TEST_CASE("integration::cpp::test_collection::logical_plan") {
         REQUIRE(cur->is_success());
         REQUIRE(cur->size() == 2);
 
-        // row 0: false (even indices 0,2,4,...98 -> count values 1,3,5,...,99) -> cnt=50, sum=2500, avg=50.0
-        // row 1: true (odd indices 1,3,5,...99 -> count values 2,4,6,...,100) -> cnt=50, sum=2550, avg=51.0
+        // Group false (column 0): odd indices (1,3,...,99 -> count values 2,4,6,...,100) -> cnt=50, sum=2550, avg=51.0
+        // Group true (column 1): even indices (0,2,...,98 -> count values 1,3,...,99) -> cnt=50, sum=2500, avg=50.0
         // Note: gen_data_chunk produces count = i+1, count_bool = (i%2==0)
-        // Even indices (0,2,...,98): count_bool=true, count=1,3,...,99 -> sum=2500, avg=50.0
         // Odd indices (1,3,...,99): count_bool=false, count=2,4,...,100 -> sum=2550, avg=51.0
-        // After sort asc: false first (row 0), true second (row 1)
+        // Even indices (0,2,...,98): count_bool=true, count=1,3,...,99 -> sum=2500, avg=50.0
+        // After sort asc on keys: false first (column 0), true second (column 1)
         REQUIRE(cur->chunk_data().value(0, 0).value<bool>() == false);
         REQUIRE(cur->chunk_data().value(0, 1).value<bool>() == true);
         REQUIRE(cur->chunk_data().value(1, 0).value<uint64_t>() == 50);
