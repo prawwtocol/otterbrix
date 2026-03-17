@@ -1,8 +1,6 @@
 #include "update_expression.hpp"
 
 #include <components/logical_plan/param_storage.hpp>
-#include <components/serialization/deserializer.hpp>
-#include <components/serialization/serializer.hpp>
 
 namespace components::expressions {
 
@@ -47,38 +45,6 @@ namespace components::expressions {
 
     const update_expr_t::expr_output_t& update_expr_t::output() const { return output_; }
 
-    update_expr_ptr update_expr_t::deserialize(serializer::msgpack_deserializer_t* deserializer) {
-        auto type = deserializer->deserialize_enum<update_expr_type>(1);
-        switch (type) {
-            case update_expr_type::set:
-                return update_expr_set_t::deserialize(deserializer);
-            case update_expr_type::get_value_doc:
-                return update_expr_get_value_t::deserialize(deserializer);
-            case update_expr_type::get_value_params:
-                return update_expr_get_const_value_t::deserialize(deserializer);
-            case update_expr_type::add:
-            case update_expr_type::sub:
-            case update_expr_type::mult:
-            case update_expr_type::div:
-            case update_expr_type::mod:
-            case update_expr_type::exp:
-            case update_expr_type::sqr_root:
-            case update_expr_type::cube_root:
-            case update_expr_type::factorial:
-            case update_expr_type::abs:
-            case update_expr_type::AND:
-            case update_expr_type::OR:
-            case update_expr_type::XOR:
-            case update_expr_type::NOT:
-            case update_expr_type::shift_left:
-            case update_expr_type::shift_right:
-                return update_expr_calculate_t::deserialize(deserializer);
-            default:
-                assert(false && "incorrect update_expr_type");
-                return nullptr;
-        }
-    }
-
     bool operator==(const update_expr_ptr& lhs, const update_expr_ptr& rhs) {
         if (lhs.get() == rhs.get()) {
             // same address
@@ -97,7 +63,7 @@ namespace components::expressions {
             case update_expr_type::set:
                 return *reinterpret_cast<const update_expr_set_ptr&>(lhs) ==
                        *reinterpret_cast<const update_expr_set_ptr&>(rhs);
-            case update_expr_type::get_value_doc:
+            case update_expr_type::get_value:
                 return *reinterpret_cast<const update_expr_get_value_ptr&>(lhs) ==
                        *reinterpret_cast<const update_expr_get_value_ptr&>(rhs);
             case update_expr_type::get_value_params:
@@ -131,27 +97,12 @@ namespace components::expressions {
         : update_expr_t(update_expr_type::set)
         , key_(std::move(key)) {}
 
+    key_t& update_expr_set_t::key() noexcept { return key_; }
+
     const key_t& update_expr_set_t::key() const noexcept { return key_; }
 
     bool update_expr_set_t::operator==(const update_expr_set_t& rhs) const {
         return left_ == rhs.left_ && key_ == rhs.key_;
-    }
-
-    void update_expr_set_t::serialize(serializer::msgpack_serializer_t* serializer) {
-        serializer->start_array(4);
-        serializer->append_enum(serializer::serialization_type::expression_update);
-        serializer->append_enum(type_);
-        serializer->append(key_);
-        left_->serialize(serializer);
-        serializer->end_array();
-    }
-
-    update_expr_ptr update_expr_set_t::deserialize(serializer::msgpack_deserializer_t* deserializer) {
-        update_expr_ptr res = new update_expr_set_t(deserializer->deserialize_key(2));
-        deserializer->advance_array(3);
-        res->left() = update_expr_t::deserialize(deserializer);
-        deserializer->pop_array();
-        return res;
     }
 
     bool update_expr_set_t::execute_impl(vector::data_chunk_t& to,
@@ -160,36 +111,25 @@ namespace components::expressions {
                                          size_t,
                                          const logical_plan::storage_parameters*) {
         if (left_) {
-            auto indices = to.sub_column_indices(key_.storage());
-            assert(indices.front() != size_t(-1));
-            auto prev_value = to.value(indices, row_to);
+            assert(key_.path().front() != size_t(-1));
+            auto prev_value = to.value(key_.path(), row_to);
             auto res = prev_value != left_->output().value();
-            to.set_value(indices, row_to, left_->output().value());
+            to.set_value(key_.path(), row_to, left_->output().value());
             return res;
         }
         return false;
     }
 
     update_expr_get_value_t::update_expr_get_value_t(key_t key)
-        : update_expr_t(update_expr_type::get_value_doc)
+        : update_expr_t(update_expr_type::get_value)
         , key_(std::move(key)) {}
+
+    key_t& update_expr_get_value_t::key() noexcept { return key_; }
 
     const key_t& update_expr_get_value_t::key() const noexcept { return key_; }
 
     bool update_expr_get_value_t::operator==(const update_expr_get_value_t& rhs) const {
         return left_ == rhs.left_ && key_ == rhs.key_ && key_.side() == rhs.key_.side();
-    }
-
-    void update_expr_get_value_t::serialize(serializer::msgpack_serializer_t* serializer) {
-        serializer->start_array(3);
-        serializer->append_enum(serializer::serialization_type::expression_update);
-        serializer->append_enum(type_);
-        serializer->append(key_);
-        serializer->end_array();
-    }
-
-    update_expr_ptr update_expr_get_value_t::deserialize(serializer::msgpack_deserializer_t* deserializer) {
-        return {new update_expr_get_value_t(deserializer->deserialize_key(2))};
     }
 
     bool update_expr_get_value_t::execute_impl(vector::data_chunk_t& to,
@@ -198,33 +138,13 @@ namespace components::expressions {
                                                size_t row_from,
                                                const logical_plan::storage_parameters*) {
         auto side = key_.side();
-        // we have to check it twice
-        if (side == side_t::undefined) {
-            for (const auto& column : to.data) {
-                if (core::pmr::operator==(column.type().alias(), key().storage().front())) {
-                    side = side_t::left;
-                    key_.set_side(side);
-                    break;
-                }
-            }
-        }
-        if (side == side_t::undefined) {
-            for (const auto& column : from.data) {
-                if (core::pmr::operator==(column.type().alias(), key().storage().front())) {
-                    side = side_t::right;
-                    key_.set_side(side);
-                    break;
-                }
-            }
-        }
+        assert(side != side_t::undefined && "validation must resolve side before execution");
         if (side == side_t::right) {
-            auto indices = from.sub_column_indices(key_.storage());
-            assert(indices.front() != size_t(-1));
-            output_ = from.value(indices, row_from);
+            assert(key_.path().front() != size_t(-1));
+            output_ = from.value(key_.path(), row_from);
         } else if (side == side_t::left) {
-            auto indices = to.sub_column_indices(key_.storage());
-            assert(indices.front() != size_t(-1));
-            output_ = to.value(indices, row_to);
+            assert(key_.path().front() != size_t(-1));
+            output_ = to.value(key_.path(), row_to);
         }
         return false;
     }
@@ -237,18 +157,6 @@ namespace components::expressions {
 
     bool update_expr_get_const_value_t::operator==(const update_expr_get_const_value_t& rhs) const {
         return id_ == rhs.id_;
-    }
-
-    void update_expr_get_const_value_t::serialize(serializer::msgpack_serializer_t* serializer) {
-        serializer->start_array(3);
-        serializer->append_enum(serializer::serialization_type::expression_update);
-        serializer->append_enum(type_);
-        serializer->append(id_);
-        serializer->end_array();
-    }
-
-    update_expr_ptr update_expr_get_const_value_t::deserialize(serializer::msgpack_deserializer_t* deserializer) {
-        return {new update_expr_get_const_value_t(deserializer->deserialize_param_id(2))};
     }
 
     bool update_expr_get_const_value_t::execute_impl(vector::data_chunk_t&,
@@ -267,82 +175,74 @@ namespace components::expressions {
         return left_ == rhs.left_ && right_ == rhs.right_;
     }
 
-    void update_expr_calculate_t::serialize(serializer::msgpack_serializer_t* serializer) {
-        serializer->start_array(4);
-        serializer->append_enum(serializer::serialization_type::expression_update);
-        serializer->append_enum(type_);
-        left_->serialize(serializer);
-        right_->serialize(serializer);
-        serializer->end_array();
-    }
+    namespace {
+        // Binary arithmetic dispatch for update expressions.
+        // Covers basic arithmetic (add/sub/mult/div/mod), exponent, and bitwise ops.
+        types::logical_value_t apply_binary_update_op(update_expr_type type,
+                                                      const types::logical_value_t& left,
+                                                      const types::logical_value_t& right) {
+            switch (type) {
+                case update_expr_type::add:
+                    return types::logical_value_t::sum(left, right);
+                case update_expr_type::sub:
+                    return types::logical_value_t::subtract(left, right);
+                case update_expr_type::mult:
+                    return types::logical_value_t::mult(left, right);
+                case update_expr_type::div:
+                    return types::logical_value_t::divide(left, right);
+                case update_expr_type::mod:
+                    return types::logical_value_t::modulus(left, right);
+                case update_expr_type::exp:
+                    return types::logical_value_t::exponent(left, right);
+                case update_expr_type::AND:
+                    return types::logical_value_t::bit_and(left, right);
+                case update_expr_type::OR:
+                    return types::logical_value_t::bit_or(left, right);
+                case update_expr_type::XOR:
+                    return types::logical_value_t::bit_xor(left, right);
+                case update_expr_type::shift_left:
+                    return types::logical_value_t::bit_shift_l(left, right);
+                case update_expr_type::shift_right:
+                    return types::logical_value_t::bit_shift_r(left, right);
+                default:
+                    throw std::logic_error("apply_binary_update_op: unsupported update_expr_type");
+            }
+        }
 
-    update_expr_ptr update_expr_calculate_t::deserialize(serializer::msgpack_deserializer_t* deserializer) {
-        update_expr_ptr res = new update_expr_calculate_t(deserializer->deserialize_enum<update_expr_type>(1));
-        deserializer->advance_array(2);
-        res->left() = update_expr_t::deserialize(deserializer);
-        deserializer->pop_array();
-        deserializer->advance_array(3);
-        res->right() = update_expr_t::deserialize(deserializer);
-        deserializer->pop_array();
-        return res;
-    }
+        // Unary ops dispatch for update expressions.
+        types::logical_value_t apply_unary_update_op(update_expr_type type, const types::logical_value_t& operand) {
+            switch (type) {
+                case update_expr_type::sqr_root:
+                    return types::logical_value_t::sqr_root(operand);
+                case update_expr_type::cube_root:
+                    return types::logical_value_t::cube_root(operand);
+                case update_expr_type::factorial:
+                    return types::logical_value_t::factorial(operand);
+                case update_expr_type::abs:
+                    return types::logical_value_t::absolute(operand);
+                case update_expr_type::NOT:
+                    return types::logical_value_t::bit_not(operand);
+                default:
+                    throw std::logic_error("apply_unary_update_op: unsupported update_expr_type");
+            }
+        }
+
+        bool is_unary_update_op(update_expr_type type) {
+            return type == update_expr_type::sqr_root || type == update_expr_type::cube_root ||
+                   type == update_expr_type::factorial || type == update_expr_type::abs ||
+                   type == update_expr_type::NOT;
+        }
+    } // anonymous namespace
 
     bool update_expr_calculate_t::execute_impl(vector::data_chunk_t&,
                                                const vector::data_chunk_t&,
                                                size_t,
                                                size_t,
                                                const logical_plan::storage_parameters*) {
-        switch (type_) {
-            case update_expr_type::add:
-                output_ = types::logical_value_t::sum(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::sub:
-                output_ = types::logical_value_t::subtract(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::mult:
-                output_ = types::logical_value_t::mult(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::div:
-                output_ = types::logical_value_t::divide(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::mod:
-                output_ = types::logical_value_t::modulus(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::exp:
-                output_ = types::logical_value_t::exponent(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::sqr_root:
-                output_ = types::logical_value_t::sqr_root(left_->output().value());
-                break;
-            case update_expr_type::cube_root:
-                output_ = types::logical_value_t::cube_root(left_->output().value());
-                break;
-            case update_expr_type::factorial:
-                output_ = types::logical_value_t::factorial(left_->output().value());
-                break;
-            case update_expr_type::abs:
-                output_ = types::logical_value_t::absolute(left_->output().value());
-                break;
-            case update_expr_type::AND:
-                output_ = types::logical_value_t::bit_and(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::OR:
-                output_ = types::logical_value_t::bit_or(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::XOR:
-                output_ = types::logical_value_t::bit_xor(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::NOT:
-                output_ = types::logical_value_t::bit_not(left_->output().value());
-                break;
-            case update_expr_type::shift_left:
-                output_ = types::logical_value_t::bit_shift_l(left_->output().value(), right_->output().value());
-                break;
-            case update_expr_type::shift_right:
-                output_ = types::logical_value_t::bit_shift_r(left_->output().value(), right_->output().value());
-                break;
-            default:
-                break;
+        if (is_unary_update_op(type_)) {
+            output_ = apply_unary_update_op(type_, left_->output().value());
+        } else {
+            output_ = apply_binary_update_op(type_, left_->output().value(), right_->output().value());
         }
         return false;
     }

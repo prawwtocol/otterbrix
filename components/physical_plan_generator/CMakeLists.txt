@@ -11,8 +11,6 @@ set(${PROJECT_NAME}_SOURCES
         impl/create_plan_sort.cpp
         impl/create_plan_update.cpp
         impl/create_plan_join.cpp
-        impl/create_plan_add_index.cpp
-        impl/create_plan_drop_index.cpp
 )
 
 add_library(otterbrix_${PROJECT_NAME}
@@ -27,6 +25,7 @@ set_property(TARGET otterbrix_${PROJECT_NAME} PROPERTY EXPORT_NAME ${PROJECT_NAM
 
 target_link_libraries(
         otterbrix_${PROJECT_NAME} PUBLIC
+        otterbrix::compute
         otterbrix::cursor
         otterbrix::session
         otterbrix::index
@@ -44,7 +43,3 @@ target_link_libraries(
 target_include_directories(otterbrix_${PROJECT_NAME} PUBLIC
 )
 
-if (DEV_MODE)
-    add_definitions(-DDEV_MODE)
-    add_subdirectory(tests)
-endif ()

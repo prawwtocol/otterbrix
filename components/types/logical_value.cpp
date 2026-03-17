@@ -2,6 +2,10 @@
 #include "operations_helper.hpp"
 #include <components/serialization/deserializer.hpp>
 
+#include <boost/container_hash/hash.hpp>
+#include <cmath>
+#include <cstring>
+#include <limits>
 #include <stdexcept>
 
 namespace std {
@@ -72,6 +76,9 @@ namespace components::types {
         data_ = 0;
     }
 
+    logical_value_t::logical_value_t(std::pmr::memory_resource* r, logical_type type)
+        : logical_value_t(r, complex_logical_type{type}) {}
+
     logical_value_t::logical_value_t(std::pmr::memory_resource* r, complex_logical_type type)
         : type_(std::move(type))
         , resource_(r) {
@@ -100,6 +107,45 @@ namespace components::types {
         }
     }
 
+    logical_value_t::logical_value_t(std::pmr::memory_resource* r, const logical_value_t& other)
+        : type_(other.type_)
+        , resource_(r) {
+        switch (type_.type()) {
+            case logical_type::HUGEINT:
+                data128_ = other.data128_;
+                break;
+            case logical_type::UHUGEINT:
+                udata128_ = other.udata128_;
+                break;
+            case logical_type::DECIMAL:
+                if (reinterpret_cast<decimal_logical_type_extension*>(type_.extension())->stored_as() ==
+                    physical_type::INT128) {
+                    data128_ = other.data128_;
+                } else {
+                    data_ = other.data_;
+                }
+                break;
+            case logical_type::STRING_LITERAL:
+                data_ = reinterpret_cast<uint64_t>(heap_new<std::string>(*other.str_ptr()));
+                break;
+            case logical_type::LIST:
+            case logical_type::ARRAY:
+            case logical_type::MAP:
+            case logical_type::STRUCT:
+                data_ = reinterpret_cast<uint64_t>(heap_new<std::vector<logical_value_t>>(*other.vec_ptr()));
+                break;
+            case logical_type::UNION:
+            case logical_type::VARIANT:
+                if (other.data_) {
+                    data_ = reinterpret_cast<uint64_t>(heap_new<std::vector<logical_value_t>>(*other.vec_ptr()));
+                }
+                break;
+            default:
+                data_ = other.data_;
+                break;
+        }
+    }
+
     logical_value_t::logical_value_t(const logical_value_t& other)
         : type_(other.type_)
         , resource_(other.resource_) {
@@ -109,6 +155,14 @@ namespace components::types {
                 break;
             case logical_type::UHUGEINT:
                 udata128_ = other.udata128_;
+                break;
+            case logical_type::DECIMAL:
+                if (reinterpret_cast<decimal_logical_type_extension*>(type_.extension())->stored_as() ==
+                    physical_type::INT128) {
+                    data128_ = other.data128_;
+                } else {
+                    data_ = other.data_;
+                }
                 break;
             case logical_type::STRING_LITERAL:
                 data_ = reinterpret_cast<uint64_t>(heap_new<std::string>(*other.str_ptr()));
@@ -141,6 +195,14 @@ namespace components::types {
             case logical_type::UHUGEINT:
                 udata128_ = other.udata128_;
                 break;
+            case logical_type::DECIMAL:
+                if (reinterpret_cast<decimal_logical_type_extension*>(type_.extension())->stored_as() ==
+                    physical_type::INT128) {
+                    data128_ = other.data128_;
+                } else {
+                    data_ = other.data_;
+                }
+                break;
             case logical_type::STRING_LITERAL:
             case logical_type::LIST:
             case logical_type::ARRAY:
@@ -158,7 +220,8 @@ namespace components::types {
     }
 
     logical_value_t& logical_value_t::operator=(const logical_value_t& other) {
-        if (this == &other) return *this;
+        if (this == &other)
+            return *this;
         destroy_heap();
         type_ = other.type_;
         resource_ = other.resource_;
@@ -168,6 +231,14 @@ namespace components::types {
                 break;
             case logical_type::UHUGEINT:
                 udata128_ = other.udata128_;
+                break;
+            case logical_type::DECIMAL:
+                if (reinterpret_cast<decimal_logical_type_extension*>(type_.extension())->stored_as() ==
+                    physical_type::INT128) {
+                    data128_ = other.data128_;
+                } else {
+                    data_ = other.data_;
+                }
                 break;
             case logical_type::STRING_LITERAL:
                 data_ = reinterpret_cast<uint64_t>(heap_new<std::string>(*other.str_ptr()));
@@ -192,7 +263,8 @@ namespace components::types {
     }
 
     logical_value_t& logical_value_t::operator=(logical_value_t&& other) noexcept {
-        if (this == &other) return *this;
+        if (this == &other)
+            return *this;
         destroy_heap();
         type_ = std::move(other.type_);
         resource_ = other.resource_;
@@ -202,6 +274,14 @@ namespace components::types {
                 break;
             case logical_type::UHUGEINT:
                 udata128_ = other.udata128_;
+                break;
+            case logical_type::DECIMAL:
+                if (reinterpret_cast<decimal_logical_type_extension*>(type_.extension())->stored_as() ==
+                    physical_type::INT128) {
+                    data128_ = other.data128_;
+                } else {
+                    data_ = other.data_;
+                }
                 break;
             case logical_type::STRING_LITERAL:
             case logical_type::LIST:
@@ -242,27 +322,33 @@ namespace components::types {
                 }
             } else if constexpr (std::is_same_v<LeftValueType, std::string_view>) {
                 if constexpr (std::is_signed_v<RightValueType>) {
-                    return logical_value_t{r,
+                    return logical_value_t{
+                        r,
                         std::to_string(static_cast<int64_t>(value.template value<RightValueType>()))};
                 } else {
-                    return logical_value_t{r,
+                    return logical_value_t{
+                        r,
                         std::to_string(static_cast<uint64_t>(value.template value<RightValueType>()))};
                 }
             } else if constexpr (std::is_same_v<LeftValueType, bool>) {
                 return logical_value_t{r, core::is_equals(RightValueType{}, value.template value<RightValueType>())};
             } else if constexpr (std::is_same_v<RightValueType, std::string_view>) {
                 if constexpr (std::is_floating_point_v<LeftValueType>) {
-                    return logical_value_t{r,
+                    return logical_value_t{
+                        r,
                         static_cast<LeftValueType>(std::atof(value.template value<RightValueType>().data()))};
                 } else {
-                    return logical_value_t{r,
+                    return logical_value_t{
+                        r,
                         static_cast<LeftValueType>(std::atoll(value.template value<RightValueType>().data()))};
                 }
             } else if constexpr (std::is_same_v<LeftValueType, int128_t>) {
-                return logical_value_t{r,
+                return logical_value_t{
+                    r,
                     static_cast<LeftValueType>(static_cast<int64_t>(value.template value<RightValueType>()))};
             } else if constexpr (std::is_same_v<LeftValueType, uint128_t>) {
-                return logical_value_t{r,
+                return logical_value_t{
+                    r,
                     static_cast<LeftValueType>(static_cast<uint64_t>(value.template value<RightValueType>()))};
             } else {
                 return logical_value_t{r, static_cast<LeftValueType>(value.template value<RightValueType>())};
@@ -276,7 +362,7 @@ namespace components::types {
         if (type_ == type) {
             return logical_value_t(*this);
         }
-        if (is_numeric(type.type())) {
+        if (is_numeric(type.type()) || (type.type() == logical_type::STRING_LITERAL && is_numeric(type_.type()))) {
             // same problem as in physical_value
             // ideally use something like this
             // return logicaL_value<type.type()>{value<type_.type()>()};
@@ -285,6 +371,92 @@ namespace components::types {
             return double_simple_physical_type_switch<cast_callback_t>(type.to_physical_type(),
                                                                        type_.to_physical_type(),
                                                                        *this);
+        } else if (type.type() == logical_type::DECIMAL && is_numeric(type_.type())) {
+            const auto* decimal_extension = reinterpret_cast<const decimal_logical_type_extension*>(type.extension());
+            auto create_decimal = [&]<typename T>() {
+                return logical_value_t::create_decimal(
+                    resource_,
+                    type,
+                    to_decimal<int128_t>(value<T>(), decimal_extension->width(), decimal_extension->scale()));
+            };
+            switch (type_.type()) {
+                case logical_type::USMALLINT:
+                    return create_decimal.operator()<uint16_t>();
+                case logical_type::UINTEGER:
+                    return create_decimal.operator()<uint32_t>();
+                case logical_type::UBIGINT:
+                    return create_decimal.operator()<uint64_t>();
+                case logical_type::UHUGEINT:
+                    return create_decimal.operator()<uint128_t>();
+                case logical_type::SMALLINT:
+                    return create_decimal.operator()<int16_t>();
+                case logical_type::INTEGER:
+                    return create_decimal.operator()<int32_t>();
+                case logical_type::BIGINT:
+                    return create_decimal.operator()<int64_t>();
+                case logical_type::HUGEINT:
+                    return create_decimal.operator()<int128_t>();
+                case logical_type::FLOAT:
+                    return create_decimal.operator()<float>();
+                case logical_type::DOUBLE:
+                    return create_decimal.operator()<double>();
+                default:
+                    assert(false && "incorrect type for conversion to decimal");
+            }
+        } else if (type_.type() == logical_type::DECIMAL && is_numeric(type.type())) {
+            const auto* decimal_extension = reinterpret_cast<const decimal_logical_type_extension*>(type.extension());
+            auto create_numeric_inner = [&]<typename From, typename To>() {
+                if constexpr (std::is_floating_point_v<To>) {
+                    return logical_value_t{resource_,
+                                           decimal_to_floating<From, To>(value<From>(), decimal_extension->scale())};
+                } else {
+                    auto val = decimal_to_numeric<From, To>(value<From>(), decimal_extension->scale());
+                    if (val.has_value()) {
+                        return logical_value_t{resource_, val.value()};
+                    } else {
+                        return logical_value_t{resource_, logical_type::NA};
+                    }
+                }
+            };
+            auto create_numeric = [&]<typename To>() {
+                switch (type_.to_physical_type()) {
+                    case physical_type::INT16:
+                        return create_numeric_inner.operator()<int16_t, To>();
+                    case physical_type::INT32:
+                        return create_numeric_inner.operator()<int32_t, To>();
+                    case physical_type::INT64:
+                        return create_numeric_inner.operator()<int64_t, To>();
+                    case physical_type::INT128:
+                        return create_numeric_inner.operator()<int128_t, To>();
+                    default:
+                        assert(false && "incorrect type for conversion to decimal");
+                        return logical_value_t{resource_, logical_type::NA};
+                }
+            };
+            switch (type.type()) {
+                case logical_type::USMALLINT:
+                    return create_numeric.operator()<uint16_t>();
+                case logical_type::UINTEGER:
+                    return create_numeric.operator()<uint32_t>();
+                case logical_type::UBIGINT:
+                    return create_numeric.operator()<uint64_t>();
+                case logical_type::UHUGEINT:
+                    return create_numeric.operator()<uint128_t>();
+                case logical_type::SMALLINT:
+                    return create_numeric.operator()<int16_t>();
+                case logical_type::INTEGER:
+                    return create_numeric.operator()<int32_t>();
+                case logical_type::BIGINT:
+                    return create_numeric.operator()<int64_t>();
+                case logical_type::HUGEINT:
+                    return create_numeric.operator()<int128_t>();
+                case logical_type::FLOAT:
+                    return create_numeric.operator()<float>();
+                case logical_type::DOUBLE:
+                    return create_numeric.operator()<double>();
+                default:
+                    assert(false && "incorrect type for conversion to decimal");
+            }
         } else if (is_duration(type_.type()) && is_duration(type.type())) {
             switch (type.type()) {
                 case logical_type::TIMESTAMP_SEC:
@@ -296,7 +468,7 @@ namespace components::types {
                 case logical_type::TIMESTAMP_NS:
                     return logical_value_t{resource_, value<nanoseconds>()};
                 default:
-                    break;
+                    assert(false && "incorrect type for duration conversion");
             }
         } else if (type_.type() == logical_type::STRUCT && type.type() == logical_type::STRUCT) {
             if (type_.child_types().size() != type.child_types().size()) {
@@ -318,8 +490,41 @@ namespace components::types {
 
     void logical_value_t::set_alias(const std::string& alias) { type_.set_alias(alias); }
 
+    size_t logical_value_t::hash() const noexcept {
+        size_t h = std::hash<uint8_t>{}(static_cast<uint8_t>(type_.type()));
+        switch (type_.type()) {
+            case logical_type::NA:
+                break;
+            case logical_type::STRING_LITERAL:
+                if (data_) {
+                    boost::hash_combine(h, std::hash<std::string>{}(*str_ptr()));
+                }
+                break;
+            case logical_type::HUGEINT:
+                boost::hash_combine(h, static_cast<uint64_t>(data128_));
+                boost::hash_combine(h, static_cast<uint64_t>(data128_ >> 64));
+                break;
+            case logical_type::UHUGEINT:
+                boost::hash_combine(h, static_cast<uint64_t>(udata128_));
+                boost::hash_combine(h, static_cast<uint64_t>(udata128_ >> 64));
+                break;
+            default:
+                boost::hash_combine(h, data_);
+                break;
+        }
+        return h;
+    }
+
+    size_t hash_row(const std::pmr::vector<logical_value_t>& row) noexcept {
+        size_t h = 0;
+        for (const auto& val : row) {
+            boost::hash_combine(h, val.hash());
+        }
+        return h;
+    }
+
     bool logical_value_t::operator==(const logical_value_t& rhs) const {
-        if (type_ != rhs.type_) {
+        if (type_.type() != rhs.type_.type()) {
             if ((is_numeric(type_.type()) && is_numeric(rhs.type_.type())) ||
                 (is_duration(type_.type()) && is_duration(rhs.type_.type()))) {
                 auto promoted_type = promote_type(type_.type(), rhs.type_.type());
@@ -356,6 +561,12 @@ namespace components::types {
                     return core::is_equals(value<double>(), rhs.value<double>());
                 case logical_type::STRING_LITERAL:
                     return *str_ptr() == *rhs.str_ptr();
+                case logical_type::DECIMAL:
+                    if (type_.to_physical_type() == physical_type::INT128) {
+                        return data128_ == rhs.data128_;
+                    } else {
+                        return data_ == rhs.data_;
+                    }
                 case logical_type::LIST:
                 case logical_type::ARRAY:
                 case logical_type::MAP:
@@ -363,8 +574,10 @@ namespace components::types {
                     return *vec_ptr() == *rhs.vec_ptr();
                 case logical_type::UNION:
                 case logical_type::VARIANT:
-                    if (!data_ && !rhs.data_) return true;
-                    if (!data_ || !rhs.data_) return false;
+                    if (!data_ && !rhs.data_)
+                        return true;
+                    if (!data_ || !rhs.data_)
+                        return false;
                     return *vec_ptr() == *rhs.vec_ptr();
                 default:
                     return false;
@@ -376,8 +589,10 @@ namespace components::types {
 
     bool logical_value_t::operator<(const logical_value_t& rhs) const {
         if (type_ != rhs.type_) {
-            if (type_.type() == logical_type::NA) return false;
-            if (rhs.type_.type() == logical_type::NA) return true;
+            if (type_.type() == logical_type::NA)
+                return false;
+            if (rhs.type_.type() == logical_type::NA)
+                return true;
             if ((is_numeric(type_.type()) && is_numeric(rhs.type_.type())) ||
                 (is_duration(type_.type()) && is_duration(rhs.type_.type()))) {
                 auto promoted_type = promote_type(type_.type(), rhs.type_.type());
@@ -410,6 +625,20 @@ namespace components::types {
                     return data_ < rhs.data_;
                 case logical_type::STRING_LITERAL:
                     return *str_ptr() < *rhs.str_ptr();
+                case logical_type::DECIMAL:
+                    if (type_.to_physical_type() == physical_type::INT128) {
+                        return data128_ < rhs.data128_;
+                    } else {
+                        return data_ < rhs.data_;
+                    }
+                case logical_type::STRUCT:
+                case logical_type::LIST:
+                case logical_type::ARRAY:
+                case logical_type::MAP: {
+                    auto& lv = *vec_ptr();
+                    auto& rv = *rhs.vec_ptr();
+                    return std::lexicographical_compare(lv.begin(), lv.end(), rv.begin(), rv.end());
+                }
                 default:
                     return false;
             }
@@ -432,11 +661,10 @@ namespace components::types {
         }
     }
 
-    const std::vector<logical_value_t>& logical_value_t::children() const {
-        return *vec_ptr();
-    }
+    const std::vector<logical_value_t>& logical_value_t::children() const { return *vec_ptr(); }
 
-    logical_value_t logical_value_t::create_struct(std::pmr::memory_resource* r, const complex_logical_type& type,
+    logical_value_t logical_value_t::create_struct(std::pmr::memory_resource* r,
+                                                   const complex_logical_type& type,
                                                    const std::vector<logical_value_t>& struct_values) {
         logical_value_t result(r, complex_logical_type{logical_type::NA});
         result.data_ = reinterpret_cast<uint64_t>(result.heap_new<std::vector<logical_value_t>>(struct_values));
@@ -444,7 +672,9 @@ namespace components::types {
         return result;
     }
 
-    logical_value_t logical_value_t::create_struct(std::pmr::memory_resource* r, std::string name, const std::vector<logical_value_t>& fields) {
+    logical_value_t logical_value_t::create_struct(std::pmr::memory_resource* r,
+                                                   std::string name,
+                                                   const std::vector<logical_value_t>& fields) {
         std::vector<complex_logical_type> child_types;
         for (auto& child : fields) {
             child_types.push_back(child.type());
@@ -452,7 +682,8 @@ namespace components::types {
         return create_struct(r, complex_logical_type::create_struct(std::move(name), child_types), fields);
     }
 
-    logical_value_t logical_value_t::create_array(std::pmr::memory_resource* r, const complex_logical_type& internal_type,
+    logical_value_t logical_value_t::create_array(std::pmr::memory_resource* r,
+                                                  const complex_logical_type& internal_type,
                                                   const std::vector<logical_value_t>& values) {
         logical_value_t result(r, complex_logical_type{logical_type::NA});
         result.type_ = complex_logical_type::create_array(internal_type, values.size());
@@ -460,7 +691,8 @@ namespace components::types {
         return result;
     }
 
-    logical_value_t logical_value_t::create_numeric(std::pmr::memory_resource* r, const complex_logical_type& type, int64_t value) {
+    logical_value_t
+    logical_value_t::create_numeric(std::pmr::memory_resource* r, const complex_logical_type& type, int64_t value) {
         switch (type.type()) {
             case logical_type::BOOLEAN:
                 assert(value == 0 || value == 1);
@@ -493,9 +725,7 @@ namespace components::types {
             case logical_type::UHUGEINT:
                 return logical_value_t(r, static_cast<uint128_t>(value));
             case logical_type::DECIMAL:
-                return create_decimal(r, value,
-                                      static_cast<decimal_logical_type_extension*>(type.extension())->width(),
-                                      static_cast<decimal_logical_type_extension*>(type.extension())->scale());
+                return create_decimal(r, type, value);
             case logical_type::FLOAT:
                 return logical_value_t(r, static_cast<float>(value));
             case logical_type::DOUBLE:
@@ -507,7 +737,9 @@ namespace components::types {
         }
     }
 
-    logical_value_t logical_value_t::create_enum(std::pmr::memory_resource* r, const complex_logical_type& enum_type, std::string_view key) {
+    logical_value_t logical_value_t::create_enum(std::pmr::memory_resource* r,
+                                                 const complex_logical_type& enum_type,
+                                                 std::string_view key) {
         const auto& enum_values =
             reinterpret_cast<const enum_logical_type_extension*>(enum_type.extension())->entries();
         auto it = std::find_if(enum_values.begin(), enum_values.end(), [key](const logical_value_t& v) {
@@ -522,20 +754,35 @@ namespace components::types {
         }
     }
 
-    logical_value_t logical_value_t::create_enum(std::pmr::memory_resource* r, const complex_logical_type& enum_type, int32_t value) {
+    logical_value_t
+    logical_value_t::create_enum(std::pmr::memory_resource* r, const complex_logical_type& enum_type, int32_t value) {
         logical_value_t result(r, enum_type);
         result.data_ = static_cast<uint64_t>(value);
         return result;
     }
 
-    logical_value_t logical_value_t::create_decimal(std::pmr::memory_resource* r, int64_t value, uint8_t width, uint8_t scale) {
-        auto decimal_type = complex_logical_type::create_decimal(width, scale);
+    logical_value_t logical_value_t::create_decimal(std::pmr::memory_resource* r,
+                                                    const complex_logical_type& decimal_type,
+                                                    int64_t value) {
         logical_value_t result(r, decimal_type);
         result.data_ = static_cast<uint64_t>(value);
         return result;
     }
 
-    logical_value_t logical_value_t::create_map(std::pmr::memory_resource* r, const complex_logical_type& key_type,
+    logical_value_t logical_value_t::create_decimal(std::pmr::memory_resource* r,
+                                                    const complex_logical_type& decimal_type,
+                                                    int128_t value) {
+        logical_value_t result(r, decimal_type);
+        if (decimal_type.to_physical_type() == physical_type::INT128) {
+            result.data128_ = value;
+        } else {
+            result.data_ = static_cast<uint64_t>(value);
+        }
+        return result;
+    }
+
+    logical_value_t logical_value_t::create_map(std::pmr::memory_resource* r,
+                                                const complex_logical_type& key_type,
                                                 const complex_logical_type& value_type,
                                                 const std::vector<logical_value_t>& keys,
                                                 const std::vector<logical_value_t>& values) {
@@ -544,11 +791,13 @@ namespace components::types {
         result.type_ = complex_logical_type::create_map(key_type, value_type);
         auto keys_value = create_array(r, key_type, keys);
         auto values_value = create_array(r, value_type, values);
-        result.data_ = reinterpret_cast<uint64_t>(result.heap_new<std::vector<logical_value_t>>(std::vector{std::move(keys_value), std::move(values_value)}));
+        result.data_ = reinterpret_cast<uint64_t>(
+            result.heap_new<std::vector<logical_value_t>>(std::vector{std::move(keys_value), std::move(values_value)}));
         return result;
     }
 
-    logical_value_t logical_value_t::create_map(std::pmr::memory_resource* r, const complex_logical_type& type,
+    logical_value_t logical_value_t::create_map(std::pmr::memory_resource* r,
+                                                const complex_logical_type& type,
                                                 const std::vector<logical_value_t>& values) {
         std::vector<logical_value_t> map_keys;
         std::vector<logical_value_t> map_values;
@@ -564,7 +813,8 @@ namespace components::types {
         return create_map(r, key_type, value_type, std::move(map_keys), std::move(map_values));
     }
 
-    logical_value_t logical_value_t::create_list(std::pmr::memory_resource* r, const complex_logical_type& internal_type,
+    logical_value_t logical_value_t::create_list(std::pmr::memory_resource* r,
+                                                 const complex_logical_type& internal_type,
                                                  const std::vector<logical_value_t>& values) {
         logical_value_t result(r, complex_logical_type{logical_type::NA});
         result.type_ = complex_logical_type::create_list(internal_type);
@@ -572,8 +822,10 @@ namespace components::types {
         return result;
     }
 
-    logical_value_t
-    logical_value_t::create_union(std::pmr::memory_resource* r, std::vector<complex_logical_type> types, uint8_t tag, logical_value_t value) {
+    logical_value_t logical_value_t::create_union(std::pmr::memory_resource* r,
+                                                  std::vector<complex_logical_type> types,
+                                                  uint8_t tag,
+                                                  logical_value_t value) {
         assert(!types.empty());
         assert(types.size() > tag);
 
@@ -633,6 +885,12 @@ namespace components::types {
             return value1;
         }
 
+        if (!value1.is_null() && !value2.is_null() && value1.type().type() != value2.type().type() &&
+            is_numeric(value1.type().type()) && is_numeric(value2.type().type())) {
+            auto promoted = promote_type(value1.type().type(), value2.type().type());
+            return sum(value1.cast_as(complex_logical_type(promoted)), value2.cast_as(complex_logical_type(promoted)));
+        }
+
         auto type = value1.is_null() ? value2.type().type() : value1.type().type();
         switch (type) {
             case logical_type::BOOLEAN:
@@ -681,6 +939,13 @@ namespace components::types {
             return value1;
         }
 
+        if (!value1.is_null() && !value2.is_null() && value1.type().type() != value2.type().type() &&
+            is_numeric(value1.type().type()) && is_numeric(value2.type().type())) {
+            auto promoted = promote_type(value1.type().type(), value2.type().type());
+            return subtract(value1.cast_as(complex_logical_type(promoted)),
+                            value2.cast_as(complex_logical_type(promoted)));
+        }
+
         auto type = value1.is_null() ? value2.type().type() : value1.type().type();
         switch (type) {
             case logical_type::BOOLEAN:
@@ -727,6 +992,12 @@ namespace components::types {
             return value1;
         }
 
+        if (!value1.is_null() && !value2.is_null() && value1.type().type() != value2.type().type() &&
+            is_numeric(value1.type().type()) && is_numeric(value2.type().type())) {
+            auto promoted = promote_type(value1.type().type(), value2.type().type());
+            return mult(value1.cast_as(complex_logical_type(promoted)), value2.cast_as(complex_logical_type(promoted)));
+        }
+
         auto type = value1.is_null() ? value2.type().type() : value1.type().type();
         switch (type) {
             case logical_type::BOOLEAN:
@@ -765,6 +1036,23 @@ namespace components::types {
             return value1;
         }
 
+        // Division by zero: return 0 of the appropriate type
+        if (!value2.is_null()) {
+            auto* r = value1.resource() ? value1.resource() : value2.resource();
+            auto zero = logical_value_t{r, value2.type()};
+            if (value2 == zero) {
+                auto result_type = value1.is_null() ? value2.type() : value1.type();
+                return logical_value_t{r, result_type};
+            }
+        }
+
+        if (!value1.is_null() && !value2.is_null() && value1.type().type() != value2.type().type() &&
+            is_numeric(value1.type().type()) && is_numeric(value2.type().type())) {
+            auto promoted = promote_type(value1.type().type(), value2.type().type());
+            return divide(value1.cast_as(complex_logical_type(promoted)),
+                          value2.cast_as(complex_logical_type(promoted)));
+        }
+
         auto type = value1.is_null() ? value2.type().type() : value1.type().type();
         switch (type) {
             case logical_type::BOOLEAN:
@@ -801,6 +1089,13 @@ namespace components::types {
     logical_value_t logical_value_t::modulus(const logical_value_t& value1, const logical_value_t& value2) {
         if (value1.is_null() && value2.is_null()) {
             return value1;
+        }
+
+        if (!value1.is_null() && !value2.is_null() && value1.type().type() != value2.type().type() &&
+            is_numeric(value1.type().type()) && is_numeric(value2.type().type())) {
+            auto promoted = promote_type(value1.type().type(), value2.type().type());
+            return modulus(value1.cast_as(complex_logical_type(promoted)),
+                           value2.cast_as(complex_logical_type(promoted)));
         }
 
         auto type = value1.is_null() ? value2.type().type() : value1.type().type();
@@ -1211,62 +1506,52 @@ namespace components::types {
     void logical_value_t::serialize(serializer::msgpack_serializer_t* serializer) const {
         serializer->start_array(2);
         type_.serialize(serializer);
-        switch (type_.type()) {
-            case logical_type::BOOLEAN:
+        switch (type_.to_physical_type()) {
+            case physical_type::BOOL:
                 serializer->append(value<bool>());
                 break;
-            case logical_type::TINYINT:
+            case physical_type::INT8:
                 serializer->append(static_cast<int64_t>(value<int8_t>()));
                 break;
-            case logical_type::SMALLINT:
+            case physical_type::INT16:
                 serializer->append(static_cast<int64_t>(value<int16_t>()));
                 break;
-            case logical_type::INTEGER:
+            case physical_type::INT32:
                 serializer->append(static_cast<int64_t>(value<int32_t>()));
                 break;
-            case logical_type::BIGINT:
+            case physical_type::INT64:
                 serializer->append(value<int64_t>());
                 break;
-            case logical_type::FLOAT:
-                serializer->append(value<float>());
-                break;
-            case logical_type::DOUBLE:
-                serializer->append(value<double>());
-                break;
-            case logical_type::UTINYINT:
-                serializer->append(static_cast<uint64_t>(value<uint8_t>()));
-                break;
-            case logical_type::USMALLINT:
-                serializer->append(static_cast<uint64_t>(value<uint16_t>()));
-                break;
-            case logical_type::UINTEGER:
-                serializer->append(static_cast<uint64_t>(value<uint32_t>()));
-                break;
-            case logical_type::UBIGINT:
-                serializer->append(value<uint64_t>());
-                break;
-            case logical_type::HUGEINT:
+            case physical_type::INT128:
                 serializer->append(value<int128_t>());
                 break;
-            case logical_type::UHUGEINT:
+            case physical_type::FLOAT:
+                serializer->append(value<float>());
+                break;
+            case physical_type::DOUBLE:
+                serializer->append(value<double>());
+                break;
+            case physical_type::UINT8:
+                serializer->append(static_cast<uint64_t>(value<uint8_t>()));
+                break;
+            case physical_type::UINT16:
+                serializer->append(static_cast<uint64_t>(value<uint16_t>()));
+                break;
+            case physical_type::UINT32:
+                serializer->append(static_cast<uint64_t>(value<uint32_t>()));
+                break;
+            case physical_type::UINT64:
+                serializer->append(value<uint64_t>());
+                break;
+            case physical_type::UINT128:
                 serializer->append(value<uint128_t>());
                 break;
-            case logical_type::TIMESTAMP_NS:
-            case logical_type::TIMESTAMP_US:
-            case logical_type::TIMESTAMP_MS:
-            case logical_type::TIMESTAMP_SEC:
-                serializer->append(value<int64_t>());
-                break;
-            case logical_type::STRING_LITERAL:
+            case physical_type::STRING:
                 serializer->append(*str_ptr());
                 break;
-            case logical_type::POINTER:
-                assert(false && "not safe to serialize a pointer");
-                break;
-            case logical_type::LIST:
-            case logical_type::ARRAY:
-            case logical_type::MAP:
-            case logical_type::STRUCT: {
+            case physical_type::LIST:
+            case physical_type::ARRAY:
+            case physical_type::STRUCT: {
                 const auto& nested_values = *vec_ptr();
                 serializer->start_array(nested_values.size());
                 for (const auto& val : nested_values) {
@@ -1281,7 +1566,8 @@ namespace components::types {
         }
     }
 
-    logical_value_t logical_value_t::deserialize(std::pmr::memory_resource* r, serializer::msgpack_deserializer_t* deserializer) {
+    logical_value_t logical_value_t::deserialize(std::pmr::memory_resource* r,
+                                                 serializer::msgpack_deserializer_t* deserializer) {
         logical_value_t result(r, complex_logical_type{logical_type::NA});
         deserializer->advance_array(0);
         auto type = complex_logical_type::deserialize(r, deserializer);
@@ -1302,6 +1588,9 @@ namespace components::types {
             case logical_type::BIGINT:
                 result = logical_value_t(r, deserializer->deserialize_int64(1));
                 break;
+            case logical_type::HUGEINT:
+                result = logical_value_t(r, deserializer->deserialize_int128(1));
+                break;
             case logical_type::FLOAT:
                 result = logical_value_t(r, static_cast<float>(deserializer->deserialize_double(1)));
                 break;
@@ -1320,11 +1609,8 @@ namespace components::types {
             case logical_type::UBIGINT:
                 result = logical_value_t(r, deserializer->deserialize_uint64(1));
                 break;
-            case logical_type::HUGEINT:
-                result = logical_value_t(r, deserializer->deserialize_uint128(1));
-                break;
             case logical_type::UHUGEINT:
-                result = logical_value_t(r, deserializer->deserialize_int128(1));
+                result = logical_value_t(r, deserializer->deserialize_uint128(1));
                 break;
             case logical_type::TIMESTAMP_NS:
                 result = logical_value_t(r, std::chrono::nanoseconds(deserializer->deserialize_int64(1)));
@@ -1338,6 +1624,14 @@ namespace components::types {
             case logical_type::TIMESTAMP_SEC:
                 result = logical_value_t(r, std::chrono::seconds(deserializer->deserialize_int64(1)));
                 break;
+            case logical_type::DECIMAL: {
+                if (type.to_physical_type() == physical_type::INT128) {
+                    result = create_decimal(r, type, deserializer->deserialize_int128(1));
+                } else {
+                    result = create_decimal(r, type, deserializer->deserialize_int64(1));
+                }
+                break;
+            }
             case logical_type::STRING_LITERAL:
                 result = logical_value_t(r, deserializer->deserialize_string(1));
                 break;
@@ -1396,6 +1690,9 @@ namespace components::types {
                 result = create_struct(r, type, std::move(nested_values));
                 break;
             }
+            case logical_type::NA:
+                // Null value — already initialized as NA
+                break;
             default:
                 assert(false);
                 return logical_value_t{r, complex_logical_type{logical_type::NA}};

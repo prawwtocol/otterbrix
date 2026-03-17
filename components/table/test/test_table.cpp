@@ -155,13 +155,19 @@ TEST_CASE("components::table::data_table") {
                     case 0:
                         chunk.set_value(7,
                                         i,
-                                        logical_value_t::create_union(&resource, union_fields, 0, logical_value_t{&resource, i % 2 == 0}));
+                                        logical_value_t::create_union(&resource,
+                                                                      union_fields,
+                                                                      0,
+                                                                      logical_value_t{&resource, i % 2 == 0}));
                         break;
                     case 1:
                         chunk.set_value(
                             7,
                             i,
-                            logical_value_t::create_union(&resource, union_fields, 1, logical_value_t{&resource, static_cast<int32_t>(i)}));
+                            logical_value_t::create_union(&resource,
+                                                          union_fields,
+                                                          1,
+                                                          logical_value_t{&resource, static_cast<int32_t>(i)}));
                         break;
                     case 2:
                         chunk.set_value(
@@ -171,7 +177,8 @@ TEST_CASE("components::table::data_table") {
                                 &resource,
                                 union_fields,
                                 2,
-                                logical_value_t{&resource, std::string{"long_string_with_index_" + std::to_string(i)}}));
+                                logical_value_t{&resource,
+                                                std::string{"long_string_with_index_" + std::to_string(i)}}));
                         break;
                     default:
                         // unreachable
@@ -184,7 +191,7 @@ TEST_CASE("components::table::data_table") {
         data_table->append_lock(state);
         data_table->initialize_append(state);
         data_table->append(chunk, state);
-        data_table->finalize_append(state);
+        data_table->finalize_append(state, transaction_data{0, 0});
     }
     INFO("Fetch") {
         column_fetch_state state;
@@ -437,11 +444,11 @@ TEST_CASE("components::table::data_table") {
         conj_and->child_filters.emplace_back(
             std::make_unique<constant_filter_t>(components::expressions::compare_type::gte,
                                                 logical_value_t{&resource, row_range.first},
-                                                std::vector<uint64_t>{0}));
+                                                std::pmr::vector<uint64_t>{{uint64_t{0}}, &resource}));
         conj_and->child_filters.emplace_back(
             std::make_unique<constant_filter_t>(components::expressions::compare_type::lt,
                                                 logical_value_t{&resource, generate_string(row_range.second)},
-                                                std::vector<uint64_t>{1}));
+                                                std::pmr::vector<uint64_t>{{uint64_t{1}}, &resource}));
         data_chunk_t result(&resource, data_table->copy_types(), row_range.second - row_range.first);
         data_table->initialize_scan(state, column_indices, conj_and.get());
         data_table->scan(result, state);
@@ -559,7 +566,7 @@ TEST_CASE("components::table::data_table") {
             v.set_value(i / 2, logical_value_t(&resource, int64_t(i)));
         }
         auto state = data_table->initialize_delete({});
-        auto deleted_count = data_table->delete_rows(*state, v, test_size / 2);
+        auto deleted_count = data_table->delete_rows(*state, v, test_size / 2, 0);
         REQUIRE(deleted_count == test_size / 2);
     }
     INFO("Scan after delete") {
@@ -691,7 +698,7 @@ TEST_CASE("components::table::data_table") {
         {
             column_definition_t new_column{"temp_column_name7",
                                            logical_type::SMALLINT,
-                                           std::make_unique<logical_value_t>(&resource, int16_t(0))};
+                                           logical_value_t{&resource, int16_t(0)}};
             extended_table = std::make_unique<data_table_t>(*data_table, new_column);
 
             // Update values in new column

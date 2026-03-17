@@ -1,22 +1,20 @@
 project(disk)
 
 set(${PROJECT_NAME}_HEADERS
+        catalog_storage.hpp
         command.hpp
         disk.hpp
         agent_disk.hpp
-        index_disk.hpp
-        index_agent_disk.hpp
         manager_disk.hpp
         metadata.hpp
         result.hpp
 )
 
 set(${PROJECT_NAME}_SOURCES
+        catalog_storage.cpp
         command.cpp
         disk.cpp
         agent_disk.cpp
-        index_disk.cpp
-        index_agent_disk.cpp
         manager_disk.cpp
         metadata.cpp
         result.cpp
@@ -35,6 +33,7 @@ target_link_libraries(
     otterbrix_${PROJECT_NAME} PUBLIC
     otterbrix::file
     otterbrix::collection
+    otterbrix::storage
     otterbrix::b_plus_tree
     otterbrix::locks
     spdlog::spdlog

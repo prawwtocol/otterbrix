@@ -17,12 +17,12 @@ namespace components::expressions {
         scalar_expression_t(std::pmr::memory_resource* resource, scalar_type type, const key_t& key);
 
         scalar_type type() const;
+        key_t& key();
         const key_t& key() const;
+        std::pmr::vector<param_storage>& params();
         const std::pmr::vector<param_storage>& params() const;
 
         void append_param(const param_storage& param);
-
-        static expression_ptr deserialize(serializer::msgpack_deserializer_t* deserializer);
 
     private:
         scalar_type type_;
@@ -32,7 +32,6 @@ namespace components::expressions {
         hash_t hash_impl() const final;
         std::string to_string_impl() const final;
         bool equal_impl(const expression_i* rhs) const final;
-        void serialize_impl(serializer::msgpack_serializer_t* serializer) const final;
     };
 
     scalar_expression_ptr

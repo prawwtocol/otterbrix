@@ -8,16 +8,18 @@ namespace components::operators::aggregate {
     public:
         void set_value(std::pmr::vector<types::logical_value_t>& row, std::string_view key) const;
         types::logical_value_t value() const;
+        void execute_on(operator_data_ptr data, pipeline::context_t* pipeline_context);
 
     protected:
-        explicit operator_aggregate_t(services::collection::context_collection_t* collection);
+        operator_aggregate_t(std::pmr::memory_resource* resource, log_t log);
 
-        types::logical_value_t aggregate_result_{std::pmr::null_memory_resource(), types::complex_logical_type{types::logical_type::NA}};
+        types::logical_value_t aggregate_result_{std::pmr::null_memory_resource(),
+                                                 types::complex_logical_type{types::logical_type::NA}};
 
     private:
         void on_execute_impl(pipeline::context_t* pipeline_context) final;
 
-        virtual types::logical_value_t aggregate_impl() = 0;
+        virtual types::logical_value_t aggregate_impl(pipeline::context_t* pipeline_context) = 0;
         virtual std::string key_impl() const = 0;
     };
 

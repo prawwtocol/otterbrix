@@ -7,22 +7,15 @@ set(${PROJECT_NAME}_SOURCES
         operators/operator_write_data.cpp
         operators/operator_empty.cpp
         operators/operator_raw_data.cpp
-        operators/operator_add_index.cpp
-        operators/operator_drop_index.cpp
 
-        operators/aggregate/aggregate_helpers.cpp
         operators/aggregate/operator_aggregate.cpp
-        operators/aggregate/operator_count.cpp
-        operators/aggregate/operator_min.cpp
-        operators/aggregate/operator_max.cpp
-        operators/aggregate/operator_sum.cpp
-        operators/aggregate/operator_avg.cpp
-
-        operators/get/operator_get.cpp
-        operators/get/simple_value.cpp
+        operators/aggregate/operator_func.cpp
+        operators/aggregate/grouped_aggregate.cpp
 
         operators/predicates/predicate.cpp
         operators/predicates/simple_predicate.cpp
+        operators/predicates/function_predicate.cpp
+        operators/predicates/utils.cpp
 
         operators/scan/full_scan.cpp
         operators/scan/index_scan.cpp
@@ -31,16 +24,16 @@ set(${PROJECT_NAME}_SOURCES
 
         operators/sort/sort.cpp
 
-        operators/aggregation.cpp
         operators/operator_insert.cpp
         operators/operator_delete.cpp
         operators/operator_update.cpp
         operators/operator_match.cpp
+        operators/operator_distinct.cpp
         operators/operator_group.cpp
         operators/operator_sort.cpp
         operators/operator_join.cpp
 
-        operators/transformation.cpp
+        operators/arithmetic_eval.cpp
 )
 
 add_library(otterbrix_${PROJECT_NAME}
@@ -72,7 +65,3 @@ target_link_libraries(
 target_include_directories(otterbrix_${PROJECT_NAME} PUBLIC
 )
 
-if (DEV_MODE)
-    add_definitions(-DDEV_MODE)
-    add_subdirectory(tests)
-endif ()

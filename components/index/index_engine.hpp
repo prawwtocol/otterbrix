@@ -1,6 +1,8 @@
 #pragma once
 
+#include <functional>
 #include <limits>
+#include <list>
 #include <map>
 #include <memory>
 #include <scoped_allocator>
@@ -10,7 +12,6 @@
 
 #include "forward.hpp"
 #include "index.hpp"
-#include <components/context/context.hpp>
 #include <core/pmr.hpp>
 
 namespace components::vector {
@@ -27,17 +28,36 @@ namespace components::index {
         auto matching(const keys_base_storage_t& query) -> index_t::pointer;
         auto matching(const actor_zeta::address_t& address) -> index_t::pointer;
         auto matching(const std::string& name) -> index_t::pointer;
-        auto has_index(const std::string& name) -> bool; // TODO figure out how to make it faster (not using matching inside)
+        auto has_index(const std::string& name)
+            -> bool; // TODO figure out how to make it faster (not using matching inside)
         auto add_index(const keys_base_storage_t&, index_ptr) -> uint32_t;
         auto add_disk_agent(id_index id, actor_zeta::address_t address) -> void;
         auto drop_index(index_t::pointer index) -> void;
         auto size() const -> std::size_t;
         std::pmr::memory_resource* resource() noexcept;
 
-        void insert_row(const vector::data_chunk_t& chunk, size_t row, pipeline::context_t* pipeline_context);
-        void delete_row(const vector::data_chunk_t& chunk, size_t row, pipeline::context_t* pipeline_context);
+        void insert_row(const vector::data_chunk_t& chunk, size_t row, uint64_t txn_id);
+        void mark_delete_row(const vector::data_chunk_t& chunk, size_t row, uint64_t txn_id);
+        void commit_insert(uint64_t txn_id, uint64_t commit_id);
+        void commit_delete(uint64_t txn_id, uint64_t commit_id);
+        void revert_insert(uint64_t txn_id);
+        void cleanup_versions(uint64_t lowest_active);
 
         auto indexes() -> std::vector<std::string>;
+        auto all_indexed_keys() const -> std::pmr::vector<keys_base_storage_t>;
+
+        // Call fn(disk_agent_address, key_value) for each disk-backed index matching chunk columns
+        void for_each_disk_op(const vector::data_chunk_t& chunk,
+                              size_t row,
+                              const std::function<void(const actor_zeta::address_t&, const value_t&)>& fn) const;
+
+        // Mirror pending txn entries to disk agents (call BEFORE commit clears pending maps)
+        void for_each_pending_disk_insert(
+            uint64_t txn_id,
+            const std::function<void(const actor_zeta::address_t&, const value_t&, int64_t)>& fn) const;
+        void for_each_pending_disk_delete(
+            uint64_t txn_id,
+            const std::function<void(const actor_zeta::address_t&, const value_t&, int64_t)>& fn) const;
 
     private:
         using comparator_t = std::less<keys_base_storage_t>;
@@ -82,7 +102,9 @@ namespace components::index {
     void find(const index_engine_ptr& index, id_index id, result_set_t*);
     void find(const index_engine_ptr& index, query_t query, result_set_t*);
 
-    void set_disk_agent(const index_engine_ptr& ptr, id_index id,
-                        actor_zeta::address_t agent, actor_zeta::address_t manager);
+    void set_disk_agent(const index_engine_ptr& ptr,
+                        id_index id,
+                        actor_zeta::address_t agent,
+                        actor_zeta::address_t manager);
 
 } // namespace components::index

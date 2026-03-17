@@ -35,18 +35,9 @@ namespace components::expressions {
         union_or,
         union_not,
         all_true,
-        all_false
-    };
-
-    enum class aggregate_type : uint8_t
-    {
-        invalid,
-        count,
-        sum,
-        min,
-        max,
-        avg,
-        udf
+        all_false,
+        is_null,
+        is_not_null
     };
 
     enum class scalar_type : uint8_t
@@ -64,7 +55,11 @@ namespace components::expressions {
         abs,
         mod,
         pow,
-        sqrt
+        sqrt,
+        case_expr,
+        coalesce,
+        case_when,
+        unary_minus
     };
 
     enum class sort_order : std::int8_t

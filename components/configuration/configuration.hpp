@@ -17,7 +17,8 @@ namespace configuration {
         std::filesystem::path path{std::filesystem::current_path() / "wal"};
         bool on{true};
         bool sync_to_disk{true};
-        int agent = 1;
+        int agent = 2;
+        std::size_t max_segment_size{4 * 1024 * 1024}; // 4 MB per segment
 
         explicit config_wal(const std::filesystem::path& path = std::filesystem::current_path())
             : path(path / "wal") {}
@@ -26,7 +27,7 @@ namespace configuration {
     struct config_disk final {
         std::filesystem::path path{std::filesystem::current_path() / "disk"};
         bool on{true};
-        int agent = 1;
+        int agent = 2;
 
         explicit config_disk(const std::filesystem::path& path = std::filesystem::current_path())
             : path(path / "wal") {}

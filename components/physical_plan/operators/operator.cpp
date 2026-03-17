@@ -1,27 +1,53 @@
 #include "operator.hpp"
-#include <cassert>
-#include <services/collection/collection.hpp>
 
 namespace components::operators {
 
     bool is_success(const operator_t::ptr& op) { return !op || op->is_executed(); }
 
-    operator_t::operator_t(services::collection::context_collection_t* context, operator_type type)
-        : context_(context)
+    operator_t::operator_t(std::pmr::memory_resource* resource, log_t log, operator_type type)
+        : resource_(resource)
+        , log_(std::move(log))
         , type_(type) {}
+
+    void operator_t::prepare() {
+        if (!prepared_) {
+            on_prepare_impl();
+            prepared_ = true;
+        }
+        if (left_) {
+            left_->prepare();
+        }
+        if (right_) {
+            right_->prepare();
+        }
+    }
 
     void operator_t::on_execute(pipeline::context_t* pipeline_context) {
         if (state_ == operator_state::created || state_ == operator_state::running) {
-            on_prepare_impl();
+            if (!prepared_) {
+                on_prepare_impl();
+                prepared_ = true;
+            }
             state_ = operator_state::running;
             if (left_) {
                 left_->on_execute(pipeline_context);
+                if (left_->has_error()) {
+                    error_message_ = left_->error_message();
+                    return;
+                }
             }
             if (right_ && is_success(left_)) {
                 right_->on_execute(pipeline_context);
+                if (right_->has_error()) {
+                    error_message_ = right_->error_message();
+                    return;
+                }
             }
             if (is_success(left_) && is_success(right_)) {
                 on_execute_impl(pipeline_context);
+                if (has_error()) {
+                    return;
+                }
                 if (!is_wait_sync_disk()) {
                     state_ = operator_state::executed;
                 }
@@ -64,17 +90,9 @@ namespace components::operators {
         return nullptr;
     }
 
-    const collection_full_name_t& operator_t::collection_name() const noexcept {
-        assert(context_ && "collection_name() requires non-null context");
-        return context_->name();
-    }
+    std::pmr::memory_resource* operator_t::resource() const noexcept { return resource_; }
 
-    services::collection::context_collection_t* operator_t::context() noexcept { return context_; }
-
-    std::pmr::memory_resource* operator_t::resource() const noexcept {
-        assert(context_ && "resource() requires non-null context");
-        return context_->resource();
-    }
+    log_t& operator_t::log() noexcept { return log_; }
 
     operator_ptr operator_t::left() const noexcept { return left_; }
 
@@ -95,7 +113,13 @@ namespace components::operators {
         right_ = std::move(right);
     }
 
+    void operator_t::set_output(operator_data_ptr data) { output_ = std::move(data); }
+
     void operator_t::take_output(ptr& src) { output_ = std::move(src->output_); }
+    void operator_t::set_error(std::string msg) { error_message_ = std::move(msg); }
+    bool operator_t::has_error() const noexcept { return !error_message_.empty(); }
+    const std::string& operator_t::error_message() const noexcept { return error_message_; }
+    void operator_t::mark_executed() { state_ = operator_state::executed; }
 
     void operator_t::clear() {
         state_ = operator_state::created;
@@ -108,17 +132,13 @@ namespace components::operators {
 
     void operator_t::on_prepare_impl() {}
 
-    actor_zeta::unique_future<void> operator_t::await_async_and_resume(pipeline::context_t* /*ctx*/) {
-        co_return;
-    }
+    actor_zeta::unique_future<void> operator_t::await_async_and_resume(pipeline::context_t* /*ctx*/) { co_return; }
 
-    read_only_operator_t::read_only_operator_t(services::collection::context_collection_t* collection,
-                                               operator_type type)
-        : operator_t(collection, type) {}
+    read_only_operator_t::read_only_operator_t(std::pmr::memory_resource* resource, log_t log, operator_type type)
+        : operator_t(resource, std::move(log), type) {}
 
-    read_write_operator_t::read_write_operator_t(services::collection::context_collection_t* collection,
-                                                 operator_type type)
-        : operator_t(collection, type)
+    read_write_operator_t::read_write_operator_t(std::pmr::memory_resource* resource, log_t log, operator_type type)
+        : operator_t(resource, std::move(log), type)
         , state_(read_write_operator_state::pending) {}
 
 } // namespace components::operators

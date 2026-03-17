@@ -16,10 +16,10 @@ set(otterbrix_LIBS
         otterbrix::dispatcher
         otterbrix::wal
         otterbrix::disk
+        otterbrix::index_service
         otterbrix::locks
         otterbrix::sql
         otterbrix::b_plus_tree
-        otterbrix_loader
         otterbrix_catalog
 )
 
@@ -44,7 +44,6 @@ target_link_libraries(
         ${PROJECT_NAME}_shared PRIVATE
         ${otterbrix_LIBS}
         spdlog::spdlog
-        pybind11::pybind11
         msgpackc-cxx
         #CONAN_PKG::date
         absl::crc32c
@@ -103,8 +102,4 @@ endif()
 
 if (DEV_MODE)
     add_subdirectory(test)
-endif()
-
-if (ALLOW_BENCHMARK)
-    add_subdirectory(benchmark)
 endif()

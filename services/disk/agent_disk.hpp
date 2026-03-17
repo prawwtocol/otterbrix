@@ -5,8 +5,8 @@
 #include "result.hpp"
 
 #include <actor-zeta/actor/basic_actor.hpp>
-#include <actor-zeta/actor/dispatch_traits.hpp>
 #include <actor-zeta/actor/dispatch.hpp>
+#include <actor-zeta/actor/dispatch_traits.hpp>
 #include <actor-zeta/detail/future.hpp>
 
 #include <components/log/log.hpp>
@@ -39,19 +39,30 @@ namespace services::disk {
         unique_future<void> append_collection(command_t command);
         unique_future<void> remove_collection(command_t command);
 
-        unique_future<void> remove_documents(command_t command);
-
         unique_future<void> fix_wal_id(wal::id_t wal_id);
 
-        using dispatch_traits = actor_zeta::dispatch_traits<
-            &agent_disk_t::load,
-            &agent_disk_t::append_database,
-            &agent_disk_t::remove_database,
-            &agent_disk_t::append_collection,
-            &agent_disk_t::remove_collection,
-            &agent_disk_t::remove_documents,
-            &agent_disk_t::fix_wal_id
-        >;
+        unique_future<void> update_catalog_schemas(std::vector<catalog_schema_update_t> schemas);
+
+        unique_future<void> append_sequence(database_name_t database, catalog_sequence_entry_t entry);
+        unique_future<void> remove_sequence(database_name_t database, std::string name);
+        unique_future<void> append_view(database_name_t database, catalog_view_entry_t entry);
+        unique_future<void> remove_view(database_name_t database, std::string name);
+        unique_future<void> append_macro(database_name_t database, catalog_macro_entry_t entry);
+        unique_future<void> remove_macro(database_name_t database, std::string name);
+
+        using dispatch_traits = actor_zeta::dispatch_traits<&agent_disk_t::load,
+                                                            &agent_disk_t::append_database,
+                                                            &agent_disk_t::remove_database,
+                                                            &agent_disk_t::append_collection,
+                                                            &agent_disk_t::remove_collection,
+                                                            &agent_disk_t::fix_wal_id,
+                                                            &agent_disk_t::update_catalog_schemas,
+                                                            &agent_disk_t::append_sequence,
+                                                            &agent_disk_t::remove_sequence,
+                                                            &agent_disk_t::append_view,
+                                                            &agent_disk_t::remove_view,
+                                                            &agent_disk_t::append_macro,
+                                                            &agent_disk_t::remove_macro>;
 
         actor_zeta::behavior_t behavior(actor_zeta::mailbox::message* msg);
 

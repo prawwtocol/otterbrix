@@ -6,6 +6,8 @@
 #include <components/logical_plan/node_join.hpp>
 #include <components/sql/parser/nodes/parsenodes.h>
 #include <components/sql/parser/pg_functions.h>
+#include <components/table/column_definition.hpp>
+#include <components/table/constraint.hpp>
 #include <components/types/types.hpp>
 #include <string>
 
@@ -108,22 +110,6 @@ namespace components::sql::transform {
         throw parser_exception_t{"Unknown comparison operator: " + std::string(str), ""};
     }
 
-    inline expressions::aggregate_type get_aggregate_type(std::string_view str) {
-        static const std::unordered_map<std::string_view, expressions::aggregate_type> lookup = {
-            {"count", expressions::aggregate_type::count},
-            {"sum", expressions::aggregate_type::sum},
-            {"min", expressions::aggregate_type::min},
-            {"max", expressions::aggregate_type::max},
-            {"avg", expressions::aggregate_type::avg},
-        };
-
-        if (auto it = lookup.find(str); it != lookup.end()) {
-            return it->second;
-        }
-
-        return expressions::aggregate_type::udf;
-    }
-
     inline types::logical_type get_logical_type(std::string_view str) {
         static const std::unordered_map<std::string_view, types::logical_type> lookup = {
             // postgres built-ins
@@ -162,8 +148,27 @@ namespace components::sql::transform {
         return types::logical_type::UNKNOWN;
     }
 
+    inline bool is_arithmetic_operator(std::string_view op) {
+        return op == "+" || op == "-" || op == "*" || op == "/" || op == "%";
+    }
+
+    inline expressions::scalar_type get_arithmetic_scalar_type(std::string_view op) {
+        if (op == "+")
+            return expressions::scalar_type::add;
+        if (op == "-")
+            return expressions::scalar_type::subtract;
+        if (op == "*")
+            return expressions::scalar_type::multiply;
+        if (op == "/")
+            return expressions::scalar_type::divide;
+        if (op == "%")
+            return expressions::scalar_type::mod;
+        throw parser_exception_t{"Unknown arithmetic operator: " + std::string(op), ""};
+    }
+
     std::string node_tag_to_string(NodeTag type);
     std::string expr_kind_to_string(A_Expr_Kind type);
+    std::string like_to_regex(const std::string& pattern);
 
     types::complex_logical_type get_type(TypeName* type);
     std::vector<types::complex_logical_type> get_types(PGList& list);
@@ -171,5 +176,13 @@ namespace components::sql::transform {
 
     types::logical_value_t get_value(std::pmr::memory_resource* resource, Node* node);
     types::logical_value_t get_array(std::pmr::memory_resource* resource, PGList* list);
+
+    // Evaluate constant arithmetic expression at parse time (e.g., 10 * 5 in INSERT VALUES)
+    types::logical_value_t evaluate_const_a_expr(std::pmr::memory_resource* resource, A_Expr* node);
+
+    void fill_column_definitions(std::vector<table::column_definition_t>& out,
+                                 std::pmr::memory_resource* resource,
+                                 PGList& table_elts);
+    std::vector<table::table_constraint_t> extract_table_constraints(PGList& table_elts);
 
 } // namespace components::sql::transform

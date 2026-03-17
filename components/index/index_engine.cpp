@@ -6,8 +6,7 @@
 #include <components/vector/data_chunk.hpp>
 #include <core/pmr.hpp>
 
-#include <services/disk/index_agent_disk.hpp>
-#include <services/disk/manager_disk.hpp>
+// index_engine no longer sends to manager_disk_t — disk persistence handled by manager_index_t
 
 namespace components::index {
 
@@ -140,50 +139,54 @@ namespace components::index {
 
     auto index_engine_t::has_index(const std::string& name) -> bool { return matching(name) == nullptr ? false : true; }
 
-    void
-    index_engine_t::insert_row(const vector::data_chunk_t& chunk, size_t row, pipeline::context_t* pipeline_context) {
+    void index_engine_t::insert_row(const vector::data_chunk_t& chunk, size_t row, uint64_t txn_id) {
         for (auto& index : storage_) {
             if (is_match_column(index, chunk)) {
                 auto key = get_value_by_index(index, chunk, row);
-                index->insert(key, static_cast<int64_t>(row));
-                if (index->is_disk() && pipeline_context && index->disk_manager()) {
-                    auto session_copy = pipeline_context->session;
-                    auto agent_copy = index->disk_agent();
-                    auto key_copy = key;
-
-                    auto [_, future] = actor_zeta::send(index->disk_manager(),
-                                                   &services::disk::manager_disk_t::index_insert_by_agent,
-                                                   std::move(session_copy),
-                                                   std::move(agent_copy),
-                                                   std::move(key_copy),
-                                                   row);
-                    pipeline_context->add_pending_disk_future(std::move(future));
-                }
+                index->insert(key, static_cast<int64_t>(row), txn_id);
             }
         }
     }
 
-    void
-    index_engine_t::delete_row(const vector::data_chunk_t& chunk, size_t row, pipeline::context_t* pipeline_context) {
+    void index_engine_t::mark_delete_row(const vector::data_chunk_t& chunk, size_t row, uint64_t txn_id) {
         for (auto& index : storage_) {
             if (is_match_column(index, chunk)) {
                 auto key = get_value_by_index(index, chunk, row);
-                index->remove(key);
-                if (index->is_disk() && pipeline_context && index->disk_manager()) {
-                    auto session_copy = pipeline_context->session;
-                    auto agent_copy = index->disk_agent();
-                    auto key_copy = key;
-                    auto [_, future] = actor_zeta::send(index->disk_manager(),
-                                                   &services::disk::manager_disk_t::index_remove_by_agent,
-                                                   std::move(session_copy),
-                                                   std::move(agent_copy),
-                                                   std::move(key_copy),
-                                                   row);
-
-                    pipeline_context->add_pending_disk_future(std::move(future));
-                }
+                index->mark_delete(key, static_cast<int64_t>(row), txn_id);
             }
         }
+    }
+
+    void index_engine_t::commit_insert(uint64_t txn_id, uint64_t commit_id) {
+        for (auto& index : storage_) {
+            index->commit_insert(txn_id, commit_id);
+        }
+    }
+
+    void index_engine_t::commit_delete(uint64_t txn_id, uint64_t commit_id) {
+        for (auto& index : storage_) {
+            index->commit_delete(txn_id, commit_id);
+        }
+    }
+
+    void index_engine_t::revert_insert(uint64_t txn_id) {
+        for (auto& index : storage_) {
+            index->revert_insert(txn_id);
+        }
+    }
+
+    void index_engine_t::cleanup_versions(uint64_t lowest_active) {
+        for (auto& index : storage_) {
+            index->cleanup_versions(lowest_active);
+        }
+    }
+
+    auto index_engine_t::all_indexed_keys() const -> std::pmr::vector<keys_base_storage_t> {
+        std::pmr::vector<keys_base_storage_t> result(resource_);
+        for (const auto& [keys, _] : mapper_) {
+            result.push_back(keys);
+        }
+        return result;
     }
 
     auto index_engine_t::indexes() -> std::vector<std::string> {
@@ -195,11 +198,49 @@ namespace components::index {
         return res;
     }
 
-    void set_disk_agent(const index_engine_ptr& ptr, id_index id,
-                        actor_zeta::address_t agent, actor_zeta::address_t manager) {
+    void index_engine_t::for_each_disk_op(
+        const vector::data_chunk_t& chunk,
+        size_t row,
+        const std::function<void(const actor_zeta::address_t&, const value_t&)>& fn) const {
+        for (const auto& index : storage_) {
+            if (index->is_disk() && is_match_column(index, chunk)) {
+                auto key = get_value_by_index(index, chunk, row);
+                fn(index->disk_agent(), key);
+            }
+        }
+    }
+
+    void index_engine_t::for_each_pending_disk_insert(
+        uint64_t txn_id,
+        const std::function<void(const actor_zeta::address_t&, const value_t&, int64_t)>& fn) const {
+        for (const auto& index : storage_) {
+            if (index->is_disk()) {
+                index->for_each_pending_insert(txn_id, [&](const value_t& key, int64_t row_index) {
+                    fn(index->disk_agent(), key, row_index);
+                });
+            }
+        }
+    }
+
+    void index_engine_t::for_each_pending_disk_delete(
+        uint64_t txn_id,
+        const std::function<void(const actor_zeta::address_t&, const value_t&, int64_t)>& fn) const {
+        for (const auto& index : storage_) {
+            if (index->is_disk()) {
+                index->for_each_pending_delete(txn_id, [&](const value_t& key, int64_t row_index) {
+                    fn(index->disk_agent(), key, row_index);
+                });
+            }
+        }
+    }
+
+    void set_disk_agent(const index_engine_ptr& ptr,
+                        id_index id,
+                        actor_zeta::address_t agent,
+                        actor_zeta::address_t manager) {
         auto* index = search_index(ptr, id);
         if (index) {
-            auto agent_copy = agent;  // copy for add_disk_agent
+            auto agent_copy = agent; // copy for add_disk_agent
             index->set_disk_agent(std::move(agent), std::move(manager));
             ptr->add_disk_agent(id, std::move(agent_copy));
         }

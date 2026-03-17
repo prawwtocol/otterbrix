@@ -9,15 +9,16 @@ namespace components::operators {
     public:
         using order = sort::order;
 
-        explicit operator_sort_t(services::collection::context_collection_t* context);
+        operator_sort_t(std::pmr::memory_resource* resource, log_t log);
 
         void add(size_t index, order order_ = order::ascending);
-        // TODO: remove this method, calculate index via schema
-        void add(const std::string& key, order order_ = order::ascending);
-        void add(const std::vector<size_t>& indices, order order_ = order::ascending);
+        void add(const std::pmr::vector<size_t>& col_path, order order_ = order::ascending);
+
+        void set_expected_output_count(size_t n) { expected_output_count_ = n; }
 
     private:
-        sort::sorter_t sorter_;
+        sort::columnar_sorter_t sorter_;
+        size_t expected_output_count_{0};
 
         void on_execute_impl(pipeline::context_t* pipeline_context) override;
     };

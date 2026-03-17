@@ -2,10 +2,9 @@
 
 #include <cassert>
 #include <chrono>
+#include <cstring>
 #include <memory>
 #include <memory_resource>
-#include <msgpack.hpp>
-#include <cstring>
 
 #include "types.hpp"
 
@@ -13,10 +12,12 @@ namespace components::types {
 
     class logical_value_t {
     public:
+        logical_value_t(std::pmr::memory_resource* r, logical_type type);
         logical_value_t(std::pmr::memory_resource* r, complex_logical_type type);
 
         template<typename T>
         logical_value_t(std::pmr::memory_resource* r, T value);
+        logical_value_t(std::pmr::memory_resource* r, const logical_value_t& other);
         logical_value_t(const logical_value_t& other);
         logical_value_t(logical_value_t&& other) noexcept;
         logical_value_t& operator=(const logical_value_t& other);
@@ -33,6 +34,7 @@ namespace components::types {
 
         bool operator==(const logical_value_t& rhs) const;
         bool operator!=(const logical_value_t& rhs) const;
+        size_t hash() const noexcept;
         bool operator<(const logical_value_t& rhs) const;
         bool operator>(const logical_value_t& rhs) const;
         bool operator<=(const logical_value_t& rhs) const;
@@ -42,25 +44,39 @@ namespace components::types {
 
         const std::vector<logical_value_t>& children() const;
 
-        static logical_value_t create_struct(std::pmr::memory_resource* r, std::string name, const std::vector<logical_value_t>& fields);
-        static logical_value_t create_struct(std::pmr::memory_resource* r, const complex_logical_type& type,
+        static logical_value_t
+        create_struct(std::pmr::memory_resource* r, std::string name, const std::vector<logical_value_t>& fields);
+        static logical_value_t create_struct(std::pmr::memory_resource* r,
+                                             const complex_logical_type& type,
                                              const std::vector<logical_value_t>& struct_values);
-        static logical_value_t create_array(std::pmr::memory_resource* r, const complex_logical_type& internal_type,
+        static logical_value_t create_array(std::pmr::memory_resource* r,
+                                            const complex_logical_type& internal_type,
                                             const std::vector<logical_value_t>& values);
-        static logical_value_t create_numeric(std::pmr::memory_resource* r, const complex_logical_type& type, int64_t value);
-        static logical_value_t create_enum(std::pmr::memory_resource* r, const complex_logical_type& enum_type, std::string_view key);
-        static logical_value_t create_enum(std::pmr::memory_resource* r, const complex_logical_type& enum_type, int32_t value);
-        static logical_value_t create_decimal(std::pmr::memory_resource* r, int64_t value, uint8_t width, uint8_t scale);
-        static logical_value_t create_map(std::pmr::memory_resource* r, const complex_logical_type& key_type,
+        static logical_value_t
+        create_numeric(std::pmr::memory_resource* r, const complex_logical_type& type, int64_t value);
+        static logical_value_t
+        create_enum(std::pmr::memory_resource* r, const complex_logical_type& enum_type, std::string_view key);
+        static logical_value_t
+        create_enum(std::pmr::memory_resource* r, const complex_logical_type& enum_type, int32_t value);
+        static logical_value_t
+        create_decimal(std::pmr::memory_resource* r, const complex_logical_type& decimal_type, int64_t value);
+        static logical_value_t
+        create_decimal(std::pmr::memory_resource* r, const complex_logical_type& decimal_type, int128_t value);
+        static logical_value_t create_map(std::pmr::memory_resource* r,
+                                          const complex_logical_type& key_type,
                                           const complex_logical_type& value_type,
                                           const std::vector<logical_value_t>& keys,
                                           const std::vector<logical_value_t>& values);
-        static logical_value_t create_map(std::pmr::memory_resource* r, const complex_logical_type& child_type,
+        static logical_value_t create_map(std::pmr::memory_resource* r,
+                                          const complex_logical_type& child_type,
                                           const std::vector<logical_value_t>& values);
-        static logical_value_t create_list(std::pmr::memory_resource* r, const complex_logical_type& type,
+        static logical_value_t create_list(std::pmr::memory_resource* r,
+                                           const complex_logical_type& type,
                                            const std::vector<logical_value_t>& values);
-        static logical_value_t
-        create_union(std::pmr::memory_resource* r, std::vector<complex_logical_type> types, uint8_t tag, logical_value_t value);
+        static logical_value_t create_union(std::pmr::memory_resource* r,
+                                            std::vector<complex_logical_type> types,
+                                            uint8_t tag,
+                                            logical_value_t value);
         static logical_value_t create_variant(std::pmr::memory_resource* r, std::vector<logical_value_t> values);
 
         static logical_value_t sum(const logical_value_t& value1, const logical_value_t& value2);
@@ -81,7 +97,8 @@ namespace components::types {
         static logical_value_t bit_shift_r(const logical_value_t& value1, const logical_value_t& value2);
 
         void serialize(serializer::msgpack_serializer_t* serializer) const;
-        static logical_value_t deserialize(std::pmr::memory_resource* r, serializer::msgpack_deserializer_t* deserializer);
+        static logical_value_t deserialize(std::pmr::memory_resource* r,
+                                           serializer::msgpack_deserializer_t* deserializer);
 
     private:
         complex_logical_type type_;
@@ -95,9 +112,7 @@ namespace components::types {
 
         void destroy_heap();
         std::string* str_ptr() const { return reinterpret_cast<std::string*>(data_); }
-        std::vector<logical_value_t>* vec_ptr() const {
-            return reinterpret_cast<std::vector<logical_value_t>*>(data_);
-        }
+        std::vector<logical_value_t>* vec_ptr() const { return reinterpret_cast<std::vector<logical_value_t>*>(data_); }
 
         template<typename T, typename... Args>
         T* heap_new(Args&&... args) {
@@ -116,7 +131,10 @@ namespace components::types {
         }
     };
 
-    static const logical_value_t NULL_LOGICAL_VALUE = logical_value_t{std::pmr::null_memory_resource(), complex_logical_type{logical_type::NA}};
+    size_t hash_row(const std::pmr::vector<logical_value_t>& row) noexcept;
+
+    static const logical_value_t NULL_LOGICAL_VALUE =
+        logical_value_t{std::pmr::null_memory_resource(), complex_logical_type{logical_type::NA}};
 
     template<typename T>
     logical_value_t::logical_value_t(std::pmr::memory_resource* r, T value)
@@ -369,11 +387,12 @@ namespace components::types {
     public:
         explicit enum_logical_type_extension(std::string name, std::vector<logical_value_t> entries);
 
-        const std::string& type_name() { return type_name_; }
+        const std::string& type_name() const { return type_name_; }
         const std::vector<logical_value_t>& entries() const noexcept { return entries_; }
 
         void serialize(serializer::msgpack_serializer_t* serializer) const override;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     private:
         std::string type_name_;
@@ -384,8 +403,12 @@ namespace components::types {
     public:
         explicit user_logical_type_extension(std::string catalog, std::vector<logical_value_t> user_type_modifiers);
 
+        const std::string& catalog() const noexcept { return catalog_; }
+        const std::vector<logical_value_t>& user_type_modifiers() const noexcept { return user_type_modifiers_; }
+
         void serialize(serializer::msgpack_serializer_t* serializer) const override;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     private:
         std::string catalog_;
@@ -393,163 +416,3 @@ namespace components::types {
     };
 
 } // namespace components::types
-
-template<typename Stream>
-void to_msgpack_(msgpack::packer<Stream>& o, const components::types::logical_value_t& value) {
-    switch (value.type().type()) {
-        case components::types::logical_type::BOOLEAN: {
-            o.pack(value.value<bool>());
-            break;
-        }
-        case components::types::logical_type::UTINYINT: {
-            o.pack(value.value<uint8_t>());
-            break;
-        }
-        case components::types::logical_type::USMALLINT: {
-            o.pack(value.value<uint16_t>());
-            break;
-        }
-        case components::types::logical_type::UINTEGER: {
-            o.pack(value.value<uint32_t>());
-            break;
-        }
-        case components::types::logical_type::UBIGINT: {
-            o.pack(value.value<uint64_t>());
-            break;
-        }
-        case components::types::logical_type::TINYINT: {
-            o.pack(value.value<int8_t>());
-            break;
-        }
-        case components::types::logical_type::SMALLINT: {
-            o.pack(value.value<int16_t>());
-            break;
-        }
-        case components::types::logical_type::INTEGER: {
-            o.pack(value.value<int32_t>());
-            break;
-        }
-        case components::types::logical_type::BIGINT: {
-            o.pack(value.value<int64_t>());
-            break;
-        }
-        case components::types::logical_type::FLOAT: {
-            o.pack(value.value<float>());
-            break;
-        }
-        case components::types::logical_type::DOUBLE: {
-            o.pack(value.value<double>());
-            break;
-        }
-        case components::types::logical_type::STRING_LITERAL: {
-            o.pack(value.value<const std::string&>());
-            break;
-        }
-        case components::types::logical_type::NA: {
-            o.pack(msgpack::type::nil_t());
-            break;
-        }
-        default:
-            throw std::logic_error("logical_value_t::to_msgpack_: incorrect logical type");
-            break;
-    }
-}
-
-inline void to_msgpack_(const components::types::logical_value_t& value, msgpack::object& o) {
-    switch (value.type().type()) {
-        case components::types::logical_type::BOOLEAN: {
-            o.type = msgpack::type::BOOLEAN;
-            o.via.boolean = value.value<bool>();
-            break;
-        }
-        case components::types::logical_type::UTINYINT: {
-            o.type = msgpack::type::POSITIVE_INTEGER;
-            o.via.u64 = value.value<uint8_t>();
-            break;
-        }
-        case components::types::logical_type::USMALLINT: {
-            o.type = msgpack::type::POSITIVE_INTEGER;
-            o.via.u64 = value.value<uint16_t>();
-            break;
-        }
-        case components::types::logical_type::UINTEGER: {
-            o.type = msgpack::type::POSITIVE_INTEGER;
-            o.via.u64 = value.value<uint32_t>();
-            break;
-        }
-        case components::types::logical_type::UBIGINT: {
-            o.type = msgpack::type::POSITIVE_INTEGER;
-            o.via.u64 = value.value<uint64_t>();
-            break;
-        }
-        case components::types::logical_type::TINYINT: {
-            o.type = msgpack::type::NEGATIVE_INTEGER;
-            o.via.i64 = value.value<int8_t>();
-            break;
-        }
-        case components::types::logical_type::SMALLINT: {
-            o.type = msgpack::type::NEGATIVE_INTEGER;
-            o.via.i64 = value.value<int16_t>();
-            break;
-        }
-        case components::types::logical_type::INTEGER: {
-            o.type = msgpack::type::NEGATIVE_INTEGER;
-            o.via.i64 = value.value<int32_t>();
-            break;
-        }
-        case components::types::logical_type::BIGINT: {
-            o.type = msgpack::type::NEGATIVE_INTEGER;
-            o.via.i64 = value.value<int64_t>();
-            break;
-        }
-        case components::types::logical_type::FLOAT: {
-            o.type = msgpack::type::FLOAT32;
-            o.via.f64 = value.value<float>();
-            break;
-        }
-        case components::types::logical_type::DOUBLE: {
-            o.type = msgpack::type::FLOAT64;
-            o.via.f64 = value.value<double>();
-            break;
-        }
-        case components::types::logical_type::STRING_LITERAL: {
-            std::string s = value.value<const std::string&>();
-            o.type = msgpack::type::object_type::STR;
-            o.via.str.size = uint32_t(s.size());
-            o.via.str.ptr = s.c_str();
-            break;
-        }
-        case components::types::logical_type::NA: {
-            o.type = msgpack::type::object_type::NIL;
-            break;
-        }
-        default:
-            assert(false); // should be unreachable;
-            break;
-    }
-}
-
-namespace msgpack {
-    MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
-        namespace adaptor {
-
-            template<>
-            struct pack<components::types::logical_value_t> final {
-                template<typename Stream>
-                packer<Stream>& operator()(msgpack::packer<Stream>& o,
-                                           const components::types::logical_value_t& v) const {
-                    to_msgpack_(o, v);
-                    return o;
-                }
-            };
-
-            template<>
-            struct object_with_zone<components::types::logical_value_t> final {
-                void operator()(msgpack::object::with_zone& o, const components::types::logical_value_t& v) const {
-                    to_msgpack_(v, o);
-                }
-            };
-
-        } // namespace adaptor
-    }     // MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
-} // namespace msgpack

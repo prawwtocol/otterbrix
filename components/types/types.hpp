@@ -1,5 +1,6 @@
 #pragma once
 #include <absl/numeric/int128.h>
+#include <array>
 #include <chrono>
 #include <memory>
 #include <memory_resource>
@@ -128,6 +129,33 @@ namespace components::types {
         UNKNOWN = 127, // Unknown type, used for parameter expressions
         INVALID = 255
     };
+
+    // collection of default types; could be useful for iteration or other stuff
+    [[maybe_unused]] static constexpr std::array<physical_type, 16> DEFAULT_PHYSICAL_TYPES{physical_type::BOOL,
+                                                                                           physical_type::UINT8,
+                                                                                           physical_type::INT8,
+                                                                                           physical_type::UINT16,
+                                                                                           physical_type::INT16,
+                                                                                           physical_type::UINT32,
+                                                                                           physical_type::INT32,
+                                                                                           physical_type::UINT64,
+                                                                                           physical_type::INT64,
+                                                                                           physical_type::UINT128,
+                                                                                           physical_type::INT128,
+                                                                                           physical_type::FLOAT,
+                                                                                           physical_type::DOUBLE,
+                                                                                           physical_type::STRING,
+                                                                                           physical_type::LIST,
+                                                                                           physical_type::ARRAY};
+
+    [[maybe_unused]] static constexpr std::array<logical_type, 21> DEFAULT_LOGICAL_TYPES{
+        logical_type::BOOLEAN,      logical_type::UTINYINT,       logical_type::TINYINT,
+        logical_type::USMALLINT,    logical_type::SMALLINT,       logical_type::UINTEGER,
+        logical_type::INTEGER,      logical_type::UBIGINT,        logical_type::BIGINT,
+        logical_type::UHUGEINT,     logical_type::HUGEINT,        logical_type::FLOAT,
+        logical_type::DOUBLE,       logical_type::STRING_LITERAL, logical_type::TIMESTAMP_SEC,
+        logical_type::TIMESTAMP_MS, logical_type::TIMESTAMP_US,   logical_type::TIMESTAMP_NS,
+        logical_type::DECIMAL,      logical_type::LIST,           logical_type::ARRAY};
 
     constexpr logical_type to_logical(physical_type type) {
         switch (type) {
@@ -284,6 +312,8 @@ namespace components::types {
         }
     }
 
+    physical_type to_physical_type(logical_type type);
+
     constexpr logical_type promote_type(logical_type type1, logical_type type2) {
         using namespace std::chrono;
         if (type1 == type2) {
@@ -354,10 +384,12 @@ namespace components::types {
             return static_cast<logical_type>(std::max(static_cast<uint8_t>(type1), static_cast<uint8_t>(type2)));
         } else if (is_signed(type1)) {
             return static_cast<logical_type>(
-                std::max<uint8_t>(static_cast<uint8_t>(type1), static_cast<uint8_t>(static_cast<uint8_t>(type2) - signage_difference)));
+                std::max<uint8_t>(static_cast<uint8_t>(type1),
+                                  static_cast<uint8_t>(static_cast<uint8_t>(type2) - signage_difference)));
         } else {
             return static_cast<logical_type>(
-                std::max<uint8_t>(static_cast<uint8_t>(static_cast<uint8_t>(type1) - signage_difference), static_cast<uint8_t>(type2)));
+                std::max<uint8_t>(static_cast<uint8_t>(static_cast<uint8_t>(type1) - signage_difference),
+                                  static_cast<uint8_t>(type2)));
         }
     }
 
@@ -393,6 +425,8 @@ namespace components::types {
         const std::vector<complex_logical_type>& child_types() const;
         logical_type_extension* extension() const;
 
+        bool is_convertable_to(const complex_logical_type& other) const;
+
         template<typename T>
         static bool contains(const complex_logical_type& type, T&& predicate);
 
@@ -418,7 +452,8 @@ namespace components::types {
         static complex_logical_type create_unknown(std::string type_name, std::string alias = "");
 
         void serialize(serializer::msgpack_serializer_t* serializer) const;
-        static complex_logical_type deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static complex_logical_type deserialize(std::pmr::memory_resource* resource,
+                                                serializer::msgpack_deserializer_t* deserializer);
 
     private:
         logical_type type_ = logical_type::NA;
@@ -481,7 +516,8 @@ namespace components::types {
         void set_alias(const std::string& alias);
 
         virtual void serialize(serializer::msgpack_serializer_t* serializer) const;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     protected:
         extension_type type_ = extension_type::GENERIC;
@@ -496,7 +532,8 @@ namespace components::types {
         size_t size() const noexcept { return size_; }
 
         void serialize(serializer::msgpack_serializer_t* serializer) const override;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     private:
         complex_logical_type items_type_;
@@ -519,7 +556,8 @@ namespace components::types {
         bool value_required() const { return value_required_; }
 
         void serialize(serializer::msgpack_serializer_t* serializer) const override;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     private:
         complex_logical_type key_;
@@ -539,7 +577,8 @@ namespace components::types {
         bool required() const noexcept { return required_; }
 
         void serialize(serializer::msgpack_serializer_t* serializer) const override;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     private:
         complex_logical_type items_type_;
@@ -556,13 +595,14 @@ namespace components::types {
                                       const std::vector<types::complex_logical_type>& columns,
                                       std::vector<field_description> descriptions);
 
-        const std::string& type_name() { return type_name_; }
+        const std::string& type_name() const { return type_name_; }
         std::vector<complex_logical_type>& child_types() { return fields_; }
         const std::vector<complex_logical_type>& child_types() const { return fields_; }
         const std::vector<field_description>& descriptions() const { return descriptions_; }
 
         void serialize(serializer::msgpack_serializer_t* serializer) const override;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     private:
         std::string type_name_;
@@ -576,23 +616,29 @@ namespace components::types {
 
         uint8_t width() const noexcept { return width_; }
         uint8_t scale() const noexcept { return scale_; }
+        physical_type stored_as() const noexcept { return stored_as_; }
 
         void serialize(serializer::msgpack_serializer_t* serializer) const override;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     private:
+        physical_type stored_as_;
         uint8_t width_;
         uint8_t scale_;
     };
-
 
     class function_logical_type_extension : public logical_type_extension {
     public:
         explicit function_logical_type_extension(complex_logical_type return_type,
                                                  std::vector<complex_logical_type> arguments);
 
+        const complex_logical_type& return_type() const noexcept { return return_type_; }
+        const std::vector<complex_logical_type>& argument_types() const noexcept { return argument_types_; }
+
         void serialize(serializer::msgpack_serializer_t* serializer) const override;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     private:
         complex_logical_type return_type_;
@@ -606,7 +652,8 @@ namespace components::types {
         const std::string& type_name() const;
 
         void serialize(serializer::msgpack_serializer_t* serializer) const override;
-        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer);
+        static std::unique_ptr<logical_type_extension> deserialize(std::pmr::memory_resource* resource,
+                                                                   serializer::msgpack_deserializer_t* deserializer);
 
     private:
         std::string type_name_;

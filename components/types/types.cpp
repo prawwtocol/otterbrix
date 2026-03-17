@@ -6,6 +6,65 @@
 
 namespace components::types {
 
+    namespace {
+        std::array<physical_type, 256> make_physical_type_table() {
+            std::array<physical_type, 256> t{};
+            for (auto& v : t) v = physical_type::INVALID;
+            t[uint8_t(logical_type::NA)] = physical_type::BOOL;
+            t[uint8_t(logical_type::BOOLEAN)] = physical_type::BOOL;
+            t[uint8_t(logical_type::TINYINT)] = physical_type::INT8;
+            t[uint8_t(logical_type::UTINYINT)] = physical_type::UINT8;
+            t[uint8_t(logical_type::SMALLINT)] = physical_type::INT16;
+            t[uint8_t(logical_type::USMALLINT)] = physical_type::UINT16;
+            t[uint8_t(logical_type::ENUM)] = physical_type::INT32;
+            t[uint8_t(logical_type::INTEGER)] = physical_type::INT32;
+            t[uint8_t(logical_type::UINTEGER)] = physical_type::UINT32;
+            t[uint8_t(logical_type::BIGINT)] = physical_type::INT64;
+            t[uint8_t(logical_type::TIMESTAMP_SEC)] = physical_type::INT64;
+            t[uint8_t(logical_type::TIMESTAMP_MS)] = physical_type::INT64;
+            t[uint8_t(logical_type::TIMESTAMP_US)] = physical_type::INT64;
+            t[uint8_t(logical_type::TIMESTAMP_NS)] = physical_type::INT64;
+            t[uint8_t(logical_type::DECIMAL)] = physical_type::INT64;
+            t[uint8_t(logical_type::UBIGINT)] = physical_type::UINT64;
+            t[uint8_t(logical_type::UHUGEINT)] = physical_type::UINT128;
+            t[uint8_t(logical_type::HUGEINT)] = physical_type::INT128;
+            t[uint8_t(logical_type::UUID)] = physical_type::INT128;
+            t[uint8_t(logical_type::FLOAT)] = physical_type::FLOAT;
+            t[uint8_t(logical_type::DOUBLE)] = physical_type::DOUBLE;
+            t[uint8_t(logical_type::STRING_LITERAL)] = physical_type::STRING;
+            t[uint8_t(logical_type::VALIDITY)] = physical_type::BIT;
+            t[uint8_t(logical_type::ARRAY)] = physical_type::ARRAY;
+            t[uint8_t(logical_type::STRUCT)] = physical_type::STRUCT;
+            t[uint8_t(logical_type::UNION)] = physical_type::STRUCT;
+            t[uint8_t(logical_type::VARIANT)] = physical_type::STRUCT;
+            t[uint8_t(logical_type::LIST)] = physical_type::LIST;
+            return t;
+        }
+
+        const auto physical_type_table = make_physical_type_table();
+
+        physical_type decimal_storage_type(uint8_t width) {
+            static constexpr uint8_t max_width_16 = 4;
+            static constexpr uint8_t max_width_32 = 9;
+            static constexpr uint8_t max_width_64 = 18;
+            static constexpr uint8_t max_width_128 = 38;
+            if (width <= max_width_16) {
+                return physical_type::INT16;
+            } else if (width <= max_width_32) {
+                return physical_type::INT32;
+            } else if (width <= max_width_64) {
+                return physical_type::INT64;
+            } else if (width <= max_width_128) {
+                return physical_type::INT128;
+            } else {
+                throw std::runtime_error("can not create decimal with width bigger than: " +
+                                         std::to_string(static_cast<int>(max_width_128)));
+            }
+        }
+    } // anonymous namespace
+
+    physical_type to_physical_type(logical_type type) { return physical_type_table[static_cast<uint8_t>(type)]; }
+
     static const complex_logical_type INVALID_TYPE = complex_logical_type{logical_type::INVALID};
 
     complex_logical_type::complex_logical_type(logical_type type, std::string alias)
@@ -133,48 +192,39 @@ namespace components::types {
     bool complex_logical_type::operator!=(const complex_logical_type& rhs) const { return !(*this == rhs); }
 
     size_t complex_logical_type::size() const noexcept {
-        switch (type_) {
-            case logical_type::NA:
+        switch (to_physical_type()) {
+            case physical_type::NA:
                 return 1;
-            case logical_type::BIT:
-            case logical_type::VALIDITY:
-            case logical_type::BOOLEAN:
+            case physical_type::BIT:
+            case physical_type::BOOL:
                 return sizeof(bool);
-            case logical_type::TINYINT:
+            case physical_type::INT8:
                 return sizeof(int8_t);
-            case logical_type::SMALLINT:
+            case physical_type::INT16:
                 return sizeof(int16_t);
-            case logical_type::ENUM:
-            case logical_type::INTEGER:
+            case physical_type::INT32:
                 return sizeof(int32_t);
-            case logical_type::BIGINT:
-            case logical_type::TIMESTAMP_SEC:
-            case logical_type::TIMESTAMP_MS:
-            case logical_type::TIMESTAMP_US:
-            case logical_type::TIMESTAMP_NS:
+            case physical_type::INT64:
                 return sizeof(int64_t);
-            case logical_type::FLOAT:
+            case physical_type::FLOAT:
                 return sizeof(float);
-            case logical_type::DOUBLE:
+            case physical_type::DOUBLE:
                 return sizeof(double);
-            case logical_type::UTINYINT:
+            case physical_type::UINT8:
                 return sizeof(uint8_t);
-            case logical_type::USMALLINT:
+            case physical_type::UINT16:
                 return sizeof(uint16_t);
-            case logical_type::UINTEGER:
+            case physical_type::UINT32:
                 return sizeof(uint32_t);
-            case logical_type::UBIGINT:
+            case physical_type::UINT64:
                 return sizeof(uint64_t);
-            case logical_type::STRING_LITERAL:
+            case physical_type::STRING:
                 return sizeof(std::string_view);
-            case logical_type::POINTER:
-                return sizeof(void*);
-            case logical_type::LIST:
+            case physical_type::LIST:
                 return sizeof(list_entry_t);
-            case logical_type::ARRAY:
-            case logical_type::STRUCT:
-            case logical_type::UNION:
-            case logical_type::VARIANT:
+            case physical_type::ARRAY:
+            case physical_type::STRUCT:
+            case physical_type::UNION:
                 return 0; // no own payload
             default:
                 assert(false && "complex_logical_type::object_size: reached unsupported type");
@@ -183,45 +233,39 @@ namespace components::types {
     }
 
     size_t complex_logical_type::align() const noexcept {
-        switch (type_) {
-            case logical_type::NA:
+        switch (to_physical_type()) {
+            case physical_type::NA:
                 return 1;
-            case logical_type::BOOLEAN:
+            case physical_type::BIT:
+            case physical_type::BOOL:
                 return alignof(bool);
-            case logical_type::TINYINT:
+            case physical_type::INT8:
                 return alignof(int8_t);
-            case logical_type::SMALLINT:
+            case physical_type::INT16:
                 return alignof(int16_t);
-            case logical_type::ENUM:
-            case logical_type::INTEGER:
+            case physical_type::INT32:
                 return alignof(int32_t);
-            case logical_type::BIGINT:
-            case logical_type::TIMESTAMP_SEC:
-            case logical_type::TIMESTAMP_MS:
-            case logical_type::TIMESTAMP_US:
-            case logical_type::TIMESTAMP_NS:
+            case physical_type::INT64:
                 return alignof(int64_t);
-            case logical_type::FLOAT:
+            case physical_type::FLOAT:
                 return alignof(float);
-            case logical_type::DOUBLE:
+            case physical_type::DOUBLE:
                 return alignof(double);
-            case logical_type::UTINYINT:
+            case physical_type::UINT8:
                 return alignof(uint8_t);
-            case logical_type::USMALLINT:
+            case physical_type::UINT16:
                 return alignof(uint16_t);
-            case logical_type::UINTEGER:
+            case physical_type::UINT32:
                 return alignof(uint32_t);
-            case logical_type::UBIGINT:
-            case logical_type::VALIDITY:
+            case physical_type::UINT64:
                 return alignof(uint64_t);
-            case logical_type::STRING_LITERAL:
+            case physical_type::STRING:
                 return alignof(std::string_view);
-            case logical_type::POINTER:
-                return alignof(void*);
-            case logical_type::LIST:
+            case physical_type::LIST:
                 return alignof(list_entry_t);
-            case logical_type::ARRAY:
-            case logical_type::STRUCT:
+            case physical_type::ARRAY:
+            case physical_type::STRUCT:
+            case physical_type::UNION:
                 return 0; // no own payload
             default:
                 assert(false && "complex_logical_type::object_size: reached unsupported type");
@@ -230,56 +274,11 @@ namespace components::types {
     }
 
     physical_type complex_logical_type::to_physical_type() const {
-        switch (type_) {
-            case logical_type::NA:
-            case logical_type::BOOLEAN:
-                return physical_type::BOOL;
-            case logical_type::TINYINT:
-                return physical_type::INT8;
-            case logical_type::UTINYINT:
-                return physical_type::UINT8;
-            case logical_type::SMALLINT:
-                return physical_type::INT16;
-            case logical_type::USMALLINT:
-                return physical_type::UINT16;
-            case logical_type::ENUM:
-            case logical_type::INTEGER:
-                return physical_type::INT32;
-            case logical_type::UINTEGER:
-                return physical_type::UINT32;
-            case logical_type::BIGINT:
-            case logical_type::TIMESTAMP_SEC:
-            case logical_type::TIMESTAMP_MS:
-            case logical_type::TIMESTAMP_US:
-            case logical_type::TIMESTAMP_NS:
-                return physical_type::INT64;
-            case logical_type::UBIGINT:
-                return physical_type::UINT64;
-            case logical_type::UHUGEINT:
-                return physical_type::UINT128;
-            case logical_type::HUGEINT:
-            case logical_type::UUID:
-                return physical_type::INT128;
-            case logical_type::FLOAT:
-                return physical_type::FLOAT;
-            case logical_type::DOUBLE:
-                return physical_type::DOUBLE;
-            case logical_type::STRING_LITERAL:
-                return physical_type::STRING;
-            case logical_type::DECIMAL:
-                return physical_type::INT64;
-            case logical_type::VALIDITY:
-                return physical_type::BIT;
-            case logical_type::ARRAY:
-                return physical_type::ARRAY;
-            case logical_type::STRUCT:
-            case logical_type::UNION:
-            case logical_type::VARIANT:
-                return physical_type::STRUCT;
-            case logical_type::LIST:
-                return physical_type::LIST;
-            default:
-                return physical_type::INVALID;
+        // decimal physical type depends on the width
+        if (type_ == logical_type::DECIMAL) {
+            return reinterpret_cast<const decimal_logical_type_extension*>(extension_.get())->stored_as();
+        } else {
+            return types::to_physical_type(type_);
         }
     }
 
@@ -357,6 +356,52 @@ namespace components::types {
     }
 
     logical_type_extension* complex_logical_type::extension() const { return extension_.get(); }
+
+    bool complex_logical_type::is_convertable_to(const complex_logical_type& other) const {
+        if (*this == other) {
+            return true;
+        }
+
+        if (is_numeric(type_) && (is_numeric(other.type_) || other.type_ == logical_type::STRING_LITERAL ||
+                                  other.type_ == logical_type::DECIMAL)) {
+            return true;
+        }
+        if (type_ == logical_type::DECIMAL && is_numeric(other.type_)) {
+            return true;
+        }
+        if (is_duration(type_) && is_duration(other.type_)) {
+            return true;
+        }
+        if (type_ == logical_type::LIST && other.type_ == logical_type::LIST) {
+            const auto* list_ext = static_cast<const list_logical_type_extension*>(extension_.get());
+            const auto* other_list_ext = static_cast<const list_logical_type_extension*>(extension_.get());
+
+            return list_ext->node().is_convertable_to(other_list_ext->node());
+        }
+        if (type_ == logical_type::ARRAY && other.type_ == logical_type::ARRAY) {
+            const auto* arr_ext = static_cast<const array_logical_type_extension*>(extension_.get());
+            const auto* other_arr_ext = static_cast<const array_logical_type_extension*>(extension_.get());
+
+            return arr_ext->size() == other_arr_ext->size() &&
+                   arr_ext->internal_type().is_convertable_to(other_arr_ext->internal_type());
+        }
+        if (type_ == logical_type::STRUCT && other.type_ == logical_type::STRUCT) {
+            const auto* struct_ext = static_cast<const struct_logical_type_extension*>(extension_.get());
+            const auto* other_struct_ext = static_cast<const struct_logical_type_extension*>(extension_.get());
+
+            if (struct_ext->child_types().size() != other_struct_ext->child_types().size()) {
+                return false;
+            }
+            for (size_t i = 0; i < struct_ext->child_types().size(); i++) {
+                if (!struct_ext->child_types()[i].is_convertable_to(other_struct_ext->child_types()[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        return false;
+    }
 
     bool complex_logical_type::type_is_constant_size(logical_type type) {
         return (type >= logical_type::BOOLEAN && type <= logical_type::DOUBLE) ||
@@ -451,7 +496,8 @@ namespace components::types {
         serializer->end_array();
     }
 
-    complex_logical_type complex_logical_type::deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer) {
+    complex_logical_type complex_logical_type::deserialize(std::pmr::memory_resource* resource,
+                                                           serializer::msgpack_deserializer_t* deserializer) {
         auto type = deserializer->deserialize_enum<logical_type>(1);
         auto extension = logical_type_extension::deserialize(resource, deserializer);
         return {type, std::move(extension)};
@@ -487,7 +533,8 @@ namespace components::types {
     }
 
     std::unique_ptr<logical_type_extension>
-    logical_type_extension::deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer) {
+    logical_type_extension::deserialize(std::pmr::memory_resource* resource,
+                                        serializer::msgpack_deserializer_t* deserializer) {
         std::unique_ptr<logical_type_extension> result = nullptr;
         auto has_extension = deserializer->deserialize_bool(2);
 
@@ -550,7 +597,8 @@ namespace components::types {
     }
 
     std::unique_ptr<logical_type_extension>
-    array_logical_type_extension::deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer) {
+    array_logical_type_extension::deserialize(std::pmr::memory_resource* resource,
+                                              serializer::msgpack_deserializer_t* deserializer) {
         auto alias = deserializer->deserialize_string(1);
         deserializer->advance_array(2);
         auto items_type = complex_logical_type::deserialize(resource, deserializer);
@@ -596,7 +644,8 @@ namespace components::types {
     }
 
     std::unique_ptr<logical_type_extension>
-    map_logical_type_extension::deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer) {
+    map_logical_type_extension::deserialize(std::pmr::memory_resource* resource,
+                                            serializer::msgpack_deserializer_t* deserializer) {
         auto alias = deserializer->deserialize_string(1);
         auto key_id = deserializer->deserialize_uint64(2);
         deserializer->advance_array(3);
@@ -641,7 +690,8 @@ namespace components::types {
     }
 
     std::unique_ptr<logical_type_extension>
-    list_logical_type_extension::deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer) {
+    list_logical_type_extension::deserialize(std::pmr::memory_resource* resource,
+                                             serializer::msgpack_deserializer_t* deserializer) {
         auto alias = deserializer->deserialize_string(1);
         deserializer->advance_array(2);
         auto type = complex_logical_type::deserialize(resource, deserializer);
@@ -690,7 +740,8 @@ namespace components::types {
     }
 
     std::unique_ptr<logical_type_extension>
-    struct_logical_type_extension::deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer) {
+    struct_logical_type_extension::deserialize(std::pmr::memory_resource* resource,
+                                               serializer::msgpack_deserializer_t* deserializer) {
         auto alias = deserializer->deserialize_string(1);
         auto name = deserializer->deserialize_string(2);
         std::vector<types::complex_logical_type> types;
@@ -719,6 +770,7 @@ namespace components::types {
 
     decimal_logical_type_extension::decimal_logical_type_extension(uint8_t width, uint8_t scale)
         : logical_type_extension(extension_type::DECIMAL)
+        , stored_as_(decimal_storage_type(width))
         , width_(width)
         , scale_(scale) {}
 
@@ -726,13 +778,16 @@ namespace components::types {
         serializer->start_array(4);
         serializer->append_enum(type_);
         serializer->append(alias_);
+        // stored_as will be recalculated in deserialization
+        //serializer->append_enum(stored_as_);
         serializer->append(static_cast<uint64_t>(width_));
         serializer->append(static_cast<uint64_t>(scale_));
         serializer->end_array();
     }
 
     std::unique_ptr<logical_type_extension>
-    decimal_logical_type_extension::deserialize(std::pmr::memory_resource* /*resource*/, serializer::msgpack_deserializer_t* deserializer) {
+    decimal_logical_type_extension::deserialize(std::pmr::memory_resource* /*resource*/,
+                                                serializer::msgpack_deserializer_t* deserializer) {
         auto alias = deserializer->deserialize_string(1);
         auto width = static_cast<uint8_t>(deserializer->deserialize_uint64(2));
         auto scale = static_cast<uint8_t>(deserializer->deserialize_uint64(3));
@@ -760,7 +815,8 @@ namespace components::types {
     }
 
     std::unique_ptr<logical_type_extension>
-    enum_logical_type_extension::deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer) {
+    enum_logical_type_extension::deserialize(std::pmr::memory_resource* resource,
+                                             serializer::msgpack_deserializer_t* deserializer) {
         auto alias = deserializer->deserialize_string(1);
         auto name = deserializer->deserialize_string(2);
         std::vector<logical_value_t> entries;
@@ -797,7 +853,8 @@ namespace components::types {
     }
 
     std::unique_ptr<logical_type_extension>
-    user_logical_type_extension::deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer) {
+    user_logical_type_extension::deserialize(std::pmr::memory_resource* resource,
+                                             serializer::msgpack_deserializer_t* deserializer) {
         auto alias = deserializer->deserialize_string(1);
         auto catalog = deserializer->deserialize_string(2);
         std::vector<logical_value_t> modifiers;
@@ -834,7 +891,8 @@ namespace components::types {
     }
 
     std::unique_ptr<logical_type_extension>
-    function_logical_type_extension::deserialize(std::pmr::memory_resource* resource, serializer::msgpack_deserializer_t* deserializer) {
+    function_logical_type_extension::deserialize(std::pmr::memory_resource* resource,
+                                                 serializer::msgpack_deserializer_t* deserializer) {
         auto alias = deserializer->deserialize_string(1);
         deserializer->advance_array(2);
         auto return_type = complex_logical_type::deserialize(resource, deserializer);
@@ -868,7 +926,8 @@ namespace components::types {
     }
 
     std::unique_ptr<logical_type_extension>
-    unknown_logical_type_extension::deserialize(std::pmr::memory_resource* /*resource*/, serializer::msgpack_deserializer_t* deserializer) {
+    unknown_logical_type_extension::deserialize(std::pmr::memory_resource* /*resource*/,
+                                                serializer::msgpack_deserializer_t* deserializer) {
         auto alias = deserializer->deserialize_string(1);
         auto type_name = deserializer->deserialize_string(2);
         auto res = std::make_unique<unknown_logical_type_extension>(std::move(type_name));

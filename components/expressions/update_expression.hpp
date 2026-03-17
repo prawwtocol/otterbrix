@@ -7,11 +7,6 @@
 
 #include "key.hpp"
 
-namespace components::serializer {
-    class msgpack_serializer_t;
-    class msgpack_deserializer_t;
-} // namespace components::serializer
-
 namespace components::logical_plan {
     struct storage_parameters;
 }
@@ -21,7 +16,7 @@ namespace components::expressions {
     enum class update_expr_type : uint8_t
     {
         set,
-        get_value_doc,
+        get_value,
         get_value_params,
         add,
         sub,
@@ -77,9 +72,6 @@ namespace components::expressions {
         expr_output_t& output();
         const expr_output_t& output() const;
 
-        virtual void serialize(serializer::msgpack_serializer_t* serializer) = 0;
-        static update_expr_ptr deserialize(serializer::msgpack_deserializer_t* deserializer);
-
     protected:
         virtual bool execute_impl(vector::data_chunk_t& to,
                                   const vector::data_chunk_t& from,
@@ -99,12 +91,10 @@ namespace components::expressions {
     public:
         explicit update_expr_set_t(key_t key);
 
+        key_t& key() noexcept;
         const key_t& key() const noexcept;
 
         bool operator==(const update_expr_set_t& rhs) const;
-
-        void serialize(serializer::msgpack_serializer_t* serializer) override;
-        static update_expr_ptr deserialize(serializer::msgpack_deserializer_t* deserializer);
 
     protected:
         bool execute_impl(vector::data_chunk_t& to,
@@ -123,12 +113,10 @@ namespace components::expressions {
     public:
         explicit update_expr_get_value_t(key_t key);
 
+        key_t& key() noexcept;
         const key_t& key() const noexcept;
 
         bool operator==(const update_expr_get_value_t& rhs) const;
-
-        void serialize(serializer::msgpack_serializer_t* serializer) override;
-        static update_expr_ptr deserialize(serializer::msgpack_deserializer_t* deserializer);
 
     protected:
         bool execute_impl(vector::data_chunk_t& to,
@@ -151,9 +139,6 @@ namespace components::expressions {
 
         bool operator==(const update_expr_get_const_value_t& rhs) const;
 
-        void serialize(serializer::msgpack_serializer_t* serializer) override;
-        static update_expr_ptr deserialize(serializer::msgpack_deserializer_t* deserializer);
-
     protected:
         bool execute_impl(vector::data_chunk_t& to,
                           const vector::data_chunk_t& from,
@@ -172,9 +157,6 @@ namespace components::expressions {
         explicit update_expr_calculate_t(update_expr_type type);
 
         bool operator==(const update_expr_calculate_t& rhs) const;
-
-        void serialize(serializer::msgpack_serializer_t* serializer) override;
-        static update_expr_ptr deserialize(serializer::msgpack_deserializer_t* deserializer);
 
     protected:
         bool execute_impl(vector::data_chunk_t& to,

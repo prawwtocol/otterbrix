@@ -6,5 +6,6 @@ endif()
 
 add_subdirectory(c)
 add_subdirectory(cpp)
-add_subdirectory(python)
-add_subdirectory(test_utils)
+if(BUILD_PYTHON)
+    add_subdirectory(python)
+endif()
