@@ -26,6 +26,7 @@ message(STATUS "ARCH : ${CMAKE_SYSTEM_NAME}")
 option(DEV_MODE "developer mode" OFF)
 option(ENABLE_ASAN "address sanitizer" OFF)
 option(ENABLE_TSAN "thread sanitizer" OFF)
+option(ENABLE_UBSAN "undefined behavior sanitizer" OFF)
 option(EXAMPLE "Example" OFF)
 option(ALLOW_BENCHMARK "Allow benchmark" OFF)
 option(BUILD_PYTHON "Build Python bindings" OFF)
@@ -57,7 +58,7 @@ endif()
 # We do not use -Werror flag with sanitizers for the following reasons:
 # 1) Sanitizers force us to build absl locally, which does contains warnings
 # 2) Incomplete support of macOS makes development too cumbersome with -Werror enabled
-set(USE_Werror "$<NOT:$<OR:$<BOOL:${APPLE}>,$<BOOL:${ENABLE_ASAN}>>>")
+set(USE_Werror "$<NOT:$<OR:$<BOOL:${APPLE}>,$<BOOL:${ENABLE_ASAN}>,$<BOOL:${ENABLE_UBSAN}>>>")
 
 if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
     add_compile_options(
@@ -94,12 +95,21 @@ find_package(Sanitizers REQUIRED)
 
 if (ENABLE_ASAN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -fno-omit-frame-pointer -fsanitize=address")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O0 -g -DNDEBUG" CACHE STRING "" FORCE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+    # Guarantee -O0 comes last (overrides any -O3 from toolchain/build-type defaults)
+    add_compile_options(-O0)
 endif()
 
 if (ENABLE_TSAN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -fno-omit-frame-pointer -fsanitize=thread")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+    add_compile_definitions(OTTERBRIX_TSAN_ENABLED)
+endif()
+
+if (ENABLE_UBSAN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -fno-omit-frame-pointer -fsanitize=undefined -fno-sanitize-recover=undefined")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined")
 endif()
 
 
@@ -130,14 +140,29 @@ if(BUILD_PYTHON)
     find_package(tabulate CONFIG REQUIRED)
 endif()
 
-if (ENABLE_ASAN)
-    # build abseil-cpp locally to avoid ABI issues
+if (ENABLE_ASAN AND NOT APPLE)
+    # build abseil-cpp locally to avoid ABI issues (skip on macOS ARM64 due to SSE flags)
     include(FetchContent)
     FetchContent_Declare(
             absl
             URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20230802.1.zip
     )
     FetchContent_MakeAvailable(absl)
+    # Fix: abseil 20230802.1 on Apple ARM64 produces -Xarch_x86_64 -maes -msse4.1
+    # where CMake deduplicates the second -Xarch_x86_64, leaving bare -msse4.1
+    # which fails on ARM64. Override to ARM64-only flags on affected targets.
+    if(APPLE AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+        get_target_property(_opts absl_random_internal_randen_hwaes_impl COMPILE_OPTIONS)
+        if(_opts)
+            list(REMOVE_ITEM _opts "-Xarch_x86_64" "-maes" "-msse4.1")
+            set_target_properties(absl_random_internal_randen_hwaes_impl PROPERTIES COMPILE_OPTIONS "${_opts}")
+        endif()
+        get_target_property(_opts2 absl_random_internal_randen_hwaes COMPILE_OPTIONS)
+        if(_opts2)
+            list(REMOVE_ITEM _opts2 "-Xarch_x86_64" "-maes" "-msse4.1")
+            set_target_properties(absl_random_internal_randen_hwaes PROPERTIES COMPILE_OPTIONS "${_opts2}")
+        endif()
+    endif()
 else()
     find_package(absl 20230802.1 REQUIRED)
 endif()
