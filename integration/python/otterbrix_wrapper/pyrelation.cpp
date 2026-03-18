@@ -229,7 +229,7 @@ namespace otterbrix {
 
     pyexpr_ptr PyRelation::ColumnExpression(const string& name) {
 
-        return make_shared<PyExpression>(expressions::key_t{name}, GetExpressionFactory());
+        return make_shared<PyExpression>(expressions::key_t(std::pmr::get_default_resource(), name), GetExpressionFactory());
     }
 
     py::list PyRelation::Columns() {

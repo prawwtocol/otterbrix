@@ -53,33 +53,47 @@ namespace otterbrix {
     }
 
     shared_ptr<Relation> ConnectionEnvironment::RelationFromQuery(const string& query) {
-        auto session = session_id_t();
-        auto node = raw_parser(query.c_str())->lst.front().data;
+        using namespace components::sql::transform;
+
+        std::pmr::monotonic_buffer_resource parser_arena(space->dispatcher()->resource());
+        auto parse_result = linitial(raw_parser(&parser_arena, query.c_str()));
+
         sql::transform::transformer transformer(space->dispatcher()->resource());
-        auto plan =
-            transformer.transform(sql::transform::pg_cell_to_node_cast(node), nullptr);
-        // todo split node and plan; check select statement, use node.type 
-        return RelationFactory::CreateFromSelect(plan);
+        auto result = transformer.transform(sql::transform::pg_cell_to_node_cast(parse_result)).finalize();
+
+        if (std::holds_alternative<bind_error>(result)) {
+            throw std::runtime_error(std::get<bind_error>(std::move(result)).what());
+        }
+        auto view = std::get<result_view>(std::move(result));
+        return RelationFactory::CreateFromSelect(std::move(view.node));
     }
 
     Result ConnectionEnvironment::ExecuteInternal(const string& query) {
+        using namespace components::sql::transform;
+
         auto session = session_id_t();
-        auto node = raw_parser(query.c_str())->lst.front().data;
+        std::pmr::monotonic_buffer_resource parser_arena(space->dispatcher()->resource());
+        auto parse_result = linitial(raw_parser(&parser_arena, query.c_str()));
+
         sql::transform::transformer transformer(space->dispatcher()->resource());
-        auto plan =
-            transformer.transform(sql::transform::pg_cell_to_node_cast(node), nullptr);
+        auto result = transformer.transform(sql::transform::pg_cell_to_node_cast(parse_result)).finalize();
 
-        auto plan_type = logical_plan::node_type::create_collection_t;
-        auto cursor = space->dispatcher()->execute_plan(session, plan);
+        if (std::holds_alternative<bind_error>(result)) {
+            return components::cursor::make_cursor(space->dispatcher()->resource(),
+                                                   components::cursor::error_code_t::sql_parse_error,
+                                                   std::get<bind_error>(std::move(result)).what());
+        }
+        auto view = std::get<result_view>(std::move(result));
+        auto plan = std::move(view.node);
+        auto cursor = space->dispatcher()->execute_plan(session, plan, std::move(view.params));
 
-        if (cursor->is_success() && plan_type == logical_plan::node_type::create_collection_t) {
+        if (cursor->is_success() && plan->type() == logical_plan::node_type::create_collection_t) {
             auto full_name = plan->collection_full_name();
             auto& collections = GetCollections();
             collections.insert(full_name.to_string());
         }
 
         return cursor;
-
     }
 
     Result ConnectionEnvironment::Execute(const Relation& rel) {

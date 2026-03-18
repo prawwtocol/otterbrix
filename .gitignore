@@ -361,7 +361,6 @@ DerivedData/
 !default.perspectivev3
 ### CMake template
 CMakeCache.txt
-CMakeUserPresets.json
 CMakeFiles
 CMakeScripts
 Testing
@@ -427,10 +426,4 @@ build
 *.wal
 *.txt.user
 benchmark/data/
-/integration/python/default/log/python-1773985676.txt
-/integration/python/default/wal/.wal_0
-/integration/python/default/wal/.wal_1
-/integration/python/default/wal/indexes_METADATA
-/integration/python/default/wal/METADATA
-/integration/python/default/wal/WAL_ID
-/integration/python/.coverage
+.worktrees

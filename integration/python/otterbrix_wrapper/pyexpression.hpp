@@ -89,7 +89,7 @@ namespace otterbrix {
         
         const Expression& GetExpression();
 
-        static pyexpr_ptr AggregationExpression(components::expressions::aggregate_type type, 
+        static pyexpr_ptr AggregationExpression(const std::string& function_name,
             const PyExpression& expr);
 
         static pyexpr_ptr ScalarBinaryExpression(components::expressions::scalar_type type, 

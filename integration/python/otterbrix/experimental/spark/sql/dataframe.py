@@ -34,17 +34,27 @@ from .functions import _to_column_expr, col
 from otterbrix.experimental.spark.context import SparkContext
 
 class DataFrame:
-    def __init__(self, relation: otterbrix.OtterBrixPyRelation, session: "SparkSession"):
+    def __init__(self, relation: otterbrix.OtterBrixPyRelation, session: "SparkSession",
+                 *, lazy=False, plan=None):
         self.relation = relation
         self.session = session
+        self._lazy = lazy
+        self._plan = plan
         self._schema = None
         if self.relation is not None:
             self._schema = otterbrix_to_spark_schema(self.relation.columns, self.relation.types)
 
     def show(self, **kwargs) -> None:
+        if self._lazy:
+            relation = self._execute_plan()
+            relation.show()
+            return
         self.relation.show()
 
     def toPandas(self) -> "PandasDataFrame":
+        if self._lazy:
+            relation = self._execute_plan()
+            return relation.df()
         return self.relation.df()
 
     def createOrReplaceTempView(self, name: str) -> None:
@@ -82,6 +92,8 @@ class DataFrame:
         raise NotImplementedError
 
     def withColumnRenamed(self, columnName: str, newName: str) -> "DataFrame":
+        if self._lazy:
+            raise NotImplementedError("withColumnRenamed() is not supported in lazy mode.")
         if columnName not in self.relation:
             raise ValueError(f"DataFrame does not contain a column named {columnName}")
         cols = []
@@ -94,6 +106,8 @@ class DataFrame:
         return DataFrame(rel, self.session)
 
     def withColumn(self, columnName: str, col: Column) -> "DataFrame":
+        if self._lazy:
+            raise NotImplementedError("withColumn() is not supported in lazy mode.")
         if not isinstance(col, Column):
             raise PySparkTypeError(
                 error_class="NOT_COLUMN",
@@ -263,6 +277,8 @@ class DataFrame:
         |  2|Alice|
         +---+-----+
         """
+        from .logical_plan import _SortedRelation
+
         if not cols:
             raise PySparkValueError(
                 error_class="CANNOT_BE_EMPTY",
@@ -271,23 +287,49 @@ class DataFrame:
         if len(cols) == 1 and isinstance(cols[0], list):
             cols = cols[0]
 
+        def _parse_expr_str(expr_str):
+            """Parse Expression string like 'col: 1' or 'col: -1' into (name, direction).
+            Returns (name, 1) for ascending, (name, -1) for descending, (name, 0) for no direction."""
+            if expr_str.endswith(': 1'):
+                return expr_str[:-3], 1
+            elif expr_str.endswith(': -1'):
+                return expr_str[:-4], -1
+            return expr_str, 0
+
         columns = []
+        col_names = []
+        explicit_dirs = []  # 1=asc, -1=desc, 0=unspecified
         for c in cols:
             _c = c
             if isinstance(c, str):
+                col_names.append(c)
+                explicit_dirs.append(0)
                 _c = col(c)
             elif isinstance(c, int) and not isinstance(c, bool):
                 # ordinal is 1-based
                 if c > 0:
                     _c = self[c - 1]
+                    col_names.append(str(_c.expr))
+                    explicit_dirs.append(0)
                 # negative ordinal means sort by desc
                 elif c < 0:
-                    _c = self[-c - 1].desc()
+                    _c = self[-c - 1]
+                    col_names.append(str(_c.expr))
+                    explicit_dirs.append(-1)
+                    _c = _c.desc()
                 else:
                     raise PySparkIndexError(
                         error_class="ZERO_INDEX",
                         message_parameters={},
                     )
+            elif isinstance(c, Column):
+                name, direction = _parse_expr_str(str(c.expr))
+                col_names.append(name)
+                explicit_dirs.append(direction)
+            else:
+                name, direction = _parse_expr_str(str(c))
+                col_names.append(name)
+                explicit_dirs.append(direction)
             columns.append(_c)
 
         ascending = kwargs.get("ascending", True)
@@ -295,16 +337,37 @@ class DataFrame:
         if isinstance(ascending, (bool, int)):
             if not ascending:
                 columns = [c.desc() for c in columns]
+            base_asc = bool(ascending)
         elif isinstance(ascending, list):
             columns = [c if asc else c.desc() for asc, c in zip(ascending, columns)]
+            base_asc = None  # per-column
         else:
             raise PySparkTypeError(
                 error_class="NOT_BOOL_OR_LIST",
                 message_parameters={"arg_name": "ascending", "arg_type": type(ascending).__name__},
             )
-       
-        columns = [_to_column_expr(c) for c in columns]
-        rel = self.relation.sort(*columns)
+
+        # Build final ascending flags
+        asc_flags = []
+        for i, d in enumerate(explicit_dirs):
+            if d != 0:
+                # Column had explicit .asc() or .desc() — respect it
+                asc_flags.append(d == 1)
+            elif base_asc is not None:
+                asc_flags.append(base_asc)
+            else:
+                asc_flags.append(bool(ascending[i]))
+
+        sort_keys = list(zip(col_names, asc_flags))
+
+        if self._lazy:
+            from .logical_plan import SortNode
+            return DataFrame(
+                relation=self.relation, session=self.session, lazy=True,
+                plan=SortNode(sort_exprs=columns, children=[self._plan], sort_keys=sort_keys)
+            )
+
+        rel = _SortedRelation(self.relation, sort_keys)
         return DataFrame(rel, self.session)
 
     orderBy = sort
@@ -371,6 +434,8 @@ class DataFrame:
         |  2|Alice|
         +---+-----+
         """
+        from .logical_plan import _FilteredRelation
+
         if isinstance(condition, Column):
             cond = condition.expr
         elif isinstance(condition, str):
@@ -380,6 +445,24 @@ class DataFrame:
                 error_class="NOT_COLUMN_OR_STR",
                 message_parameters={"arg_name": "condition", "arg_type": type(condition).__name__},
             )
+
+        if self._lazy:
+            from .logical_plan import FilterNode
+            py_eval = condition._py_eval if isinstance(condition, Column) else None
+            refs = condition._referenced_columns if isinstance(condition, Column) and condition._referenced_columns else None
+            return DataFrame(
+                relation=self.relation, session=self.session, lazy=True,
+                plan=FilterNode(
+                    condition=cond, children=[self._plan],
+                    py_eval=py_eval, referenced_columns=refs,
+                )
+            )
+
+        # Eager mode: use Python-side filtering if a _py_eval predicate is available
+        if isinstance(condition, Column) and condition._py_eval is not None:
+            rel = _FilteredRelation(self.relation, condition._py_eval)
+            return DataFrame(rel, self.session)
+
         rel = self.relation.filter(cond)
         return DataFrame(rel, self.session)
 
@@ -397,6 +480,13 @@ class DataFrame:
             projections = [
                 cols.expr if isinstance(cols, Column) else ColumnExpression(cols, SparkContext._active_spark_context)
             ]
+
+        if self._lazy:
+            from .logical_plan import ProjectNode
+            return DataFrame(
+                relation=self.relation, session=self.session, lazy=True,
+                plan=ProjectNode(columns=projections, children=[self._plan])
+            )
         rel = self.relation.select(*projections)
         return DataFrame(rel, self.session)
 
@@ -505,47 +595,63 @@ class DataFrame:
         +-----+---+
         """
 
+        from .logical_plan import _JoinedRelation
+
+        # Extract _py_eval from the condition Column(s) before converting
+        py_condition = None
         if on is not None and not isinstance(on, list):
             on = [on]  # type: ignore[assignment]
 
         if on is not None:
             assert isinstance(on, list)
-            # Get (or create) the Expressions from the list of Columns
-            on = [_to_column_expr(x) for x in on]
+            # Combine _py_eval from all condition columns
+            py_evals = []
+            for x in on:
+                if isinstance(x, Column) and x._py_eval is not None:
+                    py_evals.append(x._py_eval)
+            if py_evals:
+                if len(py_evals) == 1:
+                    py_condition = py_evals[0]
+                else:
+                    py_condition = lambda row, _evals=py_evals: all(e(row) for e in _evals)
 
-            # & all the Expressions together to form one Expression
-            assert isinstance(
-                on[0], Expression
-            ), "on should be Column or list of Column"
-            on = reduce(lambda x, y: x.__and__(y), cast(List[Expression], on))
+        def map_to_recognized_jointype(how):
+            known_aliases = {
+                "inner": [],
+                "full": ["outer", "fullouter", "full_outer"],
+                "left": ["leftouter", "left_outer"],
+                "right": ["rightouter", "right_outer"],
+                "anti": ["leftanti", "left_anti"],
+                "semi": ["leftsemi", "left_semi"],
+                "cross": [],
+            }
+            mapped_type = None
+            for type, aliases in known_aliases.items():
+                if how == type or how in aliases:
+                    mapped_type = type
+                    break
+            if not mapped_type:
+                mapped_type = how
+            return mapped_type
 
         if on is None and how is None:
-            result = self.relation.join(other.relation)
+            join_type = "cross"
         else:
             if how is None:
                 how = "inner"
+            join_type = map_to_recognized_jointype(how)
 
-            def map_to_recognized_jointype(how):
-                known_aliases = {
-                    "inner": [],
-                    "full": ["outer", "fullouter", "full_outer"],
-                    "left": ["leftouter", "left_outer"],
-                    "right": ["rightouter", "right_outer"],
-                    "anti": ["leftanti", "left_anti"],
-                    "semi": ["leftsemi", "left_semi"],
-                }
-                mapped_type = None
-                for type, aliases in known_aliases.items():
-                    if how == type or how in aliases:
-                        mapped_type = type
-                        break
-
-                if not mapped_type:
-                    mapped_type = how
-                return mapped_type
-
-            how = map_to_recognized_jointype(how)
-            result = self.relation.join(other.relation, on, how)
+        if self._lazy:
+            from .logical_plan import JoinNode, ScanNode
+            other_plan = other._plan if other._lazy else ScanNode(relation=other.relation)
+            return DataFrame(
+                relation=self.relation, session=self.session, lazy=True,
+                plan=JoinNode(
+                    condition=on, join_type=how or "inner",
+                    children=[self._plan, other_plan]
+                )
+            )
+        result = _JoinedRelation(self.relation, other.relation, py_condition, join_type)
         return DataFrame(result, self.session)
 
     def crossJoin(self, other: "DataFrame") -> "DataFrame":
@@ -585,7 +691,10 @@ class DataFrame:
         | 16|  Bob|    85|
         +---+-----+------+
         """
-        return DataFrame(self.relation.cross(other.relation), self.session)
+        if self._lazy:
+            raise NotImplementedError("crossJoin() is not supported in lazy mode.")
+        from .logical_plan import _JoinedRelation
+        return DataFrame(_JoinedRelation(self.relation, other.relation, None, "cross"), self.session)
 
     def alias(self, alias: str) -> "DataFrame":
         """Returns a new :class:`DataFrame` with an alias set.
@@ -618,10 +727,14 @@ class DataFrame:
         |Alice|Alice| 23|
         +-----+-----+---+
         """
+        if self._lazy:
+            raise NotImplementedError("alias() is not supported in lazy mode.")
         assert isinstance(alias, str), "alias should be a string"
         return DataFrame(self.relation.set_alias(alias), self.session)
 
     def drop(self, *cols: "ColumnOrName") -> "DataFrame":  # type: ignore[misc]
+        if self._lazy:
+            raise NotImplementedError("drop() is not supported in lazy mode.")
         if len(cols) == 1:
             col = cols[0]
             if isinstance(col, str):
@@ -673,6 +786,13 @@ class DataFrame:
         +---+----+
         +---+----+
         """
+
+        if self._lazy:
+            from .logical_plan import LimitNode
+            return DataFrame(
+                relation=self.relation, session=self.session, lazy=True,
+                plan=LimitNode(count=num, children=[self._plan])
+            )
         rel = self.relation.limit(num)
         return DataFrame(rel, self.session)
 
@@ -821,6 +941,9 @@ class DataFrame:
             columns = cols[0]
         else:
             columns = cols
+
+        if self._lazy:
+            return GroupedData(Grouping(*columns), self, lazy=True)
         return GroupedData(Grouping(*columns), self)
 
     @property
@@ -873,6 +996,8 @@ class DataFrame:
         |   1|   2|   3|
         +----+----+----+
         """
+        if self._lazy:
+            raise NotImplementedError("union() is not supported in lazy mode.")
         return DataFrame(self.relation.union(other.relation), self.session)
 
     unionAll = union
@@ -991,6 +1116,8 @@ class DataFrame:
         |Alice|  5|    80|
         +-----+---+------+
         """
+        if self._lazy:
+            raise NotImplementedError("dropDuplicates() is not supported in lazy mode.")
         if subset:
             rn_col = f"tmp_col_{uuid.uuid1().hex}"
             subset_str = ', '.join([f'"{c}"' for c in subset])
@@ -1019,6 +1146,8 @@ class DataFrame:
         >>> df.distinct().count()
         2
         """
+        if self._lazy:
+            raise NotImplementedError("distinct() is not supported in lazy mode.")
         distinct_rel = self.relation.distinct()
         return DataFrame(distinct_rel, self.session)
 
@@ -1040,6 +1169,10 @@ class DataFrame:
         >>> df.count()
         3
         """
+        if self._lazy:
+            relation = self._execute_plan()
+            return len(relation.fetchall())
+
         count_rel = self.relation.count("*")
         return int(count_rel.fetchone()[0])
 
@@ -1057,6 +1190,8 @@ class DataFrame:
         return DataFrame(new_rel, self.session)
 
     def toDF(self, *cols) -> "DataFrame":
+        if self._lazy:
+            raise NotImplementedError("toDF() is not supported in lazy mode.")
         existing_columns = self.relation.columns
         column_count = len(cols)
         if column_count != len(existing_columns):
@@ -1072,16 +1207,142 @@ class DataFrame:
         return DataFrame(new_rel, self.session)
 
     def collect(self) -> List[Row]:
-        columns = self.relation.columns
-        result = self.relation.fetchall()
 
         def construct_row(values, names) -> Row:
             row = tuple.__new__(Row, list(values))
             row.__fields__ = list(names)
             return row
 
+        if self._lazy:
+            relation = self._execute_plan()
+            columns = relation.columns
+            result = relation.fetchall()
+            return [construct_row(x, columns) for x in result]
+
+        columns = self.relation.columns
+        result = self.relation.fetchall()
+
         rows = [construct_row(x, columns) for x in result]
         return rows
+
+    def _execute_plan(self, optimizer=None):
+        """
+        Optimizes the logical plan tree, then converts it to a
+        PyRelation by traversing.
+
+        Parameters
+        ----------
+        optimizer : PlanOptimizer, optional
+            Custom optimizer. If None, uses default PlanOptimizer().
+            Pass PlanOptimizer(rules=[]) to skip optimization.
+        """
+        from .optimizer import PlanOptimizer
+
+        if optimizer is None:
+            optimizer = PlanOptimizer()
+        optimized_plan = optimizer.optimize(self._plan)
+        return self._convert_node(optimized_plan)
+
+    @staticmethod
+    def _format_plan(node, indent=0):
+        """Format a logical plan tree as a string with indentation."""
+        prefix = "    " * indent
+        connector = "+-- " if indent > 0 else ""
+        lines = [f"{prefix}{connector}{repr(node)}"]
+        for child in node.children:
+            lines.append(DataFrame._format_plan(child, indent + 1))
+        return "\n".join(lines)
+
+    def explain(self, extended=False):
+        """Print the logical plan before and after optimization.
+
+        Parameters
+        ----------
+        extended : bool
+            If True, show additional details (reserved for future use).
+        """
+        if not self._lazy or self._plan is None:
+            print("== Physical Plan ==")
+            print("(eager mode — no logical plan)")
+            return
+
+        from .optimizer import PlanOptimizer
+
+        original = self._format_plan(self._plan)
+        optimized_plan = PlanOptimizer().optimize(self._plan)
+        optimized = self._format_plan(optimized_plan)
+
+        print("== Logical Plan ==")
+        print(original)
+        print()
+        print("== Optimized Plan ==")
+        print(optimized)
+
+    def _convert_node(self, node):
+        from .logical_plan import (
+            ScanNode, FilterNode, ProjectNode, JoinNode,
+            GroupByNode, SortNode, LimitNode, _LimitedRelation,
+            _FilteredRelation, _ProjectedRelation, _SortedRelation
+        )
+        if isinstance(node, ScanNode):
+            return node.relation
+
+        if isinstance(node, FilterNode):
+            child_rel = self._convert_node(node.children[0])
+            if node.py_eval is not None:
+                return _FilteredRelation(child_rel, node.py_eval)
+            return child_rel.filter(node.condition)
+
+        if isinstance(node, ProjectNode):
+            child_rel = self._convert_node(node.children[0])
+            return _ProjectedRelation(child_rel, node.columns)
+
+        if isinstance(node, JoinNode):
+            # lazy execution. same O(n2)
+            left_rel = self._convert_node(node.children[0])
+            right_rel = self._convert_node(node.children[1])
+            from .logical_plan import _JoinedRelation
+            return _JoinedRelation(left_rel, right_rel, node.condition, node.join_type)
+
+        if isinstance(node, GroupByNode):
+            child_rel = self._convert_node(node.children[0])
+            from .logical_plan import _GroupedRelation
+            return _GroupedRelation(child_rel, node.group_keys, node.aggregations)
+
+        if isinstance(node, SortNode):
+            child_node = node.children[0]
+            # If the child is a ProjectNode, sort columns may have been projected
+            # away. Extend the projection to include sort columns, sort, then
+            # re-project to the original columns (mimics Spark optimizer).
+            if isinstance(child_node, ProjectNode) and node.sort_keys is not None:
+                proj_col_names = [str(c) for c in child_node.columns]
+                sort_col_names = [name for name, _ in node.sort_keys]
+                missing = [c for c in sort_col_names if c not in proj_col_names]
+                if missing:
+                    from otterbrix import ColumnExpression
+                    extended_cols = list(child_node.columns) + [
+                        ColumnExpression(c, SparkContext._active_spark_context)
+                        for c in missing
+                    ]
+                    extended_proj = ProjectNode(
+                        columns=extended_cols,
+                        children=list(child_node.children),
+                    )
+                    extended_rel = self._convert_node(extended_proj)
+                    sorted_rel = _SortedRelation(extended_rel, node.sort_keys)
+                    return _ProjectedRelation(sorted_rel, child_node.columns)
+
+            child_rel = self._convert_node(child_node)
+            if node.sort_keys is not None:
+                return _SortedRelation(child_rel, node.sort_keys)
+            return child_rel.sort(*node.sort_exprs)
+
+        if isinstance(node, LimitNode):
+            child_rel = self._convert_node(node.children[0])
+            return _LimitedRelation(child_rel, node.count)
+
+        raise ValueError(f"Unknown node type: {type(node)}")
+
 
 
 __all__ = ["DataFrame"]

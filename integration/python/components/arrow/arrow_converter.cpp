@@ -139,8 +139,8 @@ namespace components::arrow {
     		child.format = "tsm:";
     		break;
     	case logical_type::DECIMAL: {
-            auto* decimal_extention = static_cast<types::decimal_logical_type_extention*>(type.extention());
-    		uint8_t width = decimal_extention->width(), scale = decimal_extention->scale();
+            auto* decimal_extension = static_cast<types::decimal_logical_type_extension*>(type.extension());
+    		uint8_t width = decimal_extension->width(), scale = decimal_extension->scale();
             std::string format = "d:" + std::to_string(width) + "," + std::to_string(scale);
     		root_holder.owned_type_names.push_back(AddName(format));
     		child.format = root_holder.owned_type_names.back().get();
@@ -199,9 +199,9 @@ namespace components::arrow {
     		break;
     	}
     	case logical_type::ARRAY: {
-            auto array_extention = static_cast<types::array_logical_type_extention*>(type.extention());
-    		auto array_size = array_extention->size();
-    		auto &child_type = array_extention->internal_type();
+            auto array_extension = static_cast<types::array_logical_type_extension*>(type.extension());
+    		auto array_size = array_extension->size();
+    		auto &child_type = array_extension->internal_type();
     		auto format = "+w:" + std::to_string(array_size);
     		root_holder.owned_type_names.push_back(AddName(format));
     		child.format = root_holder.owned_type_names.back().get();

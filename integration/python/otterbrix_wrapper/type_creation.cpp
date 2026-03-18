@@ -66,7 +66,7 @@ namespace otterbrix {
         	if (types.empty()) {
         		throw std::runtime_error("Can not create an empty struct type!");
         	}
-        	auto struct_type = complex_logical_type::create_struct(std::move(types));
+        	auto struct_type = complex_logical_type::create_struct("struct", std::move(types));
         	return make_shared_ptr<OtterBrixPyType>(struct_type);
         }
 

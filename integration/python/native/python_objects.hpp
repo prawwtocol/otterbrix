@@ -16,6 +16,7 @@
 
 #include <array>
 #include <chrono>
+#include <memory_resource>
 #include <utility>
 
 /* Backport for Python < 3.10 */
@@ -67,6 +68,7 @@ namespace otterbrix {
 		struct PyDecimalScaleConverter {
 			template <typename T, typename = std::enable_if<std::numeric_limits<T>::is_integer, T>>
 			static components::types::logical_value_t Operation(
+					std::pmr::memory_resource* r,
 					bool signed_value, 
 					vector<uint8_t> &digits, 
 					uint8_t width, uint8_t scale) {
@@ -77,7 +79,7 @@ namespace otterbrix {
 				if (signed_value) {
 					value = -value;
 				}
-				return components::types::logical_value_t::create_decimal(value, width, scale);
+				return components::types::logical_value_t::create_decimal(r, value, width, scale);
 			}
 		};
 
@@ -99,6 +101,7 @@ namespace otterbrix {
 
 			template <typename T, typename = std::enable_if<std::numeric_limits<T>::is_integer, T>>
 			static components::types::logical_value_t Operation(
+					std::pmr::memory_resource* r,
 					bool signed_value, 
 					vector<uint8_t> &digits, 
 					uint8_t width, uint8_t scale) {
@@ -120,7 +123,7 @@ namespace otterbrix {
 				if (signed_value) {
 					value = -value;
 				}
-				return components::types::logical_value_t::create_decimal(value, width, scale);
+				return components::types::logical_value_t::create_decimal(r, value, width, scale);
 			}
 		};
 
@@ -134,7 +137,7 @@ namespace otterbrix {
 
 	public:
 		bool TryGetType(components::types::complex_logical_type &type);
-		components::types::logical_value_t to_logical_value();
+		components::types::logical_value_t to_logical_value(std::pmr::memory_resource* r);
 
 	private:
 		void SetExponent(py::handle &exponent);

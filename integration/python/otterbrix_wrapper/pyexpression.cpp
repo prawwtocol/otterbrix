@@ -22,7 +22,7 @@ namespace otterbrix {
     PyExpression::~PyExpression() = default;
 
     pyexpr_ptr PyExpression::ColumnExpression(const string& column_name, PyConnection& conn) {
-        return make_shared<PyExpression>(components::expressions::key_t(column_name), conn);
+        return make_shared<PyExpression>(components::expressions::key_t(std::pmr::get_default_resource(), column_name), conn);
     }
 
     pyexpr_ptr PyExpression::ConstantExpression(const py::object& value, PyConnection& conn) {
@@ -46,23 +46,23 @@ namespace otterbrix {
 
     // Aggregation operations
     pyexpr_ptr PyExpression::Count() {
-        return AggregationExpression(components::expressions::aggregate_type::count, *this);
+        return AggregationExpression("count", *this);
     }
 
     pyexpr_ptr PyExpression::Sum() {
-        return AggregationExpression(components::expressions::aggregate_type::sum, *this);
+        return AggregationExpression("sum", *this);
     }
 
     pyexpr_ptr PyExpression::Min() {
-        return AggregationExpression(components::expressions::aggregate_type::min, *this);
+        return AggregationExpression("min", *this);
     }
 
     pyexpr_ptr PyExpression::Max() {
-        return AggregationExpression(components::expressions::aggregate_type::max, *this);
+        return AggregationExpression("max", *this);
     }
 
     pyexpr_ptr PyExpression::Avg() {
-        return AggregationExpression(components::expressions::aggregate_type::avg, *this);
+        return AggregationExpression("avg", *this);
     }
 
     pyexpr_ptr PyExpression::Round() {
@@ -176,9 +176,9 @@ namespace otterbrix {
         return expr;
     }
 
-    pyexpr_ptr PyExpression::AggregationExpression(components::expressions::aggregate_type type, 
+    pyexpr_ptr PyExpression::AggregationExpression(const std::string& function_name,
         const PyExpression& expr) {
-        return make_shared<PyExpression>(expr.factory->AggregationUnaryExpression(type, expr.expr), expr.factory);
+        return make_shared<PyExpression>(expr.factory->AggregationUnaryExpression(function_name, expr.expr), expr.factory);
     }
 
     pyexpr_ptr PyExpression::ScalarBinaryExpression(components::expressions::scalar_type type, 

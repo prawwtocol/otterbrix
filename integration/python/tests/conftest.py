@@ -1,8 +1,11 @@
 import pytest
-from otterbrix.experimental.spark.sql import SparkSession
+
 
 @pytest.fixture(scope="session")
 def spark():
+    # Ленивый импорт — только при использовании фикстуры spark
+    from otterbrix.experimental.spark.sql import SparkSession
+
     # Создание SparkSession для тестов
     spark = SparkSession.builder \
         .master("local[2]") \
