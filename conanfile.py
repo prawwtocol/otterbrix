@@ -2,25 +2,66 @@ from conan import tools, ConanFile
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
 from conan.tools.build import check_min_cppstd
 from conan.errors import ConanInvalidConfiguration
+
+
+"""
+4. Структура проекта
+otterbrix/
+├── conanfile.py      # корневой conanfile — требует boost, fmt, ... но не otterbrix
+├── CMakeLists.txt    # собирает core, components, services, integration
+├── core/
+├── components/
+├── services/
+└── integration/
+    ├── c/            # C API
+    ├── cpp/          # C++ API
+    └── python/       # Python bindings (если BUILD_PYTHON)
+"""
 class OtterbrixConan(ConanFile):
     name = "otterbrix"
     version = "1.0"
     settings = "os", "compiler", "build_type", "arch"
-    # todo надо ли options = {
-    #         "shared": [True, False],
-    #         "fPIC": [True, False],
-    #     }
+    # shared/fPIC: не добавляем — CMake сам выбирает тип библиотек; понадобятся при публикации в Conan Center
+    """
+    shared: [True, False]
+    Определяет, как собирать библиотеку: как динамическую (.so, .dylib, .dll) или как статическую (.a, .lib).
+    Значение
+    Результат
+    Использование
+    shared=True
+    .so / .dylib / .dll
+    Библиотека подключается во время выполнения. Код библиотеки не копируется в исполняемый файл.
+    shared=False
+    .a / .lib
+    Библиотека линкуется на этапе сборки. Код копируется в исполняемый файл.
+    Пример: если otterbrix — Conan-пакет и у него есть shared:
+    •
+    shared=True → libotterbrix.so; приложение загружает его при запуске.
+    •
+    shared=False → libotterbrix.a; код otterbrix вшит в бинарник.
+    fPIC: [True, False]
+    fPIC = Position Independent Code (позиционно-независимый код).
+    Флаг -fPIC говорит компилятору генерировать код, который можно загрузить по любому адресу в памяти. Это нужно для shared-библиотек на Linux и macOS.
+    Значение
+    Когда нужно
+    fPIC=True
+    Для shared-библиотек (.so, .dylib). Без него линковка shared-библиотеки обычно падает.
+    fPIC=False
+    Для статических библиотек и исполняемых файлов.
+    """
     options = {"build_python": [True, False]}
     default_options = {"build_python": False}
 
     def configure(self):
+        """
+        otterbrix собирает всё сам, включая Python-биндинги.
+        """
         self.requires("boost/1.87.0", override=True)
         self.requires("fmt/11.1.3@")
         self.requires("spdlog/1.15.1@")
         if self.options.build_python:
             self.requires("pybind11/2.13.6@")
-
-            # todo правильно ли что сюда? мне кажется что pythonpkg если будет собираться то только если self.options.build_python
+            # utf8proc и tabulate — только для Python (numpy_scan, box_render); CMake ищет их только при BUILD_PYTHON
             self.requires("utf8proc/2.9.0")
             self.requires("tabulate/1.5")
         self.requires("msgpack-cxx/4.1.1@")
@@ -80,6 +121,11 @@ class OtterbrixConan(ConanFile):
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
+
+    """
+    У пакета Conan, который хотят использовать через requires("otterbrix/1.0"), обычно есть метод package():
+    Текущий conanfile только собирает проект, а не готовит его к распространению.
+    """
 
 
 """
