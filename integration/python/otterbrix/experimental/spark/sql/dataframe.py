@@ -614,6 +614,10 @@ class DataFrame:
                     py_condition = py_evals[0]
                 else:
                     py_condition = lambda row, _evals=py_evals: all(e(row) for e in _evals)
+            # If on is all strings (equi-join by column names), pass the list directly
+            # so _JoinedRelation can use hash join.
+            elif all(isinstance(x, str) for x in on):
+                py_condition = on
 
         def map_to_recognized_jointype(how):
             known_aliases = {

@@ -342,6 +342,13 @@ class _JoinedRelation:
         self._condition = condition
         self._join_type = join_type
 
+    def _equi_join_keys(self):
+        """Return list of column name strings if this is an equi-join, else None."""
+        cond = self._condition
+        if isinstance(cond, list) and all(isinstance(c, str) for c in cond):
+            return cond
+        return None
+
     def _match(self, lrow, rrow, left_cols, right_cols):
         """Check if a (left_row, right_row) pair satisfies the join condition."""
         cond = self._condition
@@ -367,12 +374,80 @@ class _JoinedRelation:
         merged.update({col: rrow[i] for i, col in enumerate(right_cols)})
         return cond(merged)
 
-    def fetchall(self):
-        left_data = self._left.fetchall()
-        right_data = self._right.fetchall()
-        left_cols = self._left.columns
-        right_cols = self._right.columns
+    def _hash_join(self, left_data, right_data, left_cols, right_cols, keys):
+        """O(n+m) hash join for equi-join on column name keys.
 
+        Build phase: hash the right relation.
+        Probe phase: scan the left relation.
+        NULL keys never match (SQL semantics).
+        """
+        jtype = self._join_type
+
+        def null_row(cols):
+            return tuple(None for _ in cols)
+
+        left_key_idx = [left_cols.index(k) for k in keys]
+        right_key_idx = [right_cols.index(k) for k in keys]
+
+        def make_key(row, idx):
+            return tuple(row[i] for i in idx)
+
+        def has_null(key):
+            return any(v is None for v in key)
+
+        # Build hash table from right relation: key -> list of (index, row)
+        right_map = {}
+        for ri, rrow in enumerate(right_data):
+            k = make_key(rrow, right_key_idx)
+            if has_null(k):
+                continue  # NULL never matches
+            right_map.setdefault(k, []).append((ri, rrow))
+
+        result = []
+
+        if jtype in ("inner", "left", "right", "full"):
+            right_matched = set()
+
+            for lrow in left_data:
+                k = make_key(lrow, left_key_idx)
+                if has_null(k):
+                    if jtype in ("left", "full"):
+                        result.append(lrow + null_row(right_cols))
+                    continue
+                matches = right_map.get(k, [])
+                if matches:
+                    for ri, rrow in matches:
+                        result.append(lrow + rrow)
+                        right_matched.add(ri)
+                elif jtype in ("left", "full"):
+                    result.append(lrow + null_row(right_cols))
+
+            if jtype in ("right", "full"):
+                lnull = null_row(left_cols)
+                for ri, rrow in enumerate(right_data):
+                    if ri not in right_matched:
+                        result.append(lnull + rrow)
+
+            return result
+
+        if jtype == "semi":
+            for lrow in left_data:
+                k = make_key(lrow, left_key_idx)
+                if not has_null(k) and k in right_map:
+                    result.append(lrow)
+            return result
+
+        if jtype == "anti":
+            for lrow in left_data:
+                k = make_key(lrow, left_key_idx)
+                if has_null(k) or k not in right_map:
+                    result.append(lrow)
+            return result
+
+        return result
+
+    def _nested_loop_join(self, left_data, right_data, left_cols, right_cols):
+        """O(n*m) nested loop join for complex conditions (Column expressions, callables)."""
         def null_row(cols):
             return tuple(None for _ in cols)
 
@@ -388,14 +463,6 @@ class _JoinedRelation:
         if jtype in ('inner', 'full', 'left', 'right'):
             left_matched = set()
             right_matched = set()
-
-            """
-            Это nested loop join — вложенный цикл на чистом Python. Для 1000 строк в каждой таблице — миллион итераций. На каждой итерации:
-            вызов self._match() — это Python-функция
-            внутри _match — left_cols.index(c) (поиск по списку), сравнение значений
-            конкатенация кортежей lrow + rrow
-            Это O(n²) в чистом Python, без каких-либо оптимизаций (ни hash join, ни индексов).
-            """
 
             for li, lrow in enumerate(left_data):
                 for ri, rrow in enumerate(right_data):
@@ -435,6 +502,20 @@ class _JoinedRelation:
             return result
 
         raise ValueError(f"Unsupported join type: {jtype}")
+
+    def fetchall(self):
+        left_data = self._left.fetchall()
+        right_data = self._right.fetchall()
+        left_cols = self._left.columns
+        right_cols = self._right.columns
+
+        # Use O(n+m) hash join for equi-joins on column names
+        keys = self._equi_join_keys()
+        if keys is not None and self._join_type != "cross":
+            return self._hash_join(left_data, right_data, left_cols, right_cols, keys)
+
+        # Fallback: O(n*m) nested loop join for complex conditions
+        return self._nested_loop_join(left_data, right_data, left_cols, right_cols)
 
     def fetchone(self):
         data = self.fetchall()
