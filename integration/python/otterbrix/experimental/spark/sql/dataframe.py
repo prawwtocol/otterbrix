@@ -1210,7 +1210,7 @@ class DataFrame:
         new_rel = self.relation.project(*projections)
         return DataFrame(new_rel, self.session)
 
-    def collect(self) -> List[Row]:
+    def collect(self, optimizer=None) -> List[Row]:
 
         def construct_row(values, names) -> Row:
             row = tuple.__new__(Row, list(values))
@@ -1218,7 +1218,7 @@ class DataFrame:
             return row
 
         if self._lazy:
-            relation = self._execute_plan()
+            relation = self._execute_plan(optimizer=optimizer)
             columns = relation.columns
             result = relation.fetchall()
             return [construct_row(x, columns) for x in result]
