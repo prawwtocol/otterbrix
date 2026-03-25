@@ -17,7 +17,7 @@ namespace otterbrix {
 
 
     ExpressionFactory::ExpressionFactory(const boost::intrusive_ptr<otterbrix_t>& space)
-        : counter(0), space(space) {}
+        : space(space), counter(0) {}
 
     ExpressionFactory::~ExpressionFactory() = default;
 
