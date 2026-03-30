@@ -47,11 +47,19 @@ namespace otterbrix {
     }
 
     unique_ptr<PyRelation> PyRelation::Project(const py::args& args) {
-        // ToDo change after otterbrix project release
         if (args.size() == 0) {
             return nullptr;
         }
-        return Group(args);
+        vector<Expression> fields;
+        fields.reserve(args.size());
+        for (auto arg : args) {
+            shared_ptr<PyExpression> py_expr;
+            if (!py::try_cast<shared_ptr<PyExpression>>(arg, py_expr)) {
+                throw std::runtime_error("Please provide arguments of type Expression");
+            }
+            fields.push_back(py_expr->GetExpression());
+        }
+        return make_unique<PyRelation>(env, env->SelectRelation(rel, std::move(fields)));
     }
 
     unique_ptr<PyRelation> PyRelation::Filter(const py::object &condition) {
