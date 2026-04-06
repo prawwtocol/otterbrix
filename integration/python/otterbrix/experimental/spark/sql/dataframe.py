@@ -35,23 +35,21 @@ from otterbrix.experimental.spark.context import SparkContext
 
 class DataFrame:
     def __init__(self, relation: otterbrix.OtterBrixPyRelation, session: "SparkSession",
-                 *, lazy=False, plan=None):
+                 *, optimize=False, plan=None):
         self.relation = relation
         self.session = session
-        self._lazy = lazy
+        self._optimize = optimize
         self._plan = plan
         self._schema = None
         if self.relation is not None:
             self._schema = otterbrix_to_spark_schema(self.relation.columns, self.relation.types)
 
     def show(self, **kwargs) -> None:
-        if self._lazy:
-            self.relation.optimize = True
+        self.relation.optimize = self._optimize
         self.relation.show()
 
     def toPandas(self) -> "PandasDataFrame":
-        if self._lazy:
-            self.relation.optimize = True
+        self.relation.optimize = self._optimize
         return self.relation.df()
 
     def createOrReplaceTempView(self, name: str) -> None:
@@ -89,8 +87,6 @@ class DataFrame:
         raise NotImplementedError
 
     def withColumnRenamed(self, columnName: str, newName: str) -> "DataFrame":
-        if self._lazy:
-            raise NotImplementedError("withColumnRenamed() is not supported in lazy mode.")
         if columnName not in self.relation:
             raise ValueError(f"DataFrame does not contain a column named {columnName}")
         cols = []
@@ -103,8 +99,6 @@ class DataFrame:
         return DataFrame(rel, self.session)
 
     def withColumn(self, columnName: str, col: Column) -> "DataFrame":
-        if self._lazy:
-            raise NotImplementedError("withColumn() is not supported in lazy mode.")
         if not isinstance(col, Column):
             raise PySparkTypeError(
                 error_class="NOT_COLUMN",
@@ -355,7 +349,7 @@ class DataFrame:
 
         sort_keys = list(zip(col_names, asc_flags))
 
-        # Route through C++ engine for both lazy and eager modes
+        # Route through C++ engine
         resolved = []
         for c in columns:
             if isinstance(c, Column):
@@ -363,7 +357,7 @@ class DataFrame:
             else:
                 resolved.append(c)
         new_relation = self.relation.sort(*resolved)
-        return DataFrame(new_relation, self.session, lazy=self._lazy)
+        return DataFrame(new_relation, self.session, optimize=self._optimize)
 
     orderBy = sort
 
@@ -439,10 +433,10 @@ class DataFrame:
                 message_parameters={"arg_name": "condition", "arg_type": type(condition).__name__},
             )
 
-        # Route through C++ engine for both lazy and eager modes
+        # Route through C++ engine
         if isinstance(condition, Column):
             new_relation = self.relation.filter(condition.expr)
-            return DataFrame(new_relation, self.session, lazy=self._lazy)
+            return DataFrame(new_relation, self.session, optimize=self._optimize)
 
         # String condition fallback — C++ PyRelation.Filter() does not accept strings,
         # so we convert to a Column expression first
@@ -466,9 +460,9 @@ class DataFrame:
                 cols.expr if isinstance(cols, Column) else ColumnExpression(cols, SparkContext._active_spark_context)
             ]
 
-        # Route through C++ engine for both lazy and eager modes
+        # Route through C++ engine
         rel = self.relation.select(*projections)
-        return DataFrame(rel, self.session, lazy=self._lazy)
+        return DataFrame(rel, self.session, optimize=self._optimize)
 
     @property
     def columns(self) -> List[str]:
@@ -603,7 +597,7 @@ class DataFrame:
 
         sc = SparkContext._active_spark_context
 
-        # Route through C++ engine for both lazy and eager modes
+        # Route through C++ engine
         if on is not None:
             assert isinstance(on, list)
             all_strings = all(isinstance(x, str) for x in on)
@@ -638,7 +632,7 @@ class DataFrame:
                 new_relation = self.relation.cross(other.relation)
             else:
                 new_relation = self.relation.join(other.relation, None, join_type)
-        return DataFrame(new_relation, self.session, lazy=self._lazy)
+        return DataFrame(new_relation, self.session, optimize=self._optimize)
 
     def crossJoin(self, other: "DataFrame") -> "DataFrame":
         """Returns the cartesian product with another :class:`DataFrame`.
@@ -679,7 +673,7 @@ class DataFrame:
         """
         # Route through C++ engine
         new_relation = self.relation.cross(other.relation)
-        return DataFrame(new_relation, self.session, lazy=self._lazy)
+        return DataFrame(new_relation, self.session, optimize=self._optimize)
 
     def alias(self, alias: str) -> "DataFrame":
         """Returns a new :class:`DataFrame` with an alias set.
@@ -712,14 +706,10 @@ class DataFrame:
         |Alice|Alice| 23|
         +-----+-----+---+
         """
-        if self._lazy:
-            raise NotImplementedError("alias() is not supported in lazy mode.")
         assert isinstance(alias, str), "alias should be a string"
         return DataFrame(self.relation.set_alias(alias), self.session)
 
     def drop(self, *cols: "ColumnOrName") -> "DataFrame":  # type: ignore[misc]
-        if self._lazy:
-            raise NotImplementedError("drop() is not supported in lazy mode.")
         if len(cols) == 1:
             col = cols[0]
             if isinstance(col, str):
@@ -772,11 +762,8 @@ class DataFrame:
         +---+----+
         """
 
-        if self._lazy:
-            new_relation = self.relation.limit(num)
-            return DataFrame(new_relation, self.session, lazy=True)
         rel = self.relation.limit(num)
-        return DataFrame(rel, self.session)
+        return DataFrame(rel, self.session, optimize=self._optimize)
 
     def __contains__(self, item: str):
         """
@@ -924,9 +911,7 @@ class DataFrame:
         else:
             columns = cols
 
-        if self._lazy:
-            return GroupedData(Grouping(*columns), self, lazy=True)
-        return GroupedData(Grouping(*columns), self)
+        return GroupedData(Grouping(*columns), self, optimize=self._optimize)
 
     @property
     def write(self) -> DataFrameWriter:
@@ -978,8 +963,6 @@ class DataFrame:
         |   1|   2|   3|
         +----+----+----+
         """
-        if self._lazy:
-            raise NotImplementedError("union() is not supported in lazy mode.")
         return DataFrame(self.relation.union(other.relation), self.session)
 
     unionAll = union
@@ -1098,8 +1081,6 @@ class DataFrame:
         |Alice|  5|    80|
         +-----+---+------+
         """
-        if self._lazy:
-            raise NotImplementedError("dropDuplicates() is not supported in lazy mode.")
         if subset:
             rn_col = f"tmp_col_{uuid.uuid1().hex}"
             subset_str = ', '.join([f'"{c}"' for c in subset])
@@ -1128,8 +1109,6 @@ class DataFrame:
         >>> df.distinct().count()
         2
         """
-        if self._lazy:
-            raise NotImplementedError("distinct() is not supported in lazy mode.")
         distinct_rel = self.relation.distinct()
         return DataFrame(distinct_rel, self.session)
 
@@ -1151,8 +1130,7 @@ class DataFrame:
         >>> df.count()
         3
         """
-        if self._lazy:
-            self.relation.optimize = True
+        self.relation.optimize = self._optimize
         count_rel = self.relation.count("*")
         return int(count_rel.fetchone()[0])
 
@@ -1170,8 +1148,6 @@ class DataFrame:
         return DataFrame(new_rel, self.session)
 
     def toDF(self, *cols) -> "DataFrame":
-        if self._lazy:
-            raise NotImplementedError("toDF() is not supported in lazy mode.")
         existing_columns = self.relation.columns
         column_count = len(cols)
         if column_count != len(existing_columns):
@@ -1194,7 +1170,7 @@ class DataFrame:
         use_opt = True
         if optimizer is not None and not optimizer._rules:
             use_opt = False
-        if self._lazy and hasattr(self.relation, 'optimize'):
+        if self._optimize and hasattr(self.relation, 'optimize'):
             self.relation.optimize = use_opt
         return self.relation
 
@@ -1223,15 +1199,16 @@ class DataFrame:
         for child in node.children:
             DataFrame._print_plan(child, indent + 1)
 
-    def collect(self, optimize=True) -> List[Row]:
+    def collect(self, optimize=None) -> List[Row]:
 
         def construct_row(values, names) -> Row:
             row = tuple.__new__(Row, list(values))
             row.__fields__ = list(names)
             return row
 
-        if self._lazy and hasattr(self.relation, 'optimize'):
-            self.relation.optimize = optimize
+        effective_optimize = self._optimize if optimize is None else optimize
+        if hasattr(self.relation, 'optimize'):
+            self.relation.optimize = effective_optimize
         columns = self.relation.columns
         result = self.relation.fetchall()
         rows = [construct_row(x, columns) for x in result]

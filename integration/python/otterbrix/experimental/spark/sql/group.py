@@ -89,11 +89,11 @@ class GroupedData:
 
     """
 
-    def __init__(self, grouping: Grouping, df: DataFrame, lazy: bool = False):
+    def __init__(self, grouping: Grouping, df: DataFrame, optimize: bool = False):
         self._grouping = grouping
         self._df = df
         self.session: SparkSession = df.session
-        self._lazy = lazy
+        self._optimize = optimize
     def __repr__(self) -> str:
         return str(self._df)
 
@@ -445,5 +445,5 @@ class GroupedData:
             for c in exprs:
                 all_exprs.append(c.expr)
             new_relation = self._df.relation.group(*all_exprs)
-        return DataFrame(new_relation, self._df.session, lazy=self._df._lazy)
+        return DataFrame(new_relation, self._df.session, optimize=self._df._optimize)
 
