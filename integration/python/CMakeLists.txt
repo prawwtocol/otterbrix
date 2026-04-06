@@ -4,10 +4,23 @@ endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+
+
+
 # ── Libraries to link against ────────────────────────────────────────────────
 # Local targets from otterbrix (NOT the external Conan package otterbrix::otterbrix)
 set(external_LIBS
     cpp_otterbrix
+
+    # Библиотека cpp_otterbrix (файл integration/cpp/CMakeLists.txt:35-38) линкуется с PUBLIC-видимостью к
+    # otterbrix::log
+    # otterbrix::services
+    # otterbrix::cursor
+    # otterbrix::session
+    # otterbrix::locks
+    # otterbrix::b_plus_tree
+
+
     otterbrix_string_util
     otterbrix_vector
     otterbrix_table
@@ -44,7 +57,14 @@ set(otterbrix_sql_sources
 set(ALL_OBJECT_FILES ${ALL_OBJECT_FILES} main.cpp ${otterbrix_sql_sources})
 pybind11_add_module(otterbrix_python ${ALL_OBJECT_FILES})
 
-target_link_libraries(otterbrix_python PUBLIC
+# removed duplicate
+# set(PYBIND11_FINDPYTHON ON)
+# find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
+# find_package(pybind11 CONFIG REQUIRED)
+# they are found in parent cmakelists.txt
+
+
+target_link_libraries(otterbrix_python PRIVATE
     ${external_LIBS}
     pybind11::pybind11
     spdlog::spdlog
@@ -58,16 +78,18 @@ target_link_libraries(otterbrix_python PUBLIC
     BZip2::BZip2
 )
 
-set_target_properties(otterbrix_python PROPERTIES
-    OUTPUT_NAME "otterbrix"
-    CXX_VISIBILITY_PRESET "hidden"
-)
+
 
 pybind11_extension(otterbrix_python)
 
 if(NOT MSVC AND NOT ${CMAKE_BUILD_TYPE} MATCHES Debug|RelWithDebInfo)
     pybind11_strip(otterbrix_python)
 endif()
+
+set_target_properties(otterbrix_python PROPERTIES
+    OUTPUT_NAME "otterbrix"
+    CXX_VISIBILITY_PRESET "hidden"
+)
 
 # ── Install rules ────────────────────────────────────────────────────────────
 if(SKBUILD)
