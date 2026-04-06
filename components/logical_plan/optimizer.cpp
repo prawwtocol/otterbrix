@@ -11,10 +11,61 @@
 #include <components/logical_plan/node_join.hpp>
 #include <components/logical_plan/node_limit.hpp>
 #include <components/logical_plan/node_data.hpp>
+#include <components/logical_plan/node_select.hpp>
 
 namespace components::logical_plan {
 
     namespace {
+
+        // Predicate may move below node_select_t only if every filter column is a visible
+        // select output with a get_field that does not rename (same output and input name).
+        bool filter_supported_through_identity_select(const node_select_t& sel,
+                                                      const std::set<std::string>& filter_cols,
+                                                      const std::set<std::string>& input_cols) {
+            const auto& exprs = sel.expressions();
+            const size_t hidden = sel.internal_aggregate_count;
+            if (exprs.size() < hidden) {
+                return false;
+            }
+            const size_t visible = exprs.size() - hidden;
+
+            for (const auto& col : filter_cols) {
+                if (input_cols.find(col) == input_cols.end()) {
+                    return false;
+                }
+                bool ok_for_col = false;
+                for (size_t i = 0; i < visible; ++i) {
+                    const auto& expr = exprs[i];
+                    if (expr->group() != expressions::expression_group::scalar) {
+                        return false;
+                    }
+                    auto* sc = static_cast<expressions::scalar_expression_t*>(expr.get());
+                    if (sc->type() != expressions::scalar_type::get_field) {
+                        continue;
+                    }
+                    const std::string out = sc->key().as_string();
+                    if (out != col) {
+                        continue;
+                    }
+                    if (sc->params().empty()) {
+                        ok_for_col = true;
+                        break;
+                    }
+                    if (sc->params().size() == 1 &&
+                        std::holds_alternative<expressions::key_t>(sc->params().front())) {
+                        const auto& in_key = std::get<expressions::key_t>(sc->params().front());
+                        if (in_key.as_string() == col) {
+                            ok_for_col = true;
+                            break;
+                        }
+                    }
+                }
+                if (!ok_for_col) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
         void extract_from_param(const expressions::param_storage& param,
                                 std::set<std::string>& result) {
@@ -147,10 +198,12 @@ namespace components::logical_plan {
             bool source_has_group = false;
             bool source_has_match = false;
 
+            bool source_has_select = false;
             for (size_t i = 1; i < source_agg->children().size(); ++i) {
                 if (source_agg->children()[i]->type() == node_type::sort_t) source_has_sort = true;
                 if (source_agg->children()[i]->type() == node_type::group_t) source_has_group = true;
                 if (source_agg->children()[i]->type() == node_type::match_t) source_has_match = true;
+                if (source_agg->children()[i]->type() == node_type::select_t) source_has_select = true;
             }
 
             // Filter over pure sort: always safe to push down
@@ -159,6 +212,27 @@ namespace components::logical_plan {
                 source_agg->append_child(match_child);
                 // Current agg becomes passthrough: replace with source
                 return pushdown_filter(source);
+            }
+
+            // Filter over pure select: только «тождественные» столбцы, без sort/match/group рядом с select
+            if (source_has_select && !source_has_sort && !source_has_group && !source_has_match) {
+                node_ptr src_select_wrapped = nullptr;
+                for (size_t i = 1; i < source_agg->children().size(); ++i) {
+                    if (source_agg->children()[i]->type() == node_type::select_t) {
+                        src_select_wrapped = source_agg->children()[i];
+                        break;
+                    }
+                }
+                if (src_select_wrapped && !match_child->expressions().empty()) {
+                    auto filter_cols = collect_referenced_columns(match_child->expressions()[0]);
+                    std::set<std::string> input_cols;
+                    collect_subtree_columns(source_agg->children()[0], input_cols);
+                    auto* src_select = static_cast<node_select_t*>(src_select_wrapped.get());
+                    if (filter_supported_through_identity_select(*src_select, filter_cols, input_cols)) {
+                        source_agg->append_child(match_child);
+                        return pushdown_filter(source);
+                    }
+                }
             }
 
             // Filter over projection (group with only scalar expressions, no aggregates)

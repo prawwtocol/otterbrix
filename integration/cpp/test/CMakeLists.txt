@@ -15,9 +15,14 @@ set( ${PROJECT_NAME}_SOURCES
         test_sql_features.cpp
         test_production_scenarios.cpp
         test_join.cpp
+        test_join_raw.cpp
         test_connections.cpp
         test_udfs.cpp
+        test_batch_execution.cpp
         test_arithmetic.cpp
+        test_column_projection.cpp
+        test_computed_schema.cpp
+        test_pushdown_filter_select.cpp
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${${PROJECT_NAME}_SOURCES})
@@ -29,12 +34,9 @@ target_link_libraries(
 
         otterbrix::test_generaty
         otterbrix::log
-        otterbrix::collection
         otterbrix::cursor
         otterbrix::session
-        otterbrix::dispatcher
-        otterbrix::wal
-        otterbrix::disk
+        otterbrix::services
         otterbrix::locks
 
         spdlog::spdlog
@@ -64,12 +66,9 @@ target_link_libraries(profile_arithmetic PRIVATE
         cpp_otterbrix
         otterbrix::test_generaty
         otterbrix::log
-        otterbrix::collection
         otterbrix::cursor
         otterbrix::session
-        otterbrix::dispatcher
-        otterbrix::wal
-        otterbrix::disk
+        otterbrix::services
         otterbrix::locks
         spdlog::spdlog
         msgpackc-cxx
