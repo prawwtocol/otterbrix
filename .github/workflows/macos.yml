@@ -33,6 +33,7 @@ jobs:
         run: |
           mkdir build && cd build
           cp ../conanfile.py .
+#          todo 1 does this test pythonpkg integration?
           conan install . --build missing -s build_type=Release -s compiler.cppstd=gnu20 -o build_python=True
 
       - name: build
@@ -47,3 +48,4 @@ jobs:
         run: |
           cd build
           ctest -C Release -V --output-on-failure
+      # todo 1 Создать workflow для того, чтобы гонять Python-тесты.

@@ -14,6 +14,8 @@ Data sizes: 1_000, 10_000, 100_000, 1_000_000.
 Data types covered: int (id, age), float (value), string (name, group_key).
 """
 
+# todo 1 Интегрируй в директорию benchmark/
+
 import gc
 import os
 import sys

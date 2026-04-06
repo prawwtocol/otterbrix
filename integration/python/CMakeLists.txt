@@ -1,4 +1,4 @@
-if(POLICY CMP0148)
+if(POLICY CMP0148) # Disallow FindPythonLibs
     cmake_policy(SET CMP0148 NEW)
 endif()
 
