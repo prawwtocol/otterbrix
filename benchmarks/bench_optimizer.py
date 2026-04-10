@@ -4,23 +4,42 @@ Benchmark: Optimized vs non-optimized DataFrame execution in OtterBrix Spark API
 Scenarios:
   1. filter                   — df.filter(col("age") > threshold)              O(n)
   2. project+filter           — df.select("a","b").filter(col("a") > t)        O(n)        [pushdown]
-  3. chained_filters          — df.filter(a).filter(b).filter(c)               O(n)
+  3. chained_filters          — df.filter(a).filter(b).filter(c)              O(n)
   4. groupby_agg              — df.groupBy("key").agg(sum("value"))            O(n*k)
-  5. filter_over_sort         — df.sort("name").filter(col("age") > t)         O(n log n)  [pushdown]
-  6. filter_over_groupby_key  — df.groupBy("key").agg(...).filter(key == c)    O(n)        [pushdown]
-  7. join+filter              — df1.join(df2, "id").filter(col("v") > t)       O(n²)       [pushdown]
-  8. filter_over_sort_sel_*   — variant of (5) at multiple filter selectivities (1/10/50/90%)
-  9. join_filter_sel_*        — variant of (7) at multiple filter selectivities (1/10/50/90%)
+  5. filter_over_groupby_key  — df.groupBy("key").agg(...).filter(key == c)    O(n)        [post-agg filter; see todo 1]
+  6. filter_over_sort_sel_* — df.sort(...).filter(...) at ~1/10/50/90% pass
+  7. join_filter_sel_*        — df.join(...).filter(...) at ~1/10/50/90% pass  O(n²)       [pushdown]
 
 Modes: no_opt (optimize=False), opt (optimize=True).
 
-Data sizes are per-scenario — fast O(n) scenarios run up to 1M rows,
-while O(n²) join uses smaller sizes to keep total runtime ~5-10 min.
+Data sizes are per-scenario — `filter` at 10k/100k/1M, `project_filter` at
+100k/1M, `chained_filters` at 10k/100k, `groupby_agg` at 10k/100k,
+`filter_over_groupby_key` at 100k/1M; `filter_over_sort_sel_*` uses
+`SIZES_FAST`; join selectivity sweep uses smaller sizes (O(n²)).
 
 Data types covered: int (id, age), float (value), string (name, group_key).
 """
 
-# todo 1 Интегрируй в директорию benchmark/
+# todo 1 — интегрировать этот бенчмарк в общую директорию benchmark/ (как единый набор прогонов).
+#
+
+# todo 1
+# Запрос сценария filter_over_groupby_key:
+#   df.groupBy("group_key").agg(sum("value")).filter(col("group_key") == "g0")
+#
+# Без оптимизации (логически):
+#   scan N строк → groupBy по N строкам → 50 групп → filter 50 строк → 1 строка
+#
+# С оптимизацией (текущее ядро): C++ оптимизатор (components/logical_plan/optimizer.cpp,
+# фрагмент порядка строк ~274–301) не проталкивает фильтр под groupBy; предикат
+# остаётся у aggregate-узла. Движок по-прежнему сначала группирует все N строк, затем
+# отбрасывает лишние группы на небольшом результате (50 строк). Этот шаг дешёвый,
+# поэтому ускорения от optimize=True по сравнению с no_opt часто почти нет:
+#   scan N → groupBy N → 50 групп → filter 50 строк → 1 строка
+#
+# Когда был бы выигрыш: при правильном проталкивании предиката ниже groupBy —
+#   scan N → filter (~N/50, ключ «g0» и ровно 50 групп в generate_main_data) →
+#   groupBy на оставшихся строках → одна группа.
 
 import gc
 import os
@@ -71,24 +90,27 @@ JOIN_SCHEMA = ["id", "extra_value"]
 # ---------------------------------------------------------------------------
 # Per-scenario data sizes & time budgets
 # ---------------------------------------------------------------------------
-# O(n) filter scenarios are cheap — test up to 1M rows.
-# O(n*k) groupby is moderate — cap at 100k (k=50 groups).
-# O(n²) join is expensive  — cap at 10k; add 5k for finer granularity.
+# filter_over_groupby_key: 100k, 1M.
+# filter_over_sort_sel_* — SIZES_FAST (selectivity sweep, capped at 100k).
+# O(n*k) groupby_agg: 10k, 100k (k=50 groups).
+# O(n²) join selectivity — small sizes.
 
-SIZES_FAST = [1_000, 10_000, 100_000]               # filter, project, chained
-SIZES_GROUPBY = [1_000, 10_000]                     # groupby_agg  (O(n*k) + transpose is very slow)
-SIZES_JOIN = [1_000, 3_000]                         # join+filter, selectivity (O(n²), capped early)
+SIZES_FILTER = [10_000, 100_000, 1_000_000]
+SIZES_PROJECT_FILTER = [100_000, 1_000_000]
+SIZES_CHAINED = [10_000, 100_000]
+SIZES_FILTER_OVER_GROUPBY_KEY = [100_000, 1_000_000]
+SIZES_FAST = [1_000, 10_000, 100_000]               # filter_over_sort_sel_* only
+SIZES_GROUPBY = [10_000, 100_000]                    # groupby_agg
+SIZES_JOIN_SELECTIVITY = [1_000, 3_000]             # join_filter_sel_* (O(n²), capped early)
 
 SCENARIO_SIZES = {
-    "filter":                  SIZES_FAST,
-    "project_filter":          SIZES_FAST,
-    "chained_filters":         SIZES_FAST,
-    "filter_over_sort":        SIZES_FAST,
-    "filter_over_groupby_key": SIZES_FAST,
+    "filter":                  SIZES_FILTER,
+    "project_filter":          SIZES_PROJECT_FILTER,
+    "chained_filters":         SIZES_CHAINED,
+    "filter_over_groupby_key": SIZES_FILTER_OVER_GROUPBY_KEY,
     "filter_over_sort_sel":    SIZES_FAST,
     "groupby_agg":             SIZES_GROUPBY,
-    "join_filter":             SIZES_JOIN,
-    "selectivity":             SIZES_JOIN,
+    "selectivity":             SIZES_JOIN_SELECTIVITY,
 }
 
 # Fallback for --sizes CLI override (applies to all scenarios uniformly)
@@ -108,7 +130,7 @@ def runs_for_size(n: int, scenario: str = "filter") -> int:
     Fast O(n) scenarios get many runs for stable statistics.
     Slow O(n²) join scenarios get fewer runs but still enough for t-test (>=10).
     """
-    is_join = scenario in ("join_filter", "selectivity")
+    is_join = scenario == "selectivity"
     is_groupby = scenario == "groupby_agg"
 
     if is_join:
@@ -135,7 +157,7 @@ def runs_for_size(n: int, scenario: str = "filter") -> int:
 
 def time_budget(scenario: str) -> float:
     """Per-scenario wall-clock budget in seconds (excludes warmup)."""
-    if scenario in ("join_filter", "selectivity"):
+    if scenario == "selectivity":
         return 120          # O(n²) needs more headroom per size
     if scenario == "groupby_agg":
         return 60
@@ -294,38 +316,16 @@ def scenario_groupby(spark: SparkSession, data: List[Tuple], optimize: bool) -> 
     return run
 
 
-def scenario_filter_over_sort(spark: SparkSession, data: List[Tuple], optimize: bool) -> Callable:
-    """sort('name').filter(col('age') > 50)
-
-    Pushdown: filter moves below sort, reducing the number of rows sorted.
-    Effect grows with size (sort is O(n log n)) and with filter selectivity.
-    """
-    df = spark.createDataFrame(data, schema=MAIN_SCHEMA, optimize=optimize)
-    def run():
-        df.sort("name").filter(col("age") > 50).collect()
-    return run
-
-
 def scenario_filter_over_groupby_key(spark: SparkSession, data: List[Tuple], optimize: bool) -> Callable:
     """groupBy('group_key').agg(sum('value')).filter(col('group_key') == 'g0')
 
-    Pushdown: filter on a group key moves below the groupBy, so fewer rows
-    participate in the aggregation. Effect is largest when the predicate is
-    selective (here 1/50 = 2% of rows match a single key).
+    Данные: 50 ключей (g{i % 50}); для «g0» селективность ~1/50. Текущий оптимизатор
+    не переносит фильтр под агрегацию (см. многострочный комментарий «todo 1» у импортов),
+    поэтому сравнение no_opt/opt здесь в основном фиксирует это поведение, а не выигрыш.
     """
     df = spark.createDataFrame(data, schema=MAIN_SCHEMA, optimize=optimize)
     def run():
         df.groupBy("group_key").agg(spark_sum("value")).filter(col("group_key") == "g0").collect()
-    return run
-
-
-def scenario_join_filter(spark: SparkSession, data: List[Tuple],
-                         join_data: List[Tuple], optimize: bool) -> Callable:
-    """join(df2, 'id').filter(value > 500)"""
-    df1 = spark.createDataFrame(data, schema=MAIN_SCHEMA, optimize=optimize)
-    df2 = spark.createDataFrame(join_data, schema=JOIN_SCHEMA, optimize=optimize)
-    def run():
-        df1.join(df2, "id").filter(col("value") > 500).collect()
     return run
 
 
@@ -363,9 +363,7 @@ SCENARIOS = {
     "project_filter": scenario_project_filter,
     "chained_filters": scenario_chained_filters,
     "groupby_agg": scenario_groupby,
-    "filter_over_sort": scenario_filter_over_sort,
     "filter_over_groupby_key": scenario_filter_over_groupby_key,
-    # join_filter handled separately because it needs extra join_data arg
 }
 
 
@@ -425,12 +423,6 @@ def _build_task_list(sizes_override=None):
             for optimize in [False, True]:
                 mode = "no_opt" if not optimize else "opt"
                 tasks.append(("scenario", size, name, mode, optimize))
-
-    # Join scenario
-    for size in _sizes_for("join_filter"):
-        for optimize in [False, True]:
-            mode = "no_opt" if not optimize else "opt"
-            tasks.append(("join", size, "join_filter", mode, optimize))
 
     # Selectivity sweep
     for size in _sizes_for("selectivity"):
@@ -509,9 +501,7 @@ def run_benchmarks(sizes=None):
 
         # Determine scenario key for runs/budget lookup
         scenario_key = scenario_name
-        if kind == "join":
-            scenario_key = "join_filter"
-        elif kind == "selectivity":
+        if kind == "selectivity":
             scenario_key = "selectivity"
         elif kind == "filter_over_sort_sel":
             scenario_key = "filter_over_sort_sel"
@@ -537,27 +527,12 @@ def run_benchmarks(sizes=None):
                     df_tmp = df_tmp.filter(col("age") > 20).filter(col("age") < 80).filter(col("value") > 100)
                 elif scenario_name == "groupby_agg":
                     df_tmp = df_tmp.groupBy("group_key").agg(spark_sum("value"))
-                elif scenario_name == "filter_over_sort":
-                    df_tmp = df_tmp.sort("name").filter(col("age") > 50)
                 elif scenario_name == "filter_over_groupby_key":
                     df_tmp = (df_tmp.groupBy("group_key")
                                     .agg(spark_sum("value"))
                                     .filter(col("group_key") == "g0"))
                 plan_nodes = count_plan_nodes(df_tmp._plan)
             results.append(_make_result(scenario_name, mode, size, stats, mem_mb, plan_nodes))
-
-        elif kind == "join":
-            optimize = task[4]
-            fn = scenario_join_filter(spark, data, join_data, optimize)
-            stats = measure(fn, runs=n_runs, budget=budget)
-            mem_mb = measure_memory(fn)
-            plan_nodes = None
-            if optimize:
-                df1 = spark.createDataFrame(data, schema=MAIN_SCHEMA, optimize=True)
-                df2 = spark.createDataFrame(join_data, schema=JOIN_SCHEMA, optimize=True)
-                df_tmp = df1.join(df2, "id").filter(col("value") > 500)
-                plan_nodes = count_plan_nodes(df_tmp._plan)
-            results.append(_make_result("join_filter", mode, size, stats, mem_mb, plan_nodes))
 
         elif kind == "selectivity":
             threshold = task[4]
@@ -681,7 +656,10 @@ def print_summary_table(df, raw_results=None):
 
 def print_selectivity_summary(df, raw_results=None):
     """Print selectivity sweep results with pushdown speedup (no_opt vs opt)."""
-    sel_scenarios = [s for s in df["scenario"].unique() if s.startswith("join_filter_sel_")]
+    sel_scenarios = sorted(
+        s for s in df["scenario"].unique()
+        if s.startswith("join_filter_sel_") or s.startswith("filter_over_sort_sel_")
+    )
     if not sel_scenarios:
         return
 
@@ -825,9 +803,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Benchmark optimized vs non-optimized DataFrame execution",
         epilog=("Default per-scenario sizes: "
-                f"filter/project/chained={SIZES_FAST}, "
-                f"groupby={SIZES_GROUPBY}, "
-                f"join/selectivity={SIZES_JOIN}. "
+                f"filter={SIZES_FILTER}, project_filter={SIZES_PROJECT_FILTER}, "
+                f"chained_filters={SIZES_CHAINED}, "
+                f"filter_over_groupby_key={SIZES_FILTER_OVER_GROUPBY_KEY}, "
+                f"filter_over_sort_sel={SIZES_FAST}, "
+                f"groupby={SIZES_GROUPBY}, join selectivity={SIZES_JOIN_SELECTIVITY}. "
                 "Use --sizes to override ALL scenarios with a uniform list."),
     )
     parser.add_argument(
