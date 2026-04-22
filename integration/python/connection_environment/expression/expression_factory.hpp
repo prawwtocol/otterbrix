@@ -76,8 +76,8 @@ namespace otterbrix {
     private:
         core::parameter_id_t AddValue(components::types::logical_value_t&& value);
         std::unordered_map<core::parameter_id_t, components::types::logical_value_t> values; 
-        boost::intrusive_ptr<otterbrix_t> space;
         uint64_t counter;
+        boost::intrusive_ptr<otterbrix_t> space;
         //components::logical_plan::parameter_node_ptr params;
 
     };
