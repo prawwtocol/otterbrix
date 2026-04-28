@@ -72,6 +72,9 @@ namespace services::disk {
                             collection_full_name_t name,
                             std::vector<components::table::column_definition_t> columns);
         actor_zeta::unique_future<void> drop_storage(session_id_t session, collection_full_name_t name);
+        actor_zeta::unique_future<void> storage_add_column(session_id_t session,
+                                                           collection_full_name_t name,
+                                                           components::table::column_definition_t new_column);
 
         // Storage queries
         actor_zeta::unique_future<std::pmr::vector<components::types::complex_logical_type>>
@@ -91,8 +94,15 @@ namespace services::disk {
         storage_scan(session_id_t session,
                      collection_full_name_t name,
                      std::unique_ptr<components::table::table_filter_t> filter,
-                     int limit,
+                     int64_t limit,
                      components::table::transaction_data txn);
+        actor_zeta::unique_future<std::unique_ptr<components::vector::data_chunk_t>>
+        storage_scan_projected(session_id_t session,
+                               collection_full_name_t name,
+                               std::unique_ptr<components::table::table_filter_t> filter,
+                               int64_t limit,
+                               std::vector<size_t> projected_cols,
+                               components::table::transaction_data txn);
         actor_zeta::unique_future<std::unique_ptr<components::vector::data_chunk_t>>
         storage_fetch(session_id_t session,
                       collection_full_name_t name,
@@ -141,6 +151,7 @@ namespace services::disk {
                                                             &disk_contract::create_storage_with_columns,
                                                             &disk_contract::create_storage_disk,
                                                             &disk_contract::drop_storage,
+                                                            &disk_contract::storage_add_column,
                                                             // Storage queries
                                                             &disk_contract::storage_types,
                                                             &disk_contract::storage_total_rows,
@@ -150,6 +161,7 @@ namespace services::disk {
                                                             &disk_contract::storage_adopt_schema,
                                                             // Storage data operations
                                                             &disk_contract::storage_scan,
+                                                            &disk_contract::storage_scan_projected,
                                                             &disk_contract::storage_fetch,
                                                             &disk_contract::storage_scan_segment,
                                                             &disk_contract::storage_append,

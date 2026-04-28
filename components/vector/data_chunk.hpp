@@ -9,6 +9,12 @@ namespace components::vector {
         data_chunk_t(std::pmr::memory_resource* resource,
                      const std::pmr::vector<types::complex_logical_type>& types,
                      uint64_t capacity = DEFAULT_VECTOR_CAPACITY);
+        // Projected constructor: allocates buffers only for projected_cols; other columns
+        // are placeholders (no buffer) so that column indices stay stable for downstream operators.
+        data_chunk_t(std::pmr::memory_resource* resource,
+                     const std::pmr::vector<types::complex_logical_type>& all_types,
+                     const std::vector<size_t>& projected_cols,
+                     uint64_t capacity);
         data_chunk_t(const data_chunk_t&) = delete;
         data_chunk_t& operator=(const data_chunk_t&) = delete;
         data_chunk_t(data_chunk_t&&) = default;
@@ -23,9 +29,7 @@ namespace components::vector {
             assert(count <= capacity_);
             count_ = count;
         }
-        void set_cardinality(const data_chunk_t& other) { set_cardinality(other.size()); }
         void set_capacity(uint64_t capacity) { capacity_ = capacity; }
-        void set_capacity(const data_chunk_t& other) { set_capacity(other.capacity_); }
 
         types::logical_value_t value(uint64_t col_idx, uint64_t index) const;
         types::logical_value_t value(const std::pmr::vector<size_t>& col_path, uint64_t index) const;
@@ -69,7 +73,7 @@ namespace components::vector {
 
         void slice(std::pmr::memory_resource* resource, uint64_t offset, uint64_t count);
 
-        data_chunk_t slice_contiguous(std::pmr::memory_resource* resource, uint64_t offset, uint64_t count) const;
+        data_chunk_t partial_copy(std::pmr::memory_resource* resource, uint64_t offset, uint64_t count) const;
 
         void reset();
 

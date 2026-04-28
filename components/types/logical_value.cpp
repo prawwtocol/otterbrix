@@ -483,8 +483,28 @@ namespace components::types {
             }
 
             return create_struct(resource_, type, fields);
+        } else if (type.type() == logical_type::ENUM) {
+            if (type_.type() == logical_type::STRING_LITERAL) {
+                auto string_val = value<std::string_view>();
+                for (const auto& entry : static_cast<const enum_logical_type_extension*>(type.extension())->entries()) {
+                    if (entry.type().alias() == string_val) {
+                        return entry;
+                    }
+                }
+                // TODO: return error
+                assert(false && "string value is not a part of the enum");
+            } else if (is_numeric(type_.type())) {
+                const auto& enum_entries = static_cast<const enum_logical_type_extension*>(type.extension())->entries();
+                for (const auto& entry : enum_entries) {
+                    if (*this == entry) {
+                        return entry;
+                    }
+                }
+                // TODO: return error
+                assert(false && "string value is not a part of the enum");
+            }
         }
-        assert(false && "cast to value is not implemented");
+        //assert(false && "cast to value is not implemented");
         return logical_value_t{resource_, complex_logical_type{logical_type::NA}};
     }
 
@@ -523,6 +543,22 @@ namespace components::types {
         return h;
     }
 
+    namespace {
+        bool enum_value_matches_string(const logical_value_t& enum_val, std::string_view target) {
+            const auto* ext = static_cast<const enum_logical_type_extension*>(enum_val.type().extension());
+            if (ext == nullptr) {
+                return false;
+            }
+            const auto stored = enum_val.value<int32_t>();
+            for (const auto& entry : ext->entries()) {
+                if (entry.value<int32_t>() == stored) {
+                    return entry.type().alias() == target;
+                }
+            }
+            return false;
+        }
+    } // namespace
+
     bool logical_value_t::operator==(const logical_value_t& rhs) const {
         if (type_.type() != rhs.type_.type()) {
             if ((is_numeric(type_.type()) && is_numeric(rhs.type_.type())) ||
@@ -539,6 +575,12 @@ namespace components::types {
                     return cast_as(promoted_type) == rhs.cast_as(promoted_type);
                 }
             }
+            if (type_.type() == logical_type::ENUM && rhs.type_.type() == logical_type::STRING_LITERAL) {
+                return enum_value_matches_string(*this, *rhs.str_ptr());
+            }
+            if (rhs.type_.type() == logical_type::ENUM && type_.type() == logical_type::STRING_LITERAL) {
+                return enum_value_matches_string(rhs, *str_ptr());
+            }
             return false;
         } else {
             switch (type_.type()) {
@@ -554,6 +596,7 @@ namespace components::types {
                 case logical_type::UINTEGER:
                 case logical_type::UBIGINT:
                 case logical_type::POINTER:
+                case logical_type::ENUM:
                     return data_ == rhs.data_;
                 case logical_type::FLOAT:
                     return core::is_equals(value<float>(), rhs.value<float>());

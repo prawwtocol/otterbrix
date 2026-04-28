@@ -17,6 +17,38 @@ namespace components::vector {
         }
     }
 
+    data_chunk_t::data_chunk_t(std::pmr::memory_resource* resource,
+                               const std::pmr::vector<types::complex_logical_type>& all_types,
+                               const std::vector<size_t>& projected_cols,
+                               uint64_t capacity)
+        : resource_(resource)
+        , capacity_(capacity)
+        , row_ids(resource, types::logical_type::BIGINT, capacity) {
+        // Build a fast lookup: which column indices need real buffers
+        std::vector<bool> needed(all_types.size(), false);
+        for (size_t idx : projected_cols) {
+            if (idx < all_types.size()) {
+                needed[idx] = true;
+            }
+        }
+        data.reserve(all_types.size());
+        for (size_t i = 0; i < all_types.size(); i++) {
+            if (needed[i]) {
+                data.emplace_back(resource_, all_types[i], capacity_);
+            } else {
+                // Placeholder: type info only, no buffer allocation
+                data.emplace_back(resource_, all_types[i], false, false, 0);
+            }
+        }
+    }
+
+    // An unprojected placeholder vector has no data buffer AND no auxiliary buffer.
+    // (ARRAY/STRUCT/LIST real vectors have auxiliary != nullptr even though data_ is null.)
+    // These exist to keep column indices stable when projected_scan skips columns.
+    static bool is_unprojected_placeholder(const vector_t& v) noexcept {
+        return v.data() == nullptr && v.auxiliary() == nullptr;
+    }
+
     uint64_t data_chunk_t::allocation_size() const {
         uint64_t total_size = 0;
         auto cardinality = size();
@@ -114,11 +146,12 @@ namespace components::vector {
 
     void data_chunk_t::reference(data_chunk_t& chunk) {
         assert(chunk.column_count() <= column_count());
-        set_capacity(chunk);
-        set_cardinality(chunk);
+        set_capacity(chunk.capacity_);
+        set_cardinality(chunk.count_);
         for (uint64_t i = 0; i < chunk.column_count(); i++) {
             data[i].reference(chunk.data[i]);
         }
+        row_ids.reference(chunk.row_ids);
     }
 
     void data_chunk_t::copy(data_chunk_t& other, uint64_t offset) const {
@@ -126,9 +159,12 @@ namespace components::vector {
         assert(other.size() == 0);
 
         for (uint64_t i = 0; i < column_count(); i++) {
+            if (is_unprojected_placeholder(data[i])) continue;
             assert(other.data[i].get_vector_type() == vector_type::FLAT);
             vector_ops::copy(data[i], other.data[i], size(), offset, 0);
         }
+        assert(other.row_ids.get_vector_type() == vector_type::FLAT);
+        vector_ops::copy(row_ids, other.row_ids, size(), offset, 0);
         other.set_cardinality(size() - offset);
     }
 
@@ -141,9 +177,12 @@ namespace components::vector {
         assert(source_count <= size());
 
         for (uint64_t i = 0; i < column_count(); i++) {
+            if (is_unprojected_placeholder(data[i])) continue;
             assert(other.data[i].get_vector_type() == vector_type::FLAT);
             vector_ops::copy(data[i], other.data[i], indexing, source_count, offset, 0);
         }
+        assert(other.row_ids.get_vector_type() == vector_type::FLAT);
+        vector_ops::copy(row_ids, other.row_ids, indexing, source_count, offset, 0);
         other.set_cardinality(source_count - offset);
     }
 
@@ -158,8 +197,9 @@ namespace components::vector {
         for (uint64_t col_idx = split_idx; col_idx < num_cols; col_idx++) {
             data.pop_back();
         }
-        other.set_capacity(*this);
-        other.set_cardinality(*this);
+        vector_ops::copy(row_ids, other.row_ids, size(), 0, 0);
+        other.set_capacity(capacity_);
+        other.set_cardinality(count_);
     }
 
     void data_chunk_t::fuse(data_chunk_t&& other) {
@@ -367,7 +407,7 @@ namespace components::vector {
     }
 
     data_chunk_t
-    data_chunk_t::slice_contiguous(std::pmr::memory_resource* resource, uint64_t offset, uint64_t count) const {
+    data_chunk_t::partial_copy(std::pmr::memory_resource* resource, uint64_t offset, uint64_t count) const {
         assert(offset + count <= size());
         data_chunk_t result(resource, std::pmr::vector<types::complex_logical_type>{resource}, 0);
         result.capacity_ = count;
@@ -412,6 +452,7 @@ namespace components::vector {
             new_size = is_power_of_two(new_size) ? new_size * 2 : next_power_of_two(new_size);
         }
         for (auto& column : data) {
+            if (is_unprojected_placeholder(column)) continue;
             column.resize(capacity_, new_size);
         }
         row_ids.resize(capacity_, new_size);

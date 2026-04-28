@@ -1,7 +1,6 @@
 #pragma once
 
 #include <core/strong_typedef.hpp>
-#include <magic_enum.hpp>
 
 STRONG_TYPEDEF(uint16_t, parameter_id_t);
 
@@ -43,6 +42,7 @@ namespace components::expressions {
     enum class scalar_type : uint8_t
     {
         invalid,
+        constant,
         get_field,
         group_field,
         add,
@@ -59,7 +59,8 @@ namespace components::expressions {
         case_expr,
         coalesce,
         case_when,
-        unary_minus
+        unary_minus,
+        star_expand
     };
 
     enum class sort_order : std::int8_t
@@ -75,6 +76,10 @@ namespace components::expressions {
         right
     };
 
+    std::string to_string(compare_type type);
+
+    std::string to_string(scalar_type type);
+
     template<class OStream>
     OStream& operator<<(OStream& stream, const compare_type& type) {
         if (type == compare_type::union_and) {
@@ -84,7 +89,7 @@ namespace components::expressions {
         } else if (type == compare_type::union_not) {
             stream << "$not";
         } else {
-            stream << "$" << magic_enum::enum_name(type);
+            stream << "$" << to_string(type);
         }
         return stream;
     }

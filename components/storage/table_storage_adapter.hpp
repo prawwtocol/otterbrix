@@ -28,7 +28,7 @@ namespace components::storage {
 
         uint64_t calculate_size() override { return table_.calculate_size(); }
 
-        void scan(vector::data_chunk_t& output, const table::table_filter_t* filter, int limit) override {
+        void scan(vector::data_chunk_t& output, const table::table_filter_t* filter, int64_t limit) override {
             std::vector<table::storage_index_t> column_indices;
             column_indices.reserve(table_.column_count());
             for (size_t i = 0; i < table_.column_count(); i++) {
@@ -44,12 +44,53 @@ namespace components::storage {
 
         void scan(vector::data_chunk_t& output,
                   const table::table_filter_t* filter,
-                  int limit,
+                  int64_t limit,
                   table::transaction_data txn) override {
             std::vector<table::storage_index_t> column_indices;
             column_indices.reserve(table_.column_count());
             for (size_t i = 0; i < table_.column_count(); i++) {
                 column_indices.emplace_back(static_cast<int64_t>(i));
+            }
+            table::table_scan_state state(resource_);
+            table_.initialize_scan(state, column_indices, filter);
+            state.table_state.txn = txn;
+            state.local_state.txn = txn;
+            table_.scan(output, state);
+            if (limit >= 0) {
+                output.set_cardinality(std::min(output.size(), static_cast<uint64_t>(limit)));
+            }
+        }
+
+        void scan_projected(vector::data_chunk_t& output,
+                            const table::table_filter_t* filter,
+                            int limit,
+                            const std::vector<size_t>& projected_cols) override {
+            std::vector<table::storage_index_t> column_indices;
+            column_indices.reserve(projected_cols.size());
+            for (size_t idx : projected_cols) {
+                if (idx < table_.column_count()) {
+                    column_indices.emplace_back(static_cast<int64_t>(idx));
+                }
+            }
+            table::table_scan_state state(resource_);
+            table_.initialize_scan(state, column_indices, filter);
+            table_.scan(output, state);
+            if (limit >= 0) {
+                output.set_cardinality(std::min(output.size(), static_cast<uint64_t>(limit)));
+            }
+        }
+
+        void scan_projected(vector::data_chunk_t& output,
+                            const table::table_filter_t* filter,
+                            int limit,
+                            const std::vector<size_t>& projected_cols,
+                            table::transaction_data txn) override {
+            std::vector<table::storage_index_t> column_indices;
+            column_indices.reserve(projected_cols.size());
+            for (size_t idx : projected_cols) {
+                if (idx < table_.column_count()) {
+                    column_indices.emplace_back(static_cast<int64_t>(idx));
+                }
             }
             table::table_scan_state state(resource_);
             table_.initialize_scan(state, column_indices, filter);
