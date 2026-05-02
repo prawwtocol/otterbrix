@@ -1,5 +1,4 @@
 from typing import Union, TYPE_CHECKING, Any, cast, Callable, Tuple
-import re as _re
 from ..exception import ContributionsAcceptedError
 
 from .types import DataType
@@ -18,18 +17,6 @@ __all__ = ["Column"]
 def _get_expr(x) -> Expression:
     assert SparkContext._active_spark_context is not None
     return x.expr if isinstance(x, Column) else ConstantExpression(x, SparkContext._active_spark_context)
-
-
-def _get_py_val(x):
-    """Extract the Python-level value/evaluator from x for use in _py_eval."""
-    if isinstance(x, Column) and x._py_eval is not None:
-        return x._py_eval
-    elif isinstance(x, Column):
-        return None
-    else:
-        # Literal value — wrap in a constant function
-        val = x
-        return lambda row, _v=val: _v
 
                            
 def _func_op(name: str, doc: str = "") -> Callable[["Column"], "Column"]:
@@ -109,10 +96,8 @@ class Column:
     .. versionadded:: 1.3.0
     """
 
-    def __init__(self, expr: Expression, *, _py_eval=None, _referenced_columns=None):
+    def __init__(self, expr: Expression):
         self.expr = expr
-        self._py_eval = _py_eval  # callable(row_dict) -> value, or None
-        self._referenced_columns = frozenset(_referenced_columns) if _referenced_columns else frozenset()
 
     # arithmetic operators
     def __neg__(self):
@@ -120,37 +105,11 @@ class Column:
 
     # `and`, `or`, `not` cannot be overloaded in Python,
     # so use bitwise operators as boolean operators
-    def __and__(self, other):
-        jc = _get_expr(other)
-        njc = self.expr.__and__(jc)
-        left_eval = self._py_eval
-        right_eval = _get_py_val(other)
-        if left_eval and right_eval:
-            py_eval = lambda row, _l=left_eval, _r=right_eval: _l(row) and _r(row)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (other._referenced_columns if isinstance(other, Column) else frozenset())
-        return Column(njc, _py_eval=py_eval, _referenced_columns=refs)
-
-    def __or__(self, other):
-        jc = _get_expr(other)
-        njc = self.expr.__or__(jc)
-        left_eval = self._py_eval
-        right_eval = _get_py_val(other)
-        if left_eval and right_eval:
-            py_eval = lambda row, _l=left_eval, _r=right_eval: _l(row) or _r(row)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (other._referenced_columns if isinstance(other, Column) else frozenset())
-        return Column(njc, _py_eval=py_eval, _referenced_columns=refs)
+    __and__ = _bin_op("__and__")
+    __or__ = _bin_op("__or__")
 
     def __invert__(self):
-        left_eval = self._py_eval
-        if left_eval:
-            py_eval = lambda row, _l=left_eval: not _l(row)
-        else:
-            py_eval = None
-        return Column(~self.expr, _py_eval=py_eval, _referenced_columns=self._referenced_columns)
+        return Column(~self.expr)
     
     __rand__ = _bin_op("__rand__")
     __ror__ = _bin_op("__ror__")
@@ -254,12 +213,7 @@ class Column:
         return self[item]
 
     def alias(self, alias: str):
-        c = Column(self.expr.alias(alias))
-        agg_info = getattr(self, '_agg_info', None)
-        if agg_info:
-            input_col, agg_func, _ = agg_info
-            c._agg_info = (input_col, agg_func, alias)
-        return c
+        return Column(self.expr.alias(alias))
 
     def when(self, condition: "Column", value: Any):
         if not isinstance(condition, Column):
@@ -301,129 +255,47 @@ class Column:
         other: Union["Column", "LiteralType", "DecimalLiteral", "DateTimeLiteral"],
     ) -> "Column":
         """binary function"""
-        left_eval = self._py_eval
-        right_eval = _get_py_val(other)
-        if left_eval and right_eval:
-            py_eval = lambda row, _l=left_eval, _r=right_eval: _l(row) == _r(row)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (other._referenced_columns if isinstance(other, Column) else frozenset())
-        return Column(self.expr == (_get_expr(other)), _py_eval=py_eval, _referenced_columns=refs)
+        return Column(self.expr == (_get_expr(other)))
 
     def __ne__(  # type: ignore[override]
         self,
         other: Any,
     ) -> "Column":
         """binary function"""
-        left_eval = self._py_eval
-        right_eval = _get_py_val(other)
-        if left_eval and right_eval:
-            py_eval = lambda row, _l=left_eval, _r=right_eval: _l(row) != _r(row)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (other._referenced_columns if isinstance(other, Column) else frozenset())
-        return Column(self.expr != (_get_expr(other)), _py_eval=py_eval, _referenced_columns=refs)
+        return Column(self.expr != (_get_expr(other)))
 
-    def __lt__(self, other):
-        jc = _get_expr(other)
-        njc = self.expr.__lt__(jc)
-        left_eval = self._py_eval
-        right_eval = _get_py_val(other)
-        if left_eval and right_eval:
-            py_eval = lambda row, _l=left_eval, _r=right_eval: _l(row) < _r(row)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (other._referenced_columns if isinstance(other, Column) else frozenset())
-        return Column(njc, _py_eval=py_eval, _referenced_columns=refs)
+    __lt__ = _bin_op("__lt__")
 
-    def __le__(self, other):
-        jc = _get_expr(other)
-        njc = self.expr.__le__(jc)
-        left_eval = self._py_eval
-        right_eval = _get_py_val(other)
-        if left_eval and right_eval:
-            py_eval = lambda row, _l=left_eval, _r=right_eval: _l(row) <= _r(row)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (other._referenced_columns if isinstance(other, Column) else frozenset())
-        return Column(njc, _py_eval=py_eval, _referenced_columns=refs)
+    __le__ = _bin_op("__le__")
 
-    def __ge__(self, other):
-        jc = _get_expr(other)
-        njc = self.expr.__ge__(jc)
-        left_eval = self._py_eval
-        right_eval = _get_py_val(other)
-        if left_eval and right_eval:
-            py_eval = lambda row, _l=left_eval, _r=right_eval: _l(row) >= _r(row)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (other._referenced_columns if isinstance(other, Column) else frozenset())
-        return Column(njc, _py_eval=py_eval, _referenced_columns=refs)
+    __ge__ = _bin_op("__ge__")
 
-    def __gt__(self, other):
-        jc = _get_expr(other)
-        njc = self.expr.__gt__(jc)
-        left_eval = self._py_eval
-        right_eval = _get_py_val(other)
-        if left_eval and right_eval:
-            py_eval = lambda row, _l=left_eval, _r=right_eval: _l(row) > _r(row)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (other._referenced_columns if isinstance(other, Column) else frozenset())
-        return Column(njc, _py_eval=py_eval, _referenced_columns=refs)
+    __gt__ = _bin_op("__gt__")
 
     # String interrogation methods
 
     # contains = _bin_func("contains")
     def contains(self, param):
-        left_eval = self._py_eval
-        if left_eval and not isinstance(param, Column):
-            pattern = param
-            py_eval = lambda row, _l=left_eval, _p=pattern: _p in str(_l(row))
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (param._referenced_columns if isinstance(param, Column) else frozenset())
-        return Column(self.expr.rlike(_get_expr(param)), _py_eval=py_eval, _referenced_columns=refs)
+        return Column(self.expr.rlike(_get_expr(param)))
 
     # rlike = _bin_func("regexp_matches")
     def rlike(self, param):
-        left_eval = self._py_eval
-        if left_eval and not isinstance(param, Column):
-            pattern = param
-            py_eval = lambda row, _l=left_eval, _p=_re.compile(pattern): bool(_p.search(str(_l(row))))
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (param._referenced_columns if isinstance(param, Column) else frozenset())
-        return Column(self.expr.rlike(_get_expr(param)), _py_eval=py_eval, _referenced_columns=refs)
+        return Column(self.expr.rlike(_get_expr(param)))
 
     def like(self, pattern : str):
         raise NotImplementedError
-
+    
     # ilike = _bin_func("~~*")
     def ilike(self, param):
         raise NotImplementedError
 
     # startswith = _bin_func("starts_with")
     def startswith(self, param):
-        left_eval = self._py_eval
-        if left_eval and not isinstance(param, Column):
-            prefix = param
-            py_eval = lambda row, _l=left_eval, _p=prefix: str(_l(row)).startswith(_p)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (param._referenced_columns if isinstance(param, Column) else frozenset())
-        return Column(self.expr.rlike(_get_expr("^"+param)), _py_eval=py_eval, _referenced_columns=refs)
+        return Column(self.expr.rlike(_get_expr("^"+param)))
 
     # endswith = _bin_func("suffix")
     def endswith(self, param):
-        left_eval = self._py_eval
-        if left_eval and not isinstance(param, Column):
-            suffix = param
-            py_eval = lambda row, _l=left_eval, _s=suffix: str(_l(row)).endswith(_s)
-        else:
-            py_eval = None
-        refs = self._referenced_columns | (param._referenced_columns if isinstance(param, Column) else frozenset())
-        return Column(self.expr.rlike(_get_expr(param+"$")), _py_eval=py_eval, _referenced_columns=refs)
+        return Column(self.expr.rlike(_get_expr(param+"$")))
 
     # order
     _asc_doc = """
