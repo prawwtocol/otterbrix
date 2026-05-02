@@ -6,7 +6,7 @@ Scenarios:
   2. project+filter           — df.select("a","b").filter(col("a") > t)        O(n)        [pushdown]
   3. chained_filters          — df.filter(a).filter(b).filter(c)              O(n)
   4. groupby_agg              — df.groupBy("key").agg(sum("value"))            O(n*k)
-  5. filter_over_groupby_key  — df.groupBy("key").agg(...).filter(key == c)    O(n)        [post-agg filter; see todo 1]
+  5. filter_over_groupby_key  — df.groupBy("key").agg(...).filter(key == c)    O(n)        [post-agg filter
   6. filter_over_sort_sel_* — df.sort(...).filter(...) at ~1/10/50/90% pass
   7. join_filter_sel_*        — df.join(...).filter(...) at ~1/10/50/90% pass  O(n²)       [pushdown]
 
@@ -19,9 +19,6 @@ Data sizes are per-scenario — `filter` at 10k/100k/1M, `project_filter` at
 
 Data types covered: int (id, age), float (value), string (name, group_key).
 """
-
-# todo 1 — интегрировать этот бенчмарк в общую директорию benchmark/ (как единый набор прогонов).
-#
 
 # todo 1
 # Запрос сценария filter_over_groupby_key:
@@ -323,7 +320,7 @@ def scenario_filter_over_groupby_key(spark: SparkSession, data: List[Tuple], opt
     """groupBy('group_key').agg(sum('value')).filter(col('group_key') == 'g0')
 
     Данные: 50 ключей (g{i % 50}); для «g0» селективность ~1/50. Текущий оптимизатор
-    не переносит фильтр под агрегацию (см. многострочный комментарий «todo 1» у импортов),
+    не переносит фильтр под агрегацию
     поэтому сравнение no_opt/opt здесь в основном фиксирует это поведение, а не выигрыш.
     """
     df = spark.createDataFrame(data, schema=MAIN_SCHEMA, optimize=optimize)
