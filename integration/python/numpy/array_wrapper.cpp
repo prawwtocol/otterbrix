@@ -166,8 +166,8 @@ struct ArrayConvert {
 };
 
 struct StructConvert {
-	static py::dict ConvertValue(vector_t &input, idx_t chunk_offset, NumpyAppendData & /*append_data*/) {
-
+	static py::dict ConvertValue(vector_t &input, idx_t chunk_offset, NumpyAppendData &append_data) {
+		(void)append_data;
 		py::dict py_struct;
 		auto val = input.value(chunk_offset);
 		auto &child_types = input.type().child_types();
@@ -194,8 +194,8 @@ struct UnionConvert {
 };
 */
 struct MapConvert {
-	static py::dict ConvertValue(vector_t &input, idx_t chunk_offset,
-        NumpyAppendData & /*append_data*/) {
+	static py::dict ConvertValue(vector_t &input, idx_t chunk_offset, NumpyAppendData &append_data) {
+		(void)append_data;
 		auto val = input.value(chunk_offset);
 		return PythonObject::FromValue(val, input.type());
 	}
