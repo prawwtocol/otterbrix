@@ -285,7 +285,7 @@ static complex_logical_type EmptyMap() {
 }
 
 //! Check if the keys match
-static bool StructKeysAreEqual(idx_t row, const vector<complex_logical_type> &reference,
+static bool StructKeysAreEqual(const vector<complex_logical_type> &reference,
                                const vector<complex_logical_type> &compare) {
 	assert(reference.size() == compare.size());
 	for (idx_t i = 0; i < reference.size(); i++) {
@@ -324,7 +324,7 @@ static bool VerifyStructValidity(vector<complex_logical_type> &structs) {
 		if (entry_children.size() != reference_children.size()) {
 			return false;
 		}
-		if (!StructKeysAreEqual(i, reference_children, entry_children)) {
+		if (!StructKeysAreEqual(reference_children, entry_children)) {
 			return false;
 		}
 	}
