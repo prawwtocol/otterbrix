@@ -123,8 +123,9 @@ class GroupedData:
         |  Bob|    2|
         +-----+-----+
         """
-        from .functions import count as count_func
-        return self.agg(count_func("*"))
+        sc = SparkContext._active_spark_context
+        count_expr = CountExpression(sc)
+        return self.agg(Column(count_expr))
 
     def mean(self, *cols: str) -> DataFrame:
         """Computes average values for each numeric columns for each group.
