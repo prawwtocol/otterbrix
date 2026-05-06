@@ -7,9 +7,6 @@ from otterbrix.experimental.spark.sql.functions import col
 
 
 class TestDataFrameSelectProjection(object):
-    # Duplicate (id, name) rows: a pure projection must preserve them.
-    # Pre-fix: Project delegated to Group → operator_group_t deduplicated by keys
-    # → result would lose duplicates. This regression catches that.
     data = [
         (1, "Alice", 30),
         (2, "Bob", 25),
