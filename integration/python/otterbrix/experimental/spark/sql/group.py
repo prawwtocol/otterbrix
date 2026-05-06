@@ -77,7 +77,6 @@ class Grouping:
         return columns
 
     def copy(self):
-        """Return a shallow copy so mutations don't leak across calls."""
         import copy
         return copy.copy(self)
 
@@ -437,7 +436,6 @@ class GroupedData:
             assert all(isinstance(c, Column) for c in exprs), "all exprs should be Column"
             group_keys = self._grouping._key_names
 
-            # Build C++ expression list: group keys + aggregation expressions
             sc = SparkContext._active_spark_context
             all_exprs = []
             for key in group_keys:

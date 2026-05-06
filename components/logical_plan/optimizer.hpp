@@ -6,7 +6,6 @@
 
 namespace components::logical_plan {
 
-    // Collect all column names referenced in an expression tree
     std::set<std::string> collect_referenced_columns(const expressions::expression_ptr& expr);
 
     class plan_optimizer_t {
