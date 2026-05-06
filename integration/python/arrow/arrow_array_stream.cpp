@@ -169,7 +169,7 @@ string ConvertTimestampUnit(ArrowDateTimeType unit) {
 	}
 }
 
-py::object GetScalar(components::types::logical_value_t &constant, const ArrowType &type) {
+py::object GetScalar(components::types::logical_value_t &constant, const ArrowType & /*type*/) {
 	py::object scalar = py::module_::import("pyarrow").attr("scalar");
 	auto &import_cache = ConnectionEnvironment::ImportCache();
 	py::object dataset_scalar = import_cache.pyarrow.dataset().attr("scalar");
