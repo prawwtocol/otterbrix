@@ -14,16 +14,13 @@
 namespace otterbrix {
 	namespace util {
 
-		// Конвертирует logical_value_t в py::object в зависимости от типа
 		py::object LogicalValueToPython(const components::types::logical_value_t& value,
 				const components::types::complex_logical_type& type);
 
-		// Конвертирует строку cursor'а в py::dict {column_name: value}
 		py::dict CursorRowToPythonDict(components::cursor::cursor_t_ptr& cursor,
 				uint64_t row_idx,
 				const vector<components::table::column_definition_t>& col_defs);
 
-		// Конвертирует строку data_chunk в py::dict {column_name: value}
 		py::dict DataChunkRowToPythonDict(const components::vector::data_chunk_t& chunk,
 				uint64_t row_idx,
 				const vector<components::table::column_definition_t>& col_defs);
