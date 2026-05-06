@@ -286,7 +286,8 @@ class DataFrame:
 
         columns = []
         col_names = []
-        explicit_dirs = []  # 1=asc, -1=desc, 0=unspecified
+        # 1=asc, -1=desc, 0=unspecified
+        explicit_dirs = []
         for c in cols:
             _c = c
             if isinstance(c, str):
@@ -335,11 +336,10 @@ class DataFrame:
                 message_parameters={"arg_name": "ascending", "arg_type": type(ascending).__name__},
             )
 
-        # Build final ascending flags
         asc_flags = []
         for i, d in enumerate(explicit_dirs):
             if d != 0:
-                # Column had explicit .asc() or .desc() — respect it
+                # respect explicit .asc() or .desc()
                 asc_flags.append(d == 1)
             elif base_asc is not None:
                 asc_flags.append(base_asc)
@@ -348,7 +348,6 @@ class DataFrame:
 
         sort_keys = list(zip(col_names, asc_flags))
 
-        # Route through C++ engine
         resolved = []
         for c in columns:
             if isinstance(c, Column):
