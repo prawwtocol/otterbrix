@@ -25,7 +25,7 @@ namespace otterbrix {
     }
 
     PyRelation::PyRelation(unique_ptr<PyResult> result) :
-        rel(nullptr), result(std::move(result)) {
+        result(std::move(result)), rel(nullptr) {
         if (!result) {
             throw std::runtime_error("PyRelation created without a result");
         }
@@ -39,8 +39,8 @@ namespace otterbrix {
         rel.reset();
     }
 
-    static cursor::cursor_t_ptr PyExecuteRelation(ConnectionEnvironment* env,
-            const Relation& rel, bool /*stream_result*/, bool optimize = false) {
+    static cursor::cursor_t_ptr PyExecuteRelation(ConnectionEnvironment* env, const Relation& rel,
+            bool stream_result = false, bool optimize = false) {
         assert(py::gil_check());
         py::gil_scoped_release release;
         return env->Execute(rel, optimize);
@@ -163,7 +163,7 @@ namespace otterbrix {
         if (!rel) {
             return nullptr;
         }
-        return PyExecuteRelation(env, *rel, stream_result, optimize_);
+        return PyExecuteRelation(env, *rel, stream_result);
     }
 
 
