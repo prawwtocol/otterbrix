@@ -1,7 +1,6 @@
 _exported_symbols = []
 
 
-# Classes (loaded first to avoid circular imports with experimental)
 from .otterbrix import (
     OtterBrixPyConnection,
     OtterBrixPyRelation,
@@ -19,7 +18,6 @@ _exported_symbols.extend([
     "CountExpression",
 ])
 
-# Type constructors
 from .otterbrix import (
     sqltype,
     dtype,
@@ -49,14 +47,12 @@ _exported_symbols.extend([
     "map_type",
 ])
 
-# Connection factory
 from .otterbrix import connect
 _exported_symbols.extend([
     "connect",
 ])
 
-# Backwards compatibility: old SQL-based bindings
-# try to load old SQL-based bindings
+# try to load old sql-based bindings for backwards compatibility
 try:
     from .otterbrix import Client, Connection, Cursor, to_aggregate
     _exported_symbols.extend([
@@ -68,7 +64,6 @@ try:
 except ImportError:
     pass
 
-# Modules (after C++ extension symbols so submodules can import them)
 import otterbrix.typing as typing
 import otterbrix.experimental as experimental
 
