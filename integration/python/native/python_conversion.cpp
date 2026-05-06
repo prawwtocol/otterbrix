@@ -23,7 +23,47 @@ using components::types::complex_logical_type;
 
 namespace otterbrix
 {
+    using components::types::int128_t;
+    using components::types::uint128_t;
+
     logical_value_t TransformListValue(py::handle ele);
+
+    template <typename T>
+    static T parse_python_integer_string(const std::string& s)
+    {
+        T result = 0;
+        size_t i = 0;
+        bool negative = false;
+        if constexpr (std::is_same_v<T, int128_t>)
+        {
+            if (!s.empty() && s[0] == '-')
+            {
+                negative = true;
+                i = 1;
+            }
+            else if (!s.empty() && s[0] == '+')
+            {
+                i = 1;
+            }
+        }
+        for (; i < s.size(); ++i)
+        {
+            const char c = s[i];
+            if (c < '0' || c > '9')
+            {
+                throw std::runtime_error("Failed to parse Python integer string: " + s);
+            }
+            result = result * 10 + static_cast<int>(c - '0');
+        }
+        if constexpr (std::is_same_v<T, int128_t>)
+        {
+            return negative ? -result : result;
+        }
+        else
+        {
+            return result;
+        }
+    }
 
     static logical_value_t EmptyMapValue()
     {
@@ -158,22 +198,6 @@ namespace otterbrix
         {
             return logical_value_t::create_struct(r, target_type, struct_values);
         }
-        /**
-        * Изменение внесено, потому что старый вызов create_struct(struct_values) больше не поддерживается — теперь нужен memory_resource* и либо тип, либо имя.
-        *
-        * В logical_value.hpp есть два варианта:
-            * static logical_value_t create_struct(r, name, fields);      // (r, имя, поля)
-            * static logical_value_t create_struct(r, type, struct_values); // (r, тип, значения)
-        * Поэтому логика разбита на два случая:
-        * 1. struct_target == true — есть целевой тип target_type:
-            * вызываем create_struct(r, target_type, struct_values) — используем готовый тип.
-        * 2. struct_target == false — целевого типа нет, структура выводится из словаря:
-            * берём типы из struct_values[i].type();
-            * задаём имена полей из struct_keys[i] через set_alias;
-            * строим тип: complex_logical_type::create_struct("", child_types);
-            * вызываем create_struct(r, struct_type, struct_values).
-        * Раньше был один вызов create_struct(struct_values), теперь нужны либо (r, type, values), либо (r, name, fields). В случае без target_type тип сначала собирается из ключей и значений, затем передаётся во второй overload.
-        */
         std::vector<complex_logical_type> child_types;
         child_types.reserve(struct_values.size());
         for (idx_t i = 0; i < struct_values.size(); i++)
@@ -201,8 +225,7 @@ namespace otterbrix
 
         if (py::none().is(dict.keys) || py::none().is(dict.values))
         {
-            // todo should create logical_value with field is_null=true, but the field was removed
-            return EmptyMapValue();
+            return logical_value_t(r, logical_type::NA);
         }
 
         auto size = py::len(dict.keys);
@@ -223,9 +246,14 @@ namespace otterbrix
             logical_value_t new_key = TransformPythonValue(dict.keys.attr("__getitem__")(i), key_target);
             logical_value_t new_value = TransformPythonValue(dict.values.attr("__getitem__")(i), value_target);
 
-            //todo common type
-            //key_type = logical_type::ForceMaxLogicalType(key_type, new_key.type());
-            //value_type = logical_type::ForceMaxLogicalType(value_type, new_value.type());
+            if (key_type.type() == logical_type::NA && new_key.type().type() != logical_type::NA)
+            {
+                key_type = new_key.type();
+            }
+            if (value_type.type() == logical_type::NA && new_value.type().type() != logical_type::NA)
+            {
+                value_type = new_value.type();
+            }
 
             new_key.set_alias("key");
             new_value.set_alias("value");
@@ -259,10 +287,7 @@ namespace otterbrix
 
         if (py::none().is(keys) || py::none().is(values))
         {
-            // todo should create logical_value with field is_null=true, but the field was removed
-            // Either 'key' or 'value' is None, return early with a NULL value
-            //  return logical_value_t(std::move(complex_logical_type::create_map(logical_type::NA, logical_type::NA)));
-            return EmptyMapValue();
+            return logical_value_t(r, logical_type::NA);
         }
 
         auto key_size = py::len(keys);
@@ -287,8 +312,8 @@ namespace otterbrix
         auto key_list = TransformPythonValue(keys, key_target);
         auto value_list = TransformPythonValue(values, value_target);
 
-        logical_type key_type = logical_type::NA;
-        logical_type value_type = logical_type::NA;
+        complex_logical_type key_type = logical_type::NA;
+        complex_logical_type value_type = logical_type::NA;
 
         const auto& key_children = key_list.children();
         const auto& value_children = value_list.children();
@@ -301,9 +326,14 @@ namespace otterbrix
             logical_value_t new_key = key_children[i];
             logical_value_t new_value = value_children[i];
 
-            //todo common type
-            //key_type = logical_type::ForceMaxLogicalType(key_type, new_key.type());
-            //value_type = logical_type::ForceMaxLogicalType(value_type, new_value.type());
+            if (key_type.type() == logical_type::NA && new_key.type().type() != logical_type::NA)
+            {
+                key_type = new_key.type();
+            }
+            if (value_type.type() == logical_type::NA && new_value.type().type() != logical_type::NA)
+            {
+                value_type = new_value.type();
+            }
 
             new_key.set_alias("key");
             new_value.set_alias("value");
@@ -311,8 +341,7 @@ namespace otterbrix
             value_values.emplace_back(new_value);
         }
 
-        return logical_value_t::create_map(r, complex_logical_type(key_type), complex_logical_type(value_type),
-                                           key_values, value_values);
+        return logical_value_t::create_map(r, key_type, value_type, key_values, value_values);
     }
 
     logical_value_t TransformTupleToStruct(std::pmr::memory_resource* r, py::handle ele,
@@ -353,18 +382,18 @@ namespace otterbrix
         values.reserve(size);
 
         bool list_target = target_type.type() == logical_type::LIST;
+        const auto& child_type = list_target ? target_type.child_type() : logical_type::UNKNOWN;
 
-        complex_logical_type element_type = logical_type::NA;
+        complex_logical_type element_type = list_target ? child_type : complex_logical_type(logical_type::NA);
         for (idx_t i = 0; i < size; i++)
         {
-            const auto& child_type = list_target ? target_type.child_type() : logical_type::UNKNOWN;
             logical_value_t new_value = TransformPythonValue(ele.attr("__getitem__")(i), child_type);
-            //todo common type
-            //element_type = logical_type::ForceMaxLogicalType(element_type, new_value.type());
+            if (!list_target && element_type.type() == logical_type::NA
+                && new_value.type().type() != logical_type::NA)
+            {
+                element_type = new_value.type();
+            }
             values.push_back(std::move(new_value));
-
-            // todo remove if ForceMaxLogicalType exists
-            element_type = child_type;
         }
         return logical_value_t::create_list(r, element_type, values);
     }
@@ -380,16 +409,16 @@ namespace otterbrix
         bool array_target = target_type.type() == logical_type::ARRAY;
         const auto& child_type = array_target ? target_type.child_type() : logical_type::UNKNOWN;
 
-        complex_logical_type element_type = logical_type::NA;
+        complex_logical_type element_type = array_target ? child_type : complex_logical_type(logical_type::NA);
         for (idx_t i = 0; i < size; i++)
         {
             logical_value_t new_value = TransformPythonValue(ele.attr("__getitem__")(i), child_type);
-            // todo common type
-            //element_type = logical_type::ForceMaxLogicalType(element_type, new_value.type());
+            if (!array_target && element_type.type() == logical_type::NA
+                && new_value.type().type() != logical_type::NA)
+            {
+                element_type = new_value.type();
+            }
             values.push_back(std::move(new_value));
-
-            // todo remove if ForceMaxLogicalType exists
-            element_type = child_type;
         }
 
         return logical_value_t::create_array(r, element_type, values);
@@ -469,7 +498,6 @@ namespace otterbrix
     }
 
 
-    // TODO: add support for HUGEINT
     bool TryTransformPythonNumeric(logical_value_t& res, py::handle ele, const complex_logical_type& target_type)
     {
         auto ptr = ele.ptr();
@@ -512,17 +540,15 @@ namespace otterbrix
                 res = logical_value_t(std::pmr::get_default_resource(), uint64_t(value));
                 return true;
             case logical_type::UHUGEINT:
-                // res = logical_value_t(ParseToNumeric<absl::uint128>(numeric_string));
-                throw std::runtime_error("OtterBrix has no a logical_value_t constructor for hugeint/uhugeint");
+                res = logical_value_t(std::pmr::get_default_resource(),
+                                      parse_python_integer_string<uint128_t>(numeric_string));
                 return true;
             case logical_type::HUGEINT:
             default:
-                // res = logical_value_t(ParseToNumeric<absl::uint128>(numeric_string));
-                throw std::runtime_error("OtterBrix has no a logical_value_t constructor for hugeint/uhugeint");
-
+                res = logical_value_t(std::pmr::get_default_resource(),
+                                      parse_python_integer_string<int128_t>(numeric_string));
                 return true;
             }
-            return true;
         }
         else if (overflow == 1)
         {
@@ -534,6 +560,18 @@ namespace otterbrix
             if (PyErr_Occurred())
             {
                 PyErr_Clear();
+                if (target_type.type() == logical_type::HUGEINT)
+                {
+                    res = logical_value_t(std::pmr::get_default_resource(),
+                                          parse_python_integer_string<int128_t>(numeric_string));
+                    return true;
+                }
+                if (target_type.type() == logical_type::UHUGEINT)
+                {
+                    res = logical_value_t(std::pmr::get_default_resource(),
+                                          parse_python_integer_string<uint128_t>(numeric_string));
+                    return true;
+                }
                 return TryTransformPythonIntegerToDouble(res, ele);
             }
             else
@@ -556,9 +594,7 @@ namespace otterbrix
             return TrySniffPythonNumeric(res, value);
         case logical_type::HUGEINT:
             {
-                // res = logical_value_t(ParseToNumeric<absl::int128>(numeric_string));
-                throw std::runtime_error("OtterBrix has no a logical_value_t constructor for hugeint/uhugeint");
-
+                res = logical_value_t(std::pmr::get_default_resource(), int128_t(value));
                 return true;
             }
         case logical_type::UHUGEINT:
@@ -567,9 +603,7 @@ namespace otterbrix
                 {
                     return false;
                 }
-                // res = logical_value_t(ParseToNumeric<absl::uint128>(numeric_string));
-                throw std::runtime_error("OtterBrix has no a logical_value_t constructor for hugeint/uhugeint");
-
+                res = logical_value_t(std::pmr::get_default_resource(), uint128_t(value));
                 return true;
             }
         case logical_type::BIGINT:
@@ -642,13 +676,7 @@ namespace otterbrix
             }
         default:
             {
-                if (!TrySniffPythonNumeric(res, value))
-                {
-                    return false;
-                }
-                // res = logical_value_t(ParseToNumeric<absl::int128>(numeric_string));
-                throw std::runtime_error("OtterBrix has no a logical_value_t constructor for hugeint/uhugeint");
-                return true;
+                return TrySniffPythonNumeric(res, value);
             }
         }
     }
@@ -804,20 +832,17 @@ namespace otterbrix
             }
         case PythonObjectType::Uuid:
             {
-                // auto string_val = py::str(ele).cast<string>();
-                // return logical_value_t::Uuid(string_val);
-                throw std::runtime_error("OtterBrix doens\'t support UUID");
+                return logical_value_t(resource, py::str(ele).cast<string>());
             }
         case PythonObjectType::String:
             {
                 auto stringified = ele.cast<string>();
-                if (target_type.type() == logical_type::UNKNOWN)
+                if (target_type.type() == logical_type::UNKNOWN
+                    || target_type.type() == logical_type::STRING_LITERAL)
                 {
                     return logical_value_t(resource, stringified);
                 }
-                // return logical_value_t(stringified).cast_as(target_type);
-
-                throw std::runtime_error("OtterBrix doens\'t support string conversation");
+                return logical_value_t(resource, stringified).cast_as(target_type);
             }
         case PythonObjectType::ByteArray:
             {
