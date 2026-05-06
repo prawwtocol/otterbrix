@@ -40,7 +40,6 @@ namespace otterbrix {
                 has_data = true;
             }
         }
-        // GIL снова удерживается — безопасно создавать Python-объекты
         if (!has_data) {
             return py::none();
         }
