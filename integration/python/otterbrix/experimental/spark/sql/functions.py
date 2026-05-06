@@ -26,12 +26,7 @@ def _invoke_function_over_columns(name: str, *cols: "ColumnOrName") -> Column:
 
 
 def col(column: str):
-    py_eval = lambda row, _c=column: row[_c]
-    return Column(
-        ColumnExpression(column, SparkContext._active_spark_context),
-        _py_eval=py_eval,
-        _referenced_columns={column},
-    )
+    return Column(ColumnExpression(column, SparkContext._active_spark_context))
 
 
 def upper(col: "ColumnOrName") -> Column:
