@@ -172,9 +172,27 @@ namespace otterbrix {
                 otterbrix::optional_ptr<function::LocalTableFunctionState>(local_state),
                 otterbrix::optional_ptr<function::GlobalTableFunctionState>(global_state)};
 
+
+        // Раньше в цикле по чанкам вызывали util::ToDocuments(resource, chunk, names), складывали document_ptr в std::pmr::vector<document_ptr> и передавали в logical_plan::make_node_raw_data.
+
+        // Теперь:
+
+        // типы колонок копируют в std::pmr::vector<complex_logical_type> pmr_types(resource);
+        // накапливают один data_chunk_t result_chunk(resource, pmr_types);
+        // на каждой итерации создают chunk с теми же pmr_types, вызывают function(..., chunk), при непустом чанке — result_chunk.append(chunk, true);
+        // в план уходит make_node_raw_data(resource, std::move(result_chunk)) — сырой узел строится из одного склеенного data_chunk, без промежуточного списка документов.
+        // Зачем: согласовать скан Python/Pandas с моделью DataChunk + PMR в ядре и убрать лишний слой document при выдаче данных в план.
+
+
         // Конвертируем std::vector → std::pmr::vector для конструктора data_chunk_t
+        // Устанавливаем alias (имя столбца) на каждом типе, чтобы validate_schema
+        // мог разрешить ключи (напр. "state") по schema[i].type.alias().
         std::pmr::vector<types::complex_logical_type> pmr_types(resource);
-        for (const auto& t : return_types) {
+        for (size_t i = 0; i < return_types.size(); i++) {
+            auto t = return_types[i];
+            if (!t.has_alias() && i < names.size()) {
+                t.set_alias(names[i]);
+            }
             pmr_types.push_back(t);
         }
 

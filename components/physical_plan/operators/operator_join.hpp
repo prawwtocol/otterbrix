@@ -3,8 +3,6 @@
 #include "predicates/predicate.hpp"
 #include <components/logical_plan/node_join.hpp>
 #include <components/physical_plan/operators/operator.hpp>
-#include <components/physical_plan/operators/operator_data.hpp>
-#include <components/vector/data_chunk.hpp>
 #include <expressions/compare_expression.hpp>
 
 namespace components::operators {
@@ -25,25 +23,13 @@ namespace components::operators {
         std::vector<size_t> indices_right_;
 
         void on_execute_impl(pipeline::context_t* context) override;
-        void inner_join_(const predicates::predicate_ptr&,
-                         pipeline::context_t* context,
-                         const std::pmr::vector<types::complex_logical_type>& out_types,
-                         chunks_vector_t& out_chunks);
-        void outer_full_join_(const predicates::predicate_ptr&,
-                              pipeline::context_t* context,
-                              const std::pmr::vector<types::complex_logical_type>& out_types,
-                              chunks_vector_t& out_chunks);
-        void outer_left_join_(const predicates::predicate_ptr&,
-                              pipeline::context_t* context,
-                              const std::pmr::vector<types::complex_logical_type>& out_types,
-                              chunks_vector_t& out_chunks);
-        void outer_right_join_(const predicates::predicate_ptr&,
-                               pipeline::context_t* context,
-                               const std::pmr::vector<types::complex_logical_type>& out_types,
-                               chunks_vector_t& out_chunks);
-        void cross_join_(pipeline::context_t* context,
-                         const std::pmr::vector<types::complex_logical_type>& out_types,
-                         chunks_vector_t& out_chunks);
+        void inner_join_(const predicates::predicate_ptr&, pipeline::context_t* context);
+        void outer_full_join_(const predicates::predicate_ptr&, pipeline::context_t* context);
+        void outer_left_join_(const predicates::predicate_ptr&, pipeline::context_t* context);
+        void outer_right_join_(const predicates::predicate_ptr&, pipeline::context_t* context);
+        void cross_join_(pipeline::context_t* context);
+        void semi_join_(const predicates::predicate_ptr&, pipeline::context_t* context);
+        void anti_join_(const predicates::predicate_ptr&, pipeline::context_t* context);
     };
 
 } // namespace components::operators

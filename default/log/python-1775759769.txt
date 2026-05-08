@@ -1,0 +1,90 @@
+[2026-04-09 21:36:09.987] [__default__] [trace] [pid 2431 tid 44946092] spaces::spaces()
+[2026-04-09 21:36:09.987] [__default__] [trace] [pid 2431 tid 44946092] loader_t: initializing
+[2026-04-09 21:36:09.987] [__default__] [debug] [pid 2431 tid 44946092] loader_t: WAL file path: /Users/seliverstow/Desktop/diploma33/otterbrix/default/wal/.wal_0, exists: false
+[2026-04-09 21:36:09.987] [__default__] [debug] [pid 2431 tid 44946092] loader_t: WAL file path: /Users/seliverstow/Desktop/diploma33/otterbrix/default/wal/.wal_1, exists: false
+[2026-04-09 21:36:09.987] [__default__] [trace] [pid 2431 tid 44946092] loader_t: initialization complete
+[2026-04-09 21:36:09.987] [__default__] [trace] [pid 2431 tid 44946092] loader_t::load: PHASE 1 - Loading data from disk WITHOUT actors
+[2026-04-09 21:36:09.987] [__default__] [trace] [pid 2431 tid 44946092] loader_t::load: no disk configured, returning empty state
+[2026-04-09 21:36:09.987] [__default__] [trace] [pid 2431 tid 44946092] spaces::manager_wal start
+[2026-04-09 21:36:09.987] [__default__] [trace] [pid 2431 tid 44946092] manager_wal_replicate_t::create_wal_worker index=0 count=2
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_wal_replicate_t::create_wal_worker index=1 count=2
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_wal_replicate_t start thread pool
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::manager_wal finish
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::manager_disk start
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_disk start
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_disk create_agent : agent_disk_1
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] agent_disk::create
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_disk create_agent : agent_disk_2
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] agent_disk::create
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_disk finish
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::manager_disk finish
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::manager_index start
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::manager_index finish
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::manager_dispatcher start
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::manager_dispatcher_t
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::manager_dispatcher finish
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::manager_dispatcher create dispatcher
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t: spawned 4 executors with WAL/Disk/Index addresses
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_index_t::sync: disk_address set
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::PHASE 2.3 - Initializing manager_dispatcher from loaded state
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::init_from_state: populating storage
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::init_from_state: initialized 0 databases
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::init_from_state: complete - 0 collections
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::PHASE 2.5 complete
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::PHASE 3 complete
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] spaces::spaces() final
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] loader_t: destructor
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] wrapper_dispatcher_t::send_plan session: 3551519538, $create_database: tmp 
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan session: 3551519538, $create_database: tmp
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: dispatching to executor
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t:create_database tmp
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: create_database_t
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_disk_t::append_database , session : 3551519538 , database : tmp
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_wal_replicate_t::create_database tmp
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946150] wal_replicate_t::create_database tmp, session: 3551519538
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_disk_t::flush , session : 3551519538 , wal_id : 2
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946092] manager_disk_t::flush batch size: 1
+[2026-04-09 21:36:09.988] [__default__] [trace] [pid 2431 tid 44946151] agent_disk::append_database , database : tmp
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] wrapper_dispatcher_t::send_plan session: 5327279310, $create_collection: tmp.t0 
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan session: 5327279310, $create_collection: tmp.t0
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: dispatching to executor
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t:create_collection tmp.t0
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: create_collection_t
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_disk_t::append_collection , session : 5327279310 , database : tmp , collection : t0
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_disk_t::create_storage , session : 5327279310 , name : tmp.t0
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_index_t::register_collection: tmp.t0
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_wal_replicate_t::create_collection tmp::t0
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946152] wal_replicate_t::create_collection tmp::t0, session: 5327279310
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_disk_t::flush , session : 5327279310 , wal_id : 3
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_disk_t::flush batch size: 1
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946150] agent_disk::append_collection , database : tmp , collection : t0
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] wrapper_dispatcher_t::execute session: 7103039080
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] wrapper_dispatcher_t::send_plan session: 7103039080, $aggregate: {$raw_data: {$rows: 4}, $group: {avg(age): {$avg: "age"}, avg(extra): {$avg: "extra"}}} 
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan session: 7103039080, $aggregate: {$raw_data: {$rows: 4}, $group: {avg(age): {$avg: "age"}, avg(extra): {$avg: "extra"}}}
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: default case, validating types
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: validate_types ok, validating schema
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: validation passed
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: dispatching to executor
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: calling execute_plan_impl
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t:execute_plan_impl: collection: tmp.t0, session: 7103039080
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946147] executor::execute_plan, session: 7103039080
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946147] executor::subplans count 1
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946147] executor::execute_sub_plan, session: 7103039080
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946147] executor::execute_plan : operators::operator_type::aggregate, session: 7103039080
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946147] executor::execute_sub_plan finished, success: true
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: execute_plan_impl returned
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 21:36:10.168] [__default__] [trace] [pid 2431 tid 44946092] manager_dispatcher_t::execute_plan: non processed type - aggregate_t
+[2026-04-09 21:36:10.356] [__default__] [trace] [pid 2431 tid 44946092] delete spaces
+[2026-04-09 21:36:10.356] [__default__] [trace] [pid 2431 tid 44946092] delete wrapper_dispatcher_t
+[2026-04-09 21:36:10.356] [__default__] [trace] [pid 2431 tid 44946092] delete manager_wal_replicate_t
+[2026-04-09 21:36:10.356] [__default__] [trace] [pid 2431 tid 44946092] delete wal_replicate_t
+[2026-04-09 21:36:10.356] [__default__] [trace] [pid 2431 tid 44946092] delete wal_replicate_t
+[2026-04-09 21:36:10.356] [__default__] [trace] [pid 2431 tid 44946092] delete manager_disk_t
+[2026-04-09 21:36:10.356] [__default__] [trace] [pid 2431 tid 44946092] delete agent_disk_t
+[2026-04-09 21:36:10.356] [__default__] [trace] [pid 2431 tid 44946092] delete agent_disk_t
+[2026-04-09 21:36:10.356] [__default__] [trace] [pid 2431 tid 44946092] delete manager_dispatcher_t

@@ -96,16 +96,21 @@ def test_measure_memory():
 
 
 def test_runs_for_size():
-    """Verify adaptive run counts."""
-    assert runs_for_size(500) == 100
-    assert runs_for_size(1_000) == 100
-    assert runs_for_size(5_000) == 50
-    assert runs_for_size(10_000) == 50
-    assert runs_for_size(50_000) == 30
-    assert runs_for_size(100_000) == 30
-    assert runs_for_size(500_000) == 20
-    assert runs_for_size(1_000_000) == 20
-    # Join scenarios get fewer runs (O(n²) is slow)
-    assert runs_for_size(1_000, is_join=True) == 20
-    assert runs_for_size(10_000, is_join=True) == 10
-    assert runs_for_size(100_000, is_join=True) == 5
+    """Verify adaptive run counts per scenario type."""
+    # Fast O(n) filter scenarios
+    assert runs_for_size(500, scenario="filter") == 100
+    assert runs_for_size(1_000, scenario="filter") == 100
+    assert runs_for_size(5_000, scenario="filter") == 50
+    assert runs_for_size(10_000, scenario="filter") == 50
+    assert runs_for_size(50_000, scenario="filter") == 30
+    assert runs_for_size(100_000, scenario="filter") == 30
+    assert runs_for_size(500_000, scenario="filter") == 20
+    assert runs_for_size(1_000_000, scenario="filter") == 20
+    # O(n*k) groupby
+    assert runs_for_size(1_000, scenario="groupby_agg") == 50
+    assert runs_for_size(10_000, scenario="groupby_agg") == 30
+    assert runs_for_size(100_000, scenario="groupby_agg") == 15
+    # O(n²) join scenarios get fewer runs
+    assert runs_for_size(1_000, scenario="join_filter") == 30
+    assert runs_for_size(5_000, scenario="join_filter") == 15
+    assert runs_for_size(10_000, scenario="join_filter") == 10

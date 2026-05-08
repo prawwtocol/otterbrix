@@ -56,6 +56,7 @@ _exported_symbols.extend([
 ])
 
 # Backwards compatibility: old SQL-based bindings
+# try to load old SQL-based bindings
 try:
     from .otterbrix import Client, Connection, Cursor, to_aggregate
     _exported_symbols.extend([

@@ -25,7 +25,8 @@ from .functions import _to_column_expr
 from .types import NumericType
 from ._typing import ColumnOrName
 
-from otterbrix import CountExpression
+from otterbrix import CountExpression, ColumnExpression
+from otterbrix.experimental.spark.context import SparkContext
 
 if TYPE_CHECKING:
     from ._typing import LiteralType
@@ -75,6 +76,11 @@ class Grouping:
             return self._type + '(' + columns + ')'
         return columns
 
+    def copy(self):
+        """Return a shallow copy so mutations don't leak across calls."""
+        import copy
+        return copy.copy(self)
+
 
 class GroupedData:
     """
@@ -118,24 +124,8 @@ class GroupedData:
         |  Bob|    2|
         +-----+-----+
         """
-        if self._df._lazy:
-            from .logical_plan import GroupByNode
-            group_cols = list(self._grouping._cols)
-            agg_exprs = [CountExpression(self.session.sparkContext.connection)]
-            group_keys = self._grouping._key_names
-            aggregations = [(None, 'count_all', 'count')]
-            return DataFrame(
-                relation=self._df.relation, session=self.session, lazy=True,
-                plan=GroupByNode(
-                    group_cols=group_cols, agg_exprs=agg_exprs,
-                    children=[self._df._plan],
-                    group_keys=group_keys, aggregations=aggregations,
-                )
-            )
-        from .logical_plan import _GroupedRelation
-        group_keys = self._grouping._key_names
-        aggregations = [(None, 'count_all', 'count')]
-        return DataFrame(_GroupedRelation(self._df.relation, group_keys, aggregations), self.session)
+        from .functions import count as count_func
+        return self.agg(count_func("*"))
 
     def mean(self, *cols: str) -> DataFrame:
         """Computes average values for each numeric columns for each group.
@@ -150,24 +140,9 @@ class GroupedData:
         agg_cols = list(cols)
         if not agg_cols:
             agg_cols = [field.name for field in self._df.schema if isinstance(field.dataType, NumericType)]
-        if self._df._lazy:
-            from .logical_plan import GroupByNode
-            group_cols = list(self._grouping._cols)
-            agg_exprs = [_to_column_expr(x).avg() for x in agg_cols]
-            group_keys = self._grouping._key_names
-            aggregations = [(c, 'avg', f'avg({c})') for c in agg_cols]
-            return DataFrame(
-                relation=self._df.relation, session=self.session, lazy=True,
-                plan=GroupByNode(
-                    group_cols=group_cols, agg_exprs=agg_exprs,
-                    children=[self._df._plan],
-                    group_keys=group_keys, aggregations=aggregations,
-                )
-            )
-        from .logical_plan import _GroupedRelation
-        group_keys = self._grouping._key_names
-        aggregations = [(c, 'avg', f'avg({c})') for c in agg_cols]
-        return DataFrame(_GroupedRelation(self._df.relation, group_keys, aggregations), self.session)
+        from .functions import avg as avg_func
+        agg_columns = [avg_func(c) for c in agg_cols]
+        return self.agg(*agg_columns)
 
     def avg(self, *cols: str) -> DataFrame:
         """Computes average values for each numeric columns for each group.
@@ -255,24 +230,9 @@ class GroupedData:
         agg_cols = list(cols)
         if not agg_cols:
             agg_cols = [field.name for field in self._df.schema if isinstance(field.dataType, NumericType)]
-        if self._df._lazy:
-            from .logical_plan import GroupByNode
-            group_cols = list(self._grouping._cols)
-            agg_exprs = [_to_column_expr(x).max() for x in agg_cols]
-            group_keys = self._grouping._key_names
-            aggregations = [(c, 'max', f'max({c})') for c in agg_cols]
-            return DataFrame(
-                relation=self._df.relation, session=self.session, lazy=True,
-                plan=GroupByNode(
-                    group_cols=group_cols, agg_exprs=agg_exprs,
-                    children=[self._df._plan],
-                    group_keys=group_keys, aggregations=aggregations,
-                )
-            )
-        from .logical_plan import _GroupedRelation
-        group_keys = self._grouping._key_names
-        aggregations = [(c, 'max', f'max({c})') for c in agg_cols]
-        return DataFrame(_GroupedRelation(self._df.relation, group_keys, aggregations), self.session)
+        from .functions import max as max_func
+        agg_columns = [max_func(c) for c in agg_cols]
+        return self.agg(*agg_columns)
 
     def min(self, *cols: str) -> DataFrame:
         """Computes the min value for each numeric column for each group.
@@ -319,24 +279,9 @@ class GroupedData:
         agg_cols = list(cols)
         if not agg_cols:
             agg_cols = [field.name for field in self._df.schema if isinstance(field.dataType, NumericType)]
-        if self._df._lazy:
-            from .logical_plan import GroupByNode
-            group_cols = list(self._grouping._cols)
-            agg_exprs = [_to_column_expr(x).min() for x in agg_cols]
-            group_keys = self._grouping._key_names
-            aggregations = [(c, 'min', f'min({c})') for c in agg_cols]
-            return DataFrame(
-                relation=self._df.relation, session=self.session, lazy=True,
-                plan=GroupByNode(
-                    group_cols=group_cols, agg_exprs=agg_exprs,
-                    children=[self._df._plan],
-                    group_keys=group_keys, aggregations=aggregations,
-                )
-            )
-        from .logical_plan import _GroupedRelation
-        group_keys = self._grouping._key_names
-        aggregations = [(c, 'min', f'min({c})') for c in agg_cols]
-        return DataFrame(_GroupedRelation(self._df.relation, group_keys, aggregations), self.session)
+        from .functions import min as min_func
+        agg_columns = [min_func(c) for c in agg_cols]
+        return self.agg(*agg_columns)
 
     def sum(self, *cols: str) -> DataFrame:
         """Computes the sum for each numeric columns for each group.
@@ -383,24 +328,9 @@ class GroupedData:
         agg_cols = list(cols)
         if not agg_cols:
             agg_cols = [field.name for field in self._df.schema if isinstance(field.dataType, NumericType)]
-        if self._df._lazy:
-            from .logical_plan import GroupByNode
-            group_cols = list(self._grouping._cols)
-            agg_exprs = [_to_column_expr(x).sum() for x in agg_cols]
-            group_keys = self._grouping._key_names
-            aggregations = [(c, 'sum', f'sum({c})') for c in agg_cols]
-            return DataFrame(
-                relation=self._df.relation, session=self.session, lazy=True,
-                plan=GroupByNode(
-                    group_cols=group_cols, agg_exprs=agg_exprs,
-                    children=[self._df._plan],
-                    group_keys=group_keys, aggregations=aggregations,
-                )
-            )
-        from .logical_plan import _GroupedRelation
-        group_keys = self._grouping._key_names
-        aggregations = [(c, 'sum', f'sum({c})') for c in agg_cols]
-        return DataFrame(_GroupedRelation(self._df.relation, group_keys, aggregations), self.session)
+        from .functions import sum as sum_func
+        agg_columns = [sum_func(c) for c in agg_cols]
+        return self.agg(*agg_columns)
 
     @overload
     def agg(self, *exprs: Column) -> DataFrame:
@@ -506,24 +436,14 @@ class GroupedData:
         else:
             assert all(isinstance(c, Column) for c in exprs), "all exprs should be Column"
             group_keys = self._grouping._key_names
-            aggregations = []
+
+            # Build C++ expression list: group keys + aggregation expressions
+            sc = SparkContext._active_spark_context
+            all_exprs = []
+            for key in group_keys:
+                all_exprs.append(ColumnExpression(key, sc))
             for c in exprs:
-                agg_info = getattr(c, '_agg_info', None)
-                if agg_info:
-                    aggregations.append(agg_info)
-            if self._df._lazy:
-                from .logical_plan import GroupByNode
-                group_cols = list(self._grouping._cols)
-                agg_exprs = [x.expr for x in exprs]
-                return DataFrame(
-                    relation=self._df.relation, session=self.session, lazy=True,
-                    plan=GroupByNode(
-                        group_cols=group_cols, agg_exprs=agg_exprs,
-                        children=[self._df._plan],
-                        group_keys=group_keys, aggregations=aggregations,
-                    )
-                )
-            from .logical_plan import _GroupedRelation
-            rel = _GroupedRelation(self._df.relation, group_keys, aggregations)
-        return DataFrame(rel, self.session)
+                all_exprs.append(c.expr)
+            new_relation = self._df.relation.group(*all_exprs)
+        return DataFrame(new_relation, self._df.session, lazy=self._df._lazy)
 

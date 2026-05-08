@@ -46,15 +46,12 @@ class DataFrame:
 
     def show(self, **kwargs) -> None:
         if self._lazy:
-            relation = self._execute_plan()
-            relation.show()
-            return
+            self.relation.optimize = True
         self.relation.show()
 
     def toPandas(self) -> "PandasDataFrame":
         if self._lazy:
-            relation = self._execute_plan()
-            return relation.df()
+            self.relation.optimize = True
         return self.relation.df()
 
     def createOrReplaceTempView(self, name: str) -> None:
@@ -277,8 +274,6 @@ class DataFrame:
         |  2|Alice|
         +---+-----+
         """
-        from .logical_plan import _SortedRelation
-
         if not cols:
             raise PySparkValueError(
                 error_class="CANNOT_BE_EMPTY",
@@ -360,15 +355,15 @@ class DataFrame:
 
         sort_keys = list(zip(col_names, asc_flags))
 
-        if self._lazy:
-            from .logical_plan import SortNode
-            return DataFrame(
-                relation=self.relation, session=self.session, lazy=True,
-                plan=SortNode(sort_exprs=columns, children=[self._plan], sort_keys=sort_keys)
-            )
-
-        rel = _SortedRelation(self.relation, sort_keys)
-        return DataFrame(rel, self.session)
+        # Route through C++ engine for both lazy and eager modes
+        resolved = []
+        for c in columns:
+            if isinstance(c, Column):
+                resolved.append(c.expr)
+            else:
+                resolved.append(c)
+        new_relation = self.relation.sort(*resolved)
+        return DataFrame(new_relation, self.session, lazy=self._lazy)
 
     orderBy = sort
 
@@ -434,8 +429,6 @@ class DataFrame:
         |  2|Alice|
         +---+-----+
         """
-        from .logical_plan import _FilteredRelation
-
         if isinstance(condition, Column):
             cond = condition.expr
         elif isinstance(condition, str):
@@ -446,25 +439,17 @@ class DataFrame:
                 message_parameters={"arg_name": "condition", "arg_type": type(condition).__name__},
             )
 
-        if self._lazy:
-            from .logical_plan import FilterNode
-            py_eval = condition._py_eval if isinstance(condition, Column) else None
-            refs = condition._referenced_columns if isinstance(condition, Column) and condition._referenced_columns else None
-            return DataFrame(
-                relation=self.relation, session=self.session, lazy=True,
-                plan=FilterNode(
-                    condition=cond, children=[self._plan],
-                    py_eval=py_eval, referenced_columns=refs,
-                )
-            )
+        # Route through C++ engine for both lazy and eager modes
+        if isinstance(condition, Column):
+            new_relation = self.relation.filter(condition.expr)
+            return DataFrame(new_relation, self.session, lazy=self._lazy)
 
-        # Eager mode: use Python-side filtering if a _py_eval predicate is available
-        if isinstance(condition, Column) and condition._py_eval is not None:
-            rel = _FilteredRelation(self.relation, condition._py_eval)
-            return DataFrame(rel, self.session)
-
-        rel = self.relation.filter(cond)
-        return DataFrame(rel, self.session)
+        # String condition fallback — C++ PyRelation.Filter() does not accept strings,
+        # so we convert to a Column expression first
+        raise RuntimeError(
+            f"String filter conditions are not supported via C++ engine. "
+            f"Use Column expressions instead: df.filter(col('x') > 5)"
+        )
 
     where = filter
 
@@ -481,14 +466,9 @@ class DataFrame:
                 cols.expr if isinstance(cols, Column) else ColumnExpression(cols, SparkContext._active_spark_context)
             ]
 
-        if self._lazy:
-            from .logical_plan import ProjectNode
-            return DataFrame(
-                relation=self.relation, session=self.session, lazy=True,
-                plan=ProjectNode(columns=projections, children=[self._plan])
-            )
+        # Route through C++ engine for both lazy and eager modes
         rel = self.relation.select(*projections)
-        return DataFrame(rel, self.session)
+        return DataFrame(rel, self.session, lazy=self._lazy)
 
     @property
     def columns(self) -> List[str]:
@@ -595,29 +575,8 @@ class DataFrame:
         +-----+---+
         """
 
-        from .logical_plan import _JoinedRelation
-
-        # Extract _py_eval from the condition Column(s) before converting
-        py_condition = None
         if on is not None and not isinstance(on, list):
             on = [on]  # type: ignore[assignment]
-
-        if on is not None:
-            assert isinstance(on, list)
-            # Combine _py_eval from all condition columns
-            py_evals = []
-            for x in on:
-                if isinstance(x, Column) and x._py_eval is not None:
-                    py_evals.append(x._py_eval)
-            if py_evals:
-                if len(py_evals) == 1:
-                    py_condition = py_evals[0]
-                else:
-                    py_condition = lambda row, _evals=py_evals: all(e(row) for e in _evals)
-            # If on is all strings (equi-join by column names), pass the list directly
-            # so _JoinedRelation can use hash join.
-            elif all(isinstance(x, str) for x in on):
-                py_condition = on
 
         def map_to_recognized_jointype(how):
             known_aliases = {
@@ -645,18 +604,40 @@ class DataFrame:
                 how = "inner"
             join_type = map_to_recognized_jointype(how)
 
-        if self._lazy:
-            from .logical_plan import JoinNode, ScanNode
-            other_plan = other._plan if other._lazy else ScanNode(relation=other.relation)
-            return DataFrame(
-                relation=self.relation, session=self.session, lazy=True,
-                plan=JoinNode(
-                    condition=on, join_type=how or "inner",
-                    children=[self._plan, other_plan]
-                )
-            )
-        result = _JoinedRelation(self.relation, other.relation, py_condition, join_type)
-        return DataFrame(result, self.session)
+        sc = SparkContext._active_spark_context
+
+        # Route through C++ engine for both lazy and eager modes
+        if on is not None:
+            assert isinstance(on, list)
+            all_strings = all(isinstance(x, str) for x in on)
+            if all_strings:
+                # Build C++ equality condition from string column names
+                cond_expr = None
+                for key in on:
+                    eq = ColumnExpression(key, sc).__eq__(ColumnExpression(key, sc))
+                    cond_expr = eq if cond_expr is None else cond_expr.__and__(eq)
+                new_relation = self.relation.join(other.relation, cond_expr, join_type)
+            else:
+                # Build condition expression from Column objects
+                cond_exprs = []
+                for x in on:
+                    if isinstance(x, Column):
+                        cond_exprs.append(x.expr)
+                    else:
+                        cond_exprs.append(x)
+                if len(cond_exprs) == 1:
+                    cond_expr = cond_exprs[0]
+                else:
+                    cond_expr = cond_exprs[0]
+                    for e in cond_exprs[1:]:
+                        cond_expr = cond_expr.__and__(e)
+                new_relation = self.relation.join(other.relation, cond_expr, join_type)
+        else:
+            if join_type == "cross":
+                new_relation = self.relation.cross(other.relation)
+            else:
+                new_relation = self.relation.join(other.relation, None, join_type)
+        return DataFrame(new_relation, self.session, lazy=self._lazy)
 
     def crossJoin(self, other: "DataFrame") -> "DataFrame":
         """Returns the cartesian product with another :class:`DataFrame`.
@@ -695,10 +676,9 @@ class DataFrame:
         | 16|  Bob|    85|
         +---+-----+------+
         """
-        if self._lazy:
-            raise NotImplementedError("crossJoin() is not supported in lazy mode.")
-        from .logical_plan import _JoinedRelation
-        return DataFrame(_JoinedRelation(self.relation, other.relation, None, "cross"), self.session)
+        # Route through C++ engine
+        new_relation = self.relation.cross(other.relation)
+        return DataFrame(new_relation, self.session, lazy=self._lazy)
 
     def alias(self, alias: str) -> "DataFrame":
         """Returns a new :class:`DataFrame` with an alias set.
@@ -792,11 +772,8 @@ class DataFrame:
         """
 
         if self._lazy:
-            from .logical_plan import LimitNode
-            return DataFrame(
-                relation=self.relation, session=self.session, lazy=True,
-                plan=LimitNode(count=num, children=[self._plan])
-            )
+            new_relation = self.relation.limit(num)
+            return DataFrame(new_relation, self.session, lazy=True)
         rel = self.relation.limit(num)
         return DataFrame(rel, self.session)
 
@@ -1174,9 +1151,7 @@ class DataFrame:
         3
         """
         if self._lazy:
-            relation = self._execute_plan()
-            return len(relation.fetchall())
-
+            self.relation.optimize = True
         count_rel = self.relation.count("*")
         return int(count_rel.fetchone()[0])
 
@@ -1210,142 +1185,57 @@ class DataFrame:
         new_rel = self.relation.project(*projections)
         return DataFrame(new_rel, self.session)
 
-    def collect(self, optimizer=None) -> List[Row]:
+    def _execute_plan(self, optimizer=None):
+        """DEPRECATED: All operations now route through C++ engine directly.
+
+        Returns the relation with the optimize flag set based on the optimizer parameter.
+        """
+        use_opt = True
+        if optimizer is not None and not optimizer._rules:
+            use_opt = False
+        if self._lazy and hasattr(self.relation, 'optimize'):
+            self.relation.optimize = use_opt
+        return self.relation
+
+    def explain(self, extended=False):
+        """Print the logical plan before and after optimization."""
+        from .optimizer import PlanOptimizer
+
+        plan = self._plan
+        if plan is None:
+            print("No logical plan available (C++ relation path)")
+            return
+
+        print("== Logical Plan ==")
+        self._print_plan(plan, indent=0)
+        print()
+
+        optimizer = PlanOptimizer()
+        optimized = optimizer.optimize(plan)
+        print("== Optimized Plan ==")
+        self._print_plan(optimized, indent=0)
+
+    @staticmethod
+    def _print_plan(node, indent=0):
+        prefix = "  " * indent
+        print(f"{prefix}{node!r}")
+        for child in node.children:
+            DataFrame._print_plan(child, indent + 1)
+
+    def collect(self, optimize=True) -> List[Row]:
 
         def construct_row(values, names) -> Row:
             row = tuple.__new__(Row, list(values))
             row.__fields__ = list(names)
             return row
 
-        if self._lazy:
-            relation = self._execute_plan(optimizer=optimizer)
-            columns = relation.columns
-            result = relation.fetchall()
-            return [construct_row(x, columns) for x in result]
-
+        if self._lazy and hasattr(self.relation, 'optimize'):
+            self.relation.optimize = optimize
         columns = self.relation.columns
         result = self.relation.fetchall()
-
         rows = [construct_row(x, columns) for x in result]
         return rows
 
-    def _execute_plan(self, optimizer=None):
-        """
-        Optimizes the logical plan tree, then converts it to a
-        PyRelation by traversing.
-
-        Parameters
-        ----------
-        optimizer : PlanOptimizer, optional
-            Custom optimizer. If None, uses default PlanOptimizer().
-            Pass PlanOptimizer(rules=[]) to skip optimization.
-        """
-        from .optimizer import PlanOptimizer
-
-        if optimizer is None:
-            optimizer = PlanOptimizer()
-        optimized_plan = optimizer.optimize(self._plan)
-        return self._convert_node(optimized_plan)
-
-    @staticmethod
-    def _format_plan(node, indent=0):
-        """Format a logical plan tree as a string with indentation."""
-        prefix = "    " * indent
-        connector = "+-- " if indent > 0 else ""
-        lines = [f"{prefix}{connector}{repr(node)}"]
-        for child in node.children:
-            lines.append(DataFrame._format_plan(child, indent + 1))
-        return "\n".join(lines)
-
-    def explain(self, extended=False):
-        """Print the logical plan before and after optimization.
-
-        Parameters
-        ----------
-        extended : bool
-            If True, show additional details (reserved for future use).
-        """
-        if not self._lazy or self._plan is None:
-            print("== Physical Plan ==")
-            print("(eager mode — no logical plan)")
-            return
-
-        from .optimizer import PlanOptimizer
-
-        original = self._format_plan(self._plan)
-        optimized_plan = PlanOptimizer().optimize(self._plan)
-        optimized = self._format_plan(optimized_plan)
-
-        print("== Logical Plan ==")
-        print(original)
-        print()
-        print("== Optimized Plan ==")
-        print(optimized)
-
-    def _convert_node(self, node):
-        from .logical_plan import (
-            ScanNode, FilterNode, ProjectNode, JoinNode,
-            GroupByNode, SortNode, LimitNode, _LimitedRelation,
-            _FilteredRelation, _ProjectedRelation, _SortedRelation
-        )
-        if isinstance(node, ScanNode):
-            return node.relation
-
-        if isinstance(node, FilterNode):
-            child_rel = self._convert_node(node.children[0])
-            if node.py_eval is not None:
-                return _FilteredRelation(child_rel, node.py_eval)
-            return child_rel.filter(node.condition)
-
-        if isinstance(node, ProjectNode):
-            child_rel = self._convert_node(node.children[0])
-            return _ProjectedRelation(child_rel, node.columns)
-
-        if isinstance(node, JoinNode):
-            # lazy execution. same O(n2)
-            left_rel = self._convert_node(node.children[0])
-            right_rel = self._convert_node(node.children[1])
-            from .logical_plan import _JoinedRelation
-            return _JoinedRelation(left_rel, right_rel, node.condition, node.join_type)
-
-        if isinstance(node, GroupByNode):
-            child_rel = self._convert_node(node.children[0])
-            from .logical_plan import _GroupedRelation
-            return _GroupedRelation(child_rel, node.group_keys, node.aggregations)
-
-        if isinstance(node, SortNode):
-            child_node = node.children[0]
-            # If the child is a ProjectNode, sort columns may have been projected
-            # away. Extend the projection to include sort columns, sort, then
-            # re-project to the original columns (mimics Spark optimizer).
-            if isinstance(child_node, ProjectNode) and node.sort_keys is not None:
-                proj_col_names = [str(c) for c in child_node.columns]
-                sort_col_names = [name for name, _ in node.sort_keys]
-                missing = [c for c in sort_col_names if c not in proj_col_names]
-                if missing:
-                    from otterbrix import ColumnExpression
-                    extended_cols = list(child_node.columns) + [
-                        ColumnExpression(c, SparkContext._active_spark_context)
-                        for c in missing
-                    ]
-                    extended_proj = ProjectNode(
-                        columns=extended_cols,
-                        children=list(child_node.children),
-                    )
-                    extended_rel = self._convert_node(extended_proj)
-                    sorted_rel = _SortedRelation(extended_rel, node.sort_keys)
-                    return _ProjectedRelation(sorted_rel, child_node.columns)
-
-            child_rel = self._convert_node(child_node)
-            if node.sort_keys is not None:
-                return _SortedRelation(child_rel, node.sort_keys)
-            return child_rel.sort(*node.sort_exprs)
-
-        if isinstance(node, LimitNode):
-            child_rel = self._convert_node(node.children[0])
-            return _LimitedRelation(child_rel, node.count)
-
-        raise ValueError(f"Unknown node type: {type(node)}")
 
 
 

@@ -1,0 +1,763 @@
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] spaces::spaces()
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: initializing
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: opening disk at /Users/seliverstow/Desktop/diploma33/otterbrix/test_collection_sql/wal
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: opening indexes metafile at /Users/seliverstow/Desktop/diploma33/otterbrix/test_collection_sql/wal/indexes_METADATA
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: WAL file path: /Users/seliverstow/Desktop/diploma33/otterbrix/test_collection_sql/wal/.wal_0, exists: true
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: opening WAL at /Users/seliverstow/Desktop/diploma33/otterbrix/test_collection_sql/wal/.wal_0
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: WAL file path: /Users/seliverstow/Desktop/diploma33/otterbrix/test_collection_sql/wal/.wal_1, exists: true
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: opening WAL at /Users/seliverstow/Desktop/diploma33/otterbrix/test_collection_sql/wal/.wal_1
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: initialization complete
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t::load: PHASE 1 - Loading data from disk WITHOUT actors
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: reading databases and collections
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: found database: schema
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: found collection: schema.table
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: reading documents - placeholder (columnar persistence TBD)
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: reading index definitions
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: read 0 index definitions
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: reading WAL checkpoint
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: last WAL id: 0
+[2026-04-09 16:36:07.540] [__default__] [trace] [pid 42313 tid 43862720] loader_t: reading WAL records for replay from 2 WAL files
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: last_wal_id from disk checkpoint: 0
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 2 type $create_database: schema (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 3 type $create_collection: schema.table (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 5 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 7 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 9 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 11 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 13 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 15 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 17 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 19 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 21 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 23 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 25 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 27 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 29 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 31 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.540] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 33 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 35 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 37 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 39 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 41 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 43 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 45 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 47 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 49 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 51 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 53 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 55 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 57 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 59 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 61 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 63 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: read WAL record id 65 type $insert: {$raw_data: {$rows: 100}} (will replay)
+[2026-04-09 16:36:07.541] [__default__] [debug] [pid 42313 tid 43862720] loader_t: scanned 33 WAL records, skipped 0 (already on disk), 33 to replay
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] loader_t: read 33 WAL records for replay
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] loader_t::load: PHASE 1 complete - loaded 1 databases, 1 collections, 0 index definitions, 33 WAL records
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] spaces::manager_wal start
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] manager_wal_replicate_t::create_wal_worker index=0 count=2
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] manager_wal_replicate_t::create_wal_worker index=1 count=2
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] manager_wal_replicate_t start thread pool
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] spaces::manager_wal finish
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] spaces::manager_disk start
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] manager_disk start
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] manager_disk create_agent : agent_disk_1
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] agent_disk::create
+[2026-04-09 16:36:07.541] [__default__] [trace] [pid 42313 tid 43862720] manager_disk create_agent : agent_disk_2
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] agent_disk::create
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] manager_disk finish
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::manager_disk finish
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::manager_index start
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::manager_index finish
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::manager_dispatcher start
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::manager_dispatcher_t
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::manager_dispatcher finish
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::manager_dispatcher create dispatcher
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t: spawned 4 executors with WAL/Disk/Index addresses
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] manager_index_t::sync: disk_address set
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::creating namespace: schema
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::creating computing table: schema.table
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] manager_disk_t::create_storage_sync , name : schema.table
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] manager_index_t::register_collection_sync: schema.table
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::PHASE 2.3 - Initializing manager_dispatcher from loaded state
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::init_from_state: populating storage
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::init_from_state: initialized 1 databases
+[2026-04-09 16:36:07.542] [__default__] [debug] [pid 42313 tid 43862720] manager_dispatcher_t::init_from_state: creating collection schema.table
+[2026-04-09 16:36:07.542] [__default__] [debug] [pid 42313 tid 43862720] manager_dispatcher_t::init_from_state: collection schema.table initialized
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::init_from_state: complete - 1 collections
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862720] spaces::replaying 33 WAL records across 2 collection groups
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 3 type $create_collection: schema.table (collection schema.table)
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $create_collection: schema.table 
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862811] spaces::replaying WAL record id 2 type $create_database: schema (collection schema.)
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $create_collection: schema.table
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862811] wrapper_dispatcher_t::execute session: 17757417670
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862811] wrapper_dispatcher_t::send_plan session: 17757417670, $create_database: schema 
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: validation error
+[2026-04-09 16:36:07.542] [__default__] [warning] [pid 42313 tid 43862810] spaces::failed to replay WAL record 3: collection already exists
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862811] manager_dispatcher_t::execute_plan session: 17757417670, $create_database: schema
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 5 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862811] manager_dispatcher_t::execute_plan: validation error
+[2026-04-09 16:36:07.542] [__default__] [warning] [pid 42313 tid 43862811] spaces::failed to replay WAL record 2: database already exists
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::write_data_chunk , session : 15981675903 , database : schema , collection : table , rows : 100
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 67
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 7 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1} 
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1}
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::remove
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::remove_documents , session : 15981675903 , database : schema , collection : table
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL delete_many
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::delete_many
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::delete_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 69
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush batch size: 1
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862806] agent_disk::remove_documents , database : schema , collection : table , 9 rows
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: delete_t
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 9 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} 
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1}
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862803] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862803] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.542] [__default__] [trace] [pid 42313 tid 43862803] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::update
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::remove_documents , session : 15981675903 , database : schema , collection : table
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL update_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::update_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::update_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 71
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush batch size: 1
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862805] agent_disk::remove_documents , database : schema , collection : table , 20 rows
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: update_t
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 11 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 73
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 13 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1} 
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1}
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::remove
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::remove_documents , session : 15981675903 , database : schema , collection : table
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL delete_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::delete_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::delete_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 75
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush batch size: 1
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862805] agent_disk::remove_documents , database : schema , collection : table , 20 rows
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: delete_t
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 15 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} 
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1}
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::update
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL update_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::update_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::update_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 77
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: update_t
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 17 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 79
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 19 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.543] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 81
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 21 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1} 
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1}
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::remove
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL delete_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::delete_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::delete_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 83
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: delete_t
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 23 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} 
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1}
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::update
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL update_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::update_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::update_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 85
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: update_t
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 25 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 87
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 27 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1} 
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1}
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::remove
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL delete_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::delete_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::delete_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 89
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: delete_t
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 29 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} 
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1}
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::update
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL update_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::update_many
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::update_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 91
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: update_t
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 31 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.544] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 93
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 33 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 95
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 35 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 97
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 37 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1} 
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1}
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::remove
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL delete_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::delete_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::delete_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 99
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: delete_t
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 39 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} 
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1}
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::update
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL update_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::update_many
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::update_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 101
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: update_t
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 41 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.545] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 103
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 43 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1} 
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1}
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::remove
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL delete_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::delete_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::delete_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 105
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: delete_t
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 45 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} 
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1}
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::update
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL update_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::update_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::update_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 107
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: update_t
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 47 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 109
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 49 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 111
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 51 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1} 
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1}
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::remove
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL delete_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::delete_many
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::delete_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 113
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: delete_t
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 53 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} 
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1}
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.546] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::update
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL update_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::update_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::update_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 115
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: update_t
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 55 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 117
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 57 type $delete: {$match: {"count": {$gt: #0}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1} 
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $delete: {$match: {"count": {$gt: #0}}, $limit: -1}
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::remove
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL delete_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::delete_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::delete_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 119
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: delete_t
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 59 type $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} (collection schema.table)
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1} 
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $update: {$upsert: 0, $match: {"count": {$lt: #1}}, $limit: -1}
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor: found waiting operator, type=3
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] full_scan::await_async_and_resume on schema.table
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor: after await_async_and_resume completed
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::update
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL update_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::update_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::update_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 121
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: update_t
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 61 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 15981675903 , wal_id : 123
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 63 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::subplans count 1
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862806] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862803] manager_disk_t::flush , session : 15981675903 , wal_id : 125
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] spaces::replaying WAL record id 65 type $insert: {$raw_data: {$rows: 100}} (collection schema.table)
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::execute session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] wrapper_dispatcher_t::send_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan session: 15981675903, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 15981675903
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.547] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan, session: 15981675903
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862801] executor::subplans count 1
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan, session: 15981675903
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862801] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862801] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862804] wal_replicate_t::insert_many schema::table, session: 15981675903
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862801] manager_disk_t::flush , session : 15981675903 , wal_id : 127
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862810] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] spaces::PHASE 2.5 complete
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] spaces::PHASE 3 - Skipping 0 indexes (WAL replay handled them)
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] spaces::PHASE 3 complete
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] spaces::spaces() final
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] loader_t: destructor
+[2026-04-09 16:36:07.548] [__default__] [debug] [pid 42313 tid 43862720] wrapper_client::wrapper_client()
+[2026-04-09 16:36:07.548] [__default__] [debug] [pid 42313 tid 43862720] wrapper_client::execute
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] wrapper_dispatcher_t::execute sql session: 19533159437
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] wrapper_dispatcher_t::execute session: 19533159437
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] wrapper_dispatcher_t::send_plan session: 19533159437, $create_database: schema 
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::execute_plan session: 19533159437, $create_database: schema
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::execute_plan: validation error
+[2026-04-09 16:36:07.548] [__default__] [debug] [pid 42313 tid 43862720] wrapper_client::execute
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] wrapper_dispatcher_t::execute sql session: 21308901204
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] wrapper_dispatcher_t::execute session: 21308901204
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] wrapper_dispatcher_t::send_plan session: 21308901204, $create_collection: schema.table 
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::execute_plan session: 21308901204, $create_collection: schema.table
+[2026-04-09 16:36:07.548] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::execute_plan: validation error
+[2026-04-09 16:36:07.595] [__default__] [debug] [pid 42313 tid 43862720] wrapper_client::execute
+[2026-04-09 16:36:07.595] [__default__] [trace] [pid 42313 tid 43862720] wrapper_dispatcher_t::execute sql session: 24860384738
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862720] wrapper_dispatcher_t::execute session: 24860384738
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862720] wrapper_dispatcher_t::send_plan session: 24860384738, $insert: {$raw_data: {$rows: 100}} 
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::execute_plan session: 24860384738, $insert: {$raw_data: {$rows: 100}}
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t:execute_plan_impl: collection: schema.table, session: 24860384738
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t:execute_plan_impl: calling executor[2]
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan, session: 24860384738
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862802] executor::subplans count 1
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan, session: 24860384738
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan : operators::operator_type::insert
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_sub_plan finished, success: true
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862802] executor::execute_plan: WAL insert_many
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862802] manager_wal_replicate_t::insert_many
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862805] wal_replicate_t::insert_many schema::table, session: 24860384738
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862802] manager_disk_t::flush , session : 24860384738 , wal_id : 129
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t:execute_plan_impl: executor returned, success: true
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::execute_plan: result received, success: true
+[2026-04-09 16:36:07.596] [__default__] [trace] [pid 42313 tid 43862720] manager_dispatcher_t::execute_plan: insert_t
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete wrapper_client
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete spaces
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete wrapper_dispatcher_t
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete manager_wal_replicate_t
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete wal_replicate_t
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete wal_replicate_t
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete manager_disk_t
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete agent_disk_t
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete agent_disk_t
+[2026-04-09 16:36:07.660] [__default__] [trace] [pid 42313 tid 43862720] delete manager_dispatcher_t

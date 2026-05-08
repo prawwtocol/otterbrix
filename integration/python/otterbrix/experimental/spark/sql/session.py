@@ -116,14 +116,9 @@ class SparkSession:
         return df
 
     def _maybe_make_lazy(self, df, lazy, schema=None):
-        """Wrap a DataFrame in lazy mode if requested."""
-        if not lazy:
-            return df
-        from .logical_plan import ScanNode
-        return DataFrame(
-            relation=df.relation, session=self, lazy=True,
-            plan=ScanNode(relation=df.relation, table_name=None, schema=schema)
-        )
+        if lazy:
+            df._lazy = True
+        return df
 
     def createDataFrame(
         self,

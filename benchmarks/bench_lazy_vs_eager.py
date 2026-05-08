@@ -2,14 +2,16 @@
 Benchmark: Lazy vs Eager DataFrame execution in OtterBrix Spark API.
 
 Scenarios:
-  1. filter          — df.filter(col("age") > threshold)
-  2. project+filter  — df.select("a","b").filter(col("a") > threshold)
-  3. chained_filters — df.filter(a).filter(b).filter(c)
-  4. groupby_agg     — df.groupBy("key").agg(sum("value"))
-  5. join+filter     — df1.join(df2, "id").filter(col("value") > threshold)
+  1. filter          — df.filter(col("age") > threshold)           O(n)
+  2. project+filter  — df.select("a","b").filter(col("a") > t)     O(n)
+  3. chained_filters — df.filter(a).filter(b).filter(c)            O(n)
+  4. groupby_agg     — df.groupBy("key").agg(sum("value"))         O(n*k)
+  5. join+filter     — df1.join(df2, "id").filter(col("v") > t)    O(n²)
 
 Modes: eager, lazy.
-Data sizes: 1_000, 10_000, 100_000, 1_000_000.
+
+Data sizes are per-scenario — fast O(n) scenarios run up to 1M rows,
+while O(n²) join uses smaller sizes to keep total runtime ~5-10 min.
 
 Data types covered: int (id, age), float (value), string (name, group_key).
 """
@@ -59,6 +61,27 @@ def generate_join_data(n: int) -> List[Tuple]:
 JOIN_SCHEMA = ["id", "extra_value"]
 
 
+# ---------------------------------------------------------------------------
+# Per-scenario data sizes & time budgets
+# ---------------------------------------------------------------------------
+# O(n) filter scenarios are cheap — test up to 1M rows.
+# O(n*k) groupby is moderate — cap at 100k (k=50 groups).
+# O(n²) join is expensive  — cap at 10k; add 5k for finer granularity.
+
+SIZES_FAST = [1_000, 10_000, 100_000]               # filter, project, chained
+SIZES_GROUPBY = [1_000, 10_000]                     # groupby_agg  (O(n*k) + transpose is very slow)
+SIZES_JOIN = [1_000, 5_000, 10_000]                 # join+filter, selectivity
+
+SCENARIO_SIZES = {
+    "filter":          SIZES_FAST,
+    "project_filter":  SIZES_FAST,
+    "chained_filters": SIZES_FAST,
+    "groupby_agg":     SIZES_GROUPBY,
+    "join_filter":     SIZES_JOIN,
+    "selectivity":     SIZES_JOIN,
+}
+
+# Fallback for --sizes CLI override (applies to all scenarios uniformly)
 DATA_SIZES = [1_000, 10_000, 100_000, 1_000_000]
 
 
@@ -67,21 +90,30 @@ DATA_SIZES = [1_000, 10_000, 100_000, 1_000_000]
 # ---------------------------------------------------------------------------
 
 WARMUP_RUNS = 2
-MEASURE_RUNS = 20  # default, overridden by runs_for_size()
 
 
-def runs_for_size(n: int, is_join: bool = False) -> int:
-    """Adaptive run count: more runs for small (noisy) sizes.
+def runs_for_size(n: int, scenario: str = "filter") -> int:
+    """Adaptive run count based on scenario complexity and data size.
 
-    Join scenarios use fewer runs because O(n²) nested-loop join
-    is inherently slow, especially in eager mode.
+    Fast O(n) scenarios get many runs for stable statistics.
+    Slow O(n²) join scenarios get fewer runs but still enough for t-test (>=10).
     """
+    is_join = scenario in ("join_filter", "selectivity")
+    is_groupby = scenario == "groupby_agg"
+
     if is_join:
         if n <= 1_000:
-            return 20
+            return 30
+        if n <= 5_000:
+            return 15
+        return 10                   # 10k: ~1s/run → 10 runs ≈ 10s
+    if is_groupby:
+        if n <= 1_000:
+            return 50
         if n <= 10_000:
-            return 10
-        return 5
+            return 30
+        return 15                   # 100k: ~1s/run → 15 runs ≈ 15s
+    # fast O(n) scenarios
     if n <= 1_000:
         return 100
     if n <= 10_000:
@@ -91,32 +123,39 @@ def runs_for_size(n: int, is_join: bool = False) -> int:
     return 20
 
 
-MAX_BENCH_SECONDS = 30  # time budget per scenario (excludes warmup)
+def time_budget(scenario: str) -> float:
+    """Per-scenario wall-clock budget in seconds (excludes warmup)."""
+    if scenario in ("join_filter", "selectivity"):
+        return 120          # O(n²) needs more headroom per size
+    if scenario == "groupby_agg":
+        return 60
+    return 30               # O(n) filter scenarios
 
 
 def measure(fn: Callable[[], Any], warmup: int = WARMUP_RUNS,
-            runs: int = MEASURE_RUNS) -> Dict[str, Any]:
+            runs: int = 20, budget: float = 30.0) -> Dict[str, Any]:
     """Run fn() warmup+runs times, return timing stats in seconds.
 
-    Respects MAX_BENCH_SECONDS time budget: if elapsed time exceeds the
-    budget, stops early (but always does at least 5 runs for statistics).
+    Respects *budget* (wall-clock seconds, excludes warmup).
+    Stops early once the budget is exceeded but always does at least
+    MIN_RUNS iterations so that t-test / bootstrap CI stay meaningful.
     """
     from math import sqrt
+
+    MIN_RUNS = 8  # minimum for Welch's t-test + bootstrap
 
     for _ in range(warmup):
         fn()
 
     gc.disable()
     times = []
-    min_runs = 5
     wall_start = time.perf_counter()
     for i in range(runs):
         t0 = time.perf_counter_ns()
         fn()
         t1 = time.perf_counter_ns()
         times.append((t1 - t0) / 1e9)
-        # Check time budget after minimum runs
-        if i >= min_runs - 1 and (time.perf_counter() - wall_start) > MAX_BENCH_SECONDS:
+        if i >= MIN_RUNS - 1 and (time.perf_counter() - wall_start) > budget:
             break
     gc.enable()
 
@@ -214,7 +253,7 @@ def scenario_filter(spark: SparkSession, data: List[Tuple], lazy: bool) -> Calla
     """filter(age > 50)"""
     df = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=lazy)
     def run():
-        df.filter(col("age") > 50).collect()
+        df.filter(col("age") > 50).collect(optimize=True)
     return run
 
 
@@ -228,7 +267,7 @@ def scenario_project_filter(spark: SparkSession, data: List[Tuple], lazy: bool) 
     df = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=lazy)
     def run():
         if lazy:
-            df.select("id", "name", "age").filter(col("age") > 50).collect()
+            df.select("id", "name", "age").filter(col("age") > 50).collect(optimize=True)
         else:
             df.filter(col("age") > 50).collect()
     return run
@@ -238,7 +277,7 @@ def scenario_chained_filters(spark: SparkSession, data: List[Tuple], lazy: bool)
     """filter(age>20).filter(age<80).filter(value>100)"""
     df = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=lazy)
     def run():
-        df.filter(col("age") > 20).filter(col("age") < 80).filter(col("value") > 100).collect()
+        df.filter(col("age") > 20).filter(col("age") < 80).filter(col("value") > 100).collect(optimize=True)
     return run
 
 
@@ -246,7 +285,7 @@ def scenario_groupby(spark: SparkSession, data: List[Tuple], lazy: bool) -> Call
     """groupBy('group_key').agg(sum('value'))"""
     df = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=lazy)
     def run():
-        df.groupBy("group_key").agg(spark_sum("value")).collect()
+        df.groupBy("group_key").agg(spark_sum("value")).collect(optimize=True)
     return run
 
 
@@ -256,7 +295,7 @@ def scenario_join_filter(spark: SparkSession, data: List[Tuple],
     df1 = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=lazy)
     df2 = spark.createDataFrame(join_data, schema=JOIN_SCHEMA, lazy=lazy)
     def run():
-        df1.join(df2, "id").filter(col("value") > 500).collect()
+        df1.join(df2, "id").filter(col("value") > 500).collect(optimize=True)
     return run
 
 
@@ -280,22 +319,19 @@ def scenario_join_filter_selectivity(spark: SparkSession, data: List[Tuple],
 
     mode: 'eager', 'lazy_no_opt', or 'lazy_opt'
     """
-    from otterbrix.experimental.spark.sql.optimizer import PlanOptimizer
-
     lazy = mode != "eager"
     df1 = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=lazy)
     df2 = spark.createDataFrame(join_data, schema=JOIN_SCHEMA, lazy=lazy)
 
     if mode == "lazy_no_opt":
-        no_opt = PlanOptimizer(rules=[])
         def run():
-            df1.join(df2, "id").filter(col("value") > threshold).collect(optimizer=no_opt)
+            df1.join(df2, "id").filter(col("value") > threshold).collect(optimize=False)
     elif mode == "eager":
         def run():
             df1.join(df2, "id").filter(col("value") > threshold).collect()
     else:  # lazy_opt
         def run():
-            df1.join(df2, "id").filter(col("value") > threshold).collect()
+            df1.join(df2, "id").filter(col("value") > threshold).collect(optimize=True)
     return run
 
 
@@ -327,20 +363,39 @@ def count_plan_nodes(node) -> int:
 # Main runner
 # ---------------------------------------------------------------------------
 
-def _build_task_list(sizes):
-    """Pre-compute the list of (label, ...) tasks for progress tracking."""
+def _build_task_list(sizes_override=None):
+    """Pre-compute the list of (label, ...) tasks for progress tracking.
+
+    When *sizes_override* is given (from --sizes CLI), it applies to ALL
+    scenarios uniformly.  Otherwise each scenario uses its own size list
+    from SCENARIO_SIZES.
+    """
     tasks = []
-    for size in sizes:
-        for name in SCENARIOS:
+
+    def _sizes_for(scenario_key):
+        if sizes_override is not None:
+            return sizes_override
+        return SCENARIO_SIZES.get(scenario_key, SIZES_FAST)
+
+    # Regular scenarios (filter, project_filter, chained_filters, groupby_agg)
+    for name in SCENARIOS:
+        for size in _sizes_for(name):
             for lazy in [False, True]:
                 mode = "lazy" if lazy else "eager"
                 tasks.append(("scenario", size, name, mode, lazy))
+
+    # Join scenario
+    for size in _sizes_for("join_filter"):
         for lazy in [False, True]:
             mode = "lazy" if lazy else "eager"
             tasks.append(("join", size, "join_filter", mode, lazy))
+
+    # Selectivity sweep
+    for size in _sizes_for("selectivity"):
         for threshold, pct in SELECTIVITY_POINTS:
             for mode in ["eager", "lazy_no_opt", "lazy_opt"]:
                 tasks.append(("selectivity", size, f"join_filter_sel_{pct}", mode, threshold))
+
     return tasks
 
 
@@ -370,19 +425,27 @@ def _make_result(scenario, mode, size, stats, mem_mb, plan_nodes):
 def run_benchmarks(sizes=None):
     from tqdm import tqdm
 
-    if sizes is None:
-        sizes = DATA_SIZES
-
     spark = SparkSession.builder.master("local[2]").appName("benchmark").getOrCreate()
     results = []
 
-    tasks = _build_task_list(sizes)
+    sizes_override = sizes  # None means use per-scenario defaults
+    tasks = _build_task_list(sizes_override)
     pbar = tqdm(total=len(tasks), desc="Benchmarks", unit="bench",
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]")
 
-    current_size = None
-    data = None
-    join_data = None
+    # Cache generated data per size to avoid regenerating
+    data_cache: Dict[int, List[Tuple]] = {}
+    join_cache: Dict[int, List[Tuple]] = {}
+
+    def _get_data(size):
+        if size not in data_cache:
+            data_cache[size] = generate_main_data(size)
+        return data_cache[size]
+
+    def _get_join_data(size):
+        if size not in join_cache:
+            join_cache[size] = generate_join_data(size)
+        return join_cache[size]
 
     for task in tasks:
         kind = task[0]
@@ -390,21 +453,25 @@ def run_benchmarks(sizes=None):
         scenario_name = task[2]
         mode = task[3]
 
-        # Generate data when size changes
-        if size != current_size:
-            current_size = size
-            data = generate_main_data(size)
-            join_data = generate_join_data(size)
+        data = _get_data(size)
+        join_data = _get_join_data(size)
 
-        is_join = kind in ("join", "selectivity")
-        n_runs = runs_for_size(size, is_join=is_join)
+        # Determine scenario key for runs/budget lookup
+        scenario_key = scenario_name
+        if kind == "join":
+            scenario_key = "join_filter"
+        elif kind == "selectivity":
+            scenario_key = "selectivity"
+
+        n_runs = runs_for_size(size, scenario=scenario_key)
+        budget = time_budget(scenario_key)
         pbar.set_postfix_str(f"{scenario_name} [{mode}] n={size:,} runs={n_runs}")
 
         if kind == "scenario":
             lazy = task[4]
             factory = SCENARIOS[scenario_name]
             fn = factory(spark, data, lazy)
-            stats = measure(fn, runs=n_runs)
+            stats = measure(fn, runs=n_runs, budget=budget)
             mem_mb = measure_memory(fn)
             plan_nodes = None
             if lazy:
@@ -423,7 +490,7 @@ def run_benchmarks(sizes=None):
         elif kind == "join":
             lazy = task[4]
             fn = scenario_join_filter(spark, data, join_data, lazy)
-            stats = measure(fn, runs=n_runs)
+            stats = measure(fn, runs=n_runs, budget=budget)
             mem_mb = measure_memory(fn)
             plan_nodes = None
             if lazy:
@@ -436,7 +503,7 @@ def run_benchmarks(sizes=None):
         elif kind == "selectivity":
             threshold = task[4]
             fn = scenario_join_filter_selectivity(spark, data, join_data, mode, threshold)
-            stats = measure(fn, runs=n_runs)
+            stats = measure(fn, runs=n_runs, budget=budget)
             mem_mb = measure_memory(fn)
             plan_nodes = None
             if mode in ("lazy_no_opt", "lazy_opt"):
@@ -671,13 +738,20 @@ def plot_results(df):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Benchmark lazy vs eager DataFrame execution")
+    parser = argparse.ArgumentParser(
+        description="Benchmark lazy vs eager DataFrame execution",
+        epilog=("Default per-scenario sizes: "
+                f"filter/project/chained={SIZES_FAST}, "
+                f"groupby={SIZES_GROUPBY}, "
+                f"join/selectivity={SIZES_JOIN}. "
+                "Use --sizes to override ALL scenarios with a uniform list."),
+    )
     parser.add_argument(
         "--sizes", type=int, nargs="+", default=None,
-        help="Data sizes to test (default: 1000, 10000, 100000, 1000000)"
+        help="Override data sizes for ALL scenarios (e.g. --sizes 1000 5000)",
     )
     args = parser.parse_args()
-    sizes = args.sizes if args.sizes else DATA_SIZES
+    sizes = args.sizes if args.sizes else None  # None → per-scenario defaults
 
     results = run_benchmarks(sizes=sizes)
     df = save_csv(results)

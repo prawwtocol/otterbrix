@@ -11,7 +11,9 @@ namespace components::logical_plan {
         full,
         left,
         right,
-        cross
+        cross,
+        semi,
+        anti
     };
 
     class node_join_t final : public node_t {
