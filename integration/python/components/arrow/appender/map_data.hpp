@@ -30,10 +30,10 @@ namespace components::arrow::appender {
     
     		auto &key_type = map_extension->key();
     		auto &value_type = map_extension->value();
-    		auto internal_struct = std::make_unique<ArrowAppendData>();
-    		internal_struct->child_data.push_back(ArrowAppender::InitializeChild(key_type, capacity));
-    		internal_struct->child_data.push_back(ArrowAppender::InitializeChild(value_type, capacity));
-    
+    		auto internal_struct = std::make_unique<ArrowAppendData>(result.options);
+    		internal_struct->child_data.push_back(ArrowAppender::InitializeChild(key_type, capacity, result.options));
+    		internal_struct->child_data.push_back(ArrowAppender::InitializeChild(value_type, capacity, result.options));
+
     		result.child_data.push_back(std::move(internal_struct));
     	}
     

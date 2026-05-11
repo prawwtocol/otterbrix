@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../arrow.hpp"
+#include "../arrow_appender.hpp"
 #include "../arrow_buffer.hpp"
 
 #include <components/types/types.hpp>
@@ -13,7 +14,7 @@
 namespace components::arrow::appender {
 
     struct ArrowAppendData;
-    
+
     //===--------------------------------------------------------------------===//
     // Arrow append data
     //===--------------------------------------------------------------------===//
@@ -25,16 +26,19 @@ namespace components::arrow::appender {
     // input_size: The total size of the 'input' Vector.
     typedef void (*append_vector_t)(ArrowAppendData &append_data, vector::vector_t &input, uint64_t from, uint64_t to, uint64_t input_size);
     typedef void (*finalize_t)(ArrowAppendData &append_data, const types::complex_logical_type &type, ArrowArray *result);
-    
+
     // This struct is used to save state for appending a column
     // afterwards the ownership is passed to the arrow array, as 'private_data'
     // FIXME: we should separate the append state variables from the variables required by the ArrowArray into
     // ArrowAppendState
     struct ArrowAppendData {
-    	explicit ArrowAppendData() {
+    	explicit ArrowAppendData(ArrowOptions options_p = {}) : options(options_p) {
     		dictionary.release = nullptr;
     		arrow_buffers.resize(3);
     	}
+
+    	//! Arrow options propagated from the owning ArrowAppender into every child
+    	ArrowOptions options;
     
     	//! Getters for the Buffers
     	ArrowBuffer &GetValidityBuffer() {

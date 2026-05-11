@@ -17,8 +17,8 @@ namespace components::arrow {
     using types::logical_type;
     using types::complex_logical_type;
 
-    void ArrowConverter::ToArrowArray(vector::data_chunk_t &input, ArrowArray *out_array) {
-    	ArrowAppender appender(input.types(), input.size());
+    void ArrowConverter::ToArrowArray(vector::data_chunk_t &input, ArrowArray *out_array, ArrowOptions options) {
+    	ArrowAppender appender(input.types(), input.size(), options);
     	appender.Append(input, 0, input.size(), input.size());
     	*out_array = appender.Finalize();
     }
@@ -75,9 +75,9 @@ namespace components::arrow {
     	child.dictionary = nullptr;
     }
     
-    void SetArrowFormat(OtterbrixArrowSchemaHolder &root_holder, ArrowSchema &child, const complex_logical_type &type);
-    
-    void SetArrowMapFormat(OtterbrixArrowSchemaHolder &root_holder, ArrowSchema &child, const complex_logical_type &type) {
+    void SetArrowFormat(OtterbrixArrowSchemaHolder &root_holder, ArrowSchema &child, const complex_logical_type &type, const ArrowOptions &options);
+
+    void SetArrowMapFormat(OtterbrixArrowSchemaHolder &root_holder, ArrowSchema &child, const complex_logical_type &type, const ArrowOptions &options) {
     	child.format = "+m";
     	//! Map has one child which is a struct
     	child.n_children = 1;
@@ -88,10 +88,10 @@ namespace components::arrow {
     	InitializeChild(root_holder.nested_children.back()[0], root_holder);
     	child.children = &root_holder.nested_children_ptr.back()[0];
     	child.children[0]->name = "entries";
-    	SetArrowFormat(root_holder, **child.children, type.child_type());
+    	SetArrowFormat(root_holder, **child.children, type.child_type(), options);
     }
-    
-    void SetArrowFormat(OtterbrixArrowSchemaHolder &root_holder, ArrowSchema &child, const complex_logical_type &type) {
+
+    void SetArrowFormat(OtterbrixArrowSchemaHolder &root_holder, ArrowSchema &child, const complex_logical_type &type, const ArrowOptions &options) {
     	switch (type.type()) {
     	case logical_type::BOOLEAN:
     		child.format = "b";
@@ -151,14 +151,14 @@ namespace components::arrow {
     		break;
     	}
     	case logical_type::LIST: {
-    		if (arrow_use_list_view) {
-    			if (arrow_offset_size == ArrowOffsetSize::LARGE) {
+    		if (options.use_list_view) {
+    			if (options.offset_size == ArrowOffsetSize::LARGE) {
     				child.format = "+vL";
     			} else {
     				child.format = "+vl";
     			}
     		} else {
-    			if (arrow_offset_size == ArrowOffsetSize::LARGE) {
+    			if (options.offset_size == ArrowOffsetSize::LARGE) {
     				child.format = "+L";
     			} else {
     				child.format = "+l";
@@ -172,7 +172,7 @@ namespace components::arrow {
     		InitializeChild(root_holder.nested_children.back()[0], root_holder);
     		child.children = &root_holder.nested_children_ptr.back()[0];
     		child.children[0]->name = "l";
-    		SetArrowFormat(root_holder, **child.children, type.child_type());
+    		SetArrowFormat(root_holder, **child.children, type.child_type(), options);
     		break;
     	}
     	case logical_type::STRUCT: {
@@ -194,7 +194,7 @@ namespace components::arrow {
     			root_holder.owned_type_names.push_back(AddName(child_types[type_idx].alias()));
     
     			child.children[type_idx]->name = root_holder.owned_type_names.back().get();
-    			SetArrowFormat(root_holder, *child.children[type_idx], child_types[type_idx]);
+    			SetArrowFormat(root_holder, *child.children[type_idx], child_types[type_idx], options);
     		}
     		break;
     	}
@@ -213,11 +213,11 @@ namespace components::arrow {
     		root_holder.nested_children_ptr.back().push_back(&root_holder.nested_children.back()[0]);
     		InitializeChild(root_holder.nested_children.back()[0], root_holder);
     		child.children = &root_holder.nested_children_ptr.back()[0];
-    		SetArrowFormat(root_holder, **child.children, child_type);
+    		SetArrowFormat(root_holder, **child.children, child_type, options);
     		break;
     	}
     	case logical_type::MAP: {
-    		SetArrowMapFormat(root_holder, child, type);
+    		SetArrowMapFormat(root_holder, child, type, options);
     		break;
     	}
     	default:
@@ -226,13 +226,13 @@ namespace components::arrow {
     }
     
     void ArrowConverter::ToArrowSchema(ArrowSchema *out_schema, const std::vector<complex_logical_type> &types,
-                                       const std::vector<std::string> &names) {
+                                       const std::vector<std::string> &names, ArrowOptions options) {
     	assert(out_schema);
     	assert(types.size() == names.size());
     	uint64_t column_count = types.size();
     	// Allocate as unique_ptr first to cleanup properly on error
     	auto root_holder = std::make_unique<OtterbrixArrowSchemaHolder>();
-    
+
     	// Allocate the children
     	root_holder->children.resize(column_count);
     	root_holder->children_ptrs.resize(column_count, nullptr);
@@ -241,22 +241,22 @@ namespace components::arrow {
     	}
     	out_schema->children = root_holder->children_ptrs.data();
     	out_schema->n_children = static_cast<int64_t>(column_count);
-    
+
     	// Store the schema
     	out_schema->format = "+s"; // struct apparently
     	out_schema->flags = 0;
     	out_schema->metadata = nullptr;
     	out_schema->name = "otterbrix_query_result";
     	out_schema->dictionary = nullptr;
-    
+
     	// Configure all child schemas
     	for (uint64_t col_idx = 0; col_idx < column_count; col_idx++) {
     		root_holder->owned_column_names.push_back(AddName(names[col_idx]));
     		auto &child = root_holder->children[col_idx];
     		InitializeChild(child, *root_holder, names[col_idx]);
-    		SetArrowFormat(*root_holder, child, types[col_idx]);
+    		SetArrowFormat(*root_holder, child, types[col_idx], options);
     	}
-    
+
     	// Release ownership to caller
     	out_schema->private_data = root_holder.release();
     	out_schema->release = ReleaseOtterbrixArrowSchema;

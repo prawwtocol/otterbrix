@@ -20,10 +20,10 @@ namespace components::arrow {
     // ArrowAppender
     //===--------------------------------------------------------------------===//
     
-    ArrowAppender::ArrowAppender(std::vector<complex_logical_type> types_p, const uint64_t initial_capacity) 
-        : types(std::move(types_p)) {
+    ArrowAppender::ArrowAppender(std::vector<complex_logical_type> types_p, const uint64_t initial_capacity, ArrowOptions options_p)
+        : types(std::move(types_p)), options(options_p) {
         for (auto &type : types) {
-            auto entry = InitializeChild(type, initial_capacity);
+            auto entry = InitializeChild(type, initial_capacity, options);
             root_data.push_back(std::move(entry));
         }
     }
@@ -266,14 +266,14 @@ namespace components::arrow {
     		InitializeAppenderForType<appender::ArrowFixedSizeListData>(append_data);
     		break;
     	case logical_type::LIST: {
-    		if (arrow_use_list_view) {
-    			if (arrow_offset_size == ArrowOffsetSize::LARGE) {
+    		if (append_data.options.use_list_view) {
+    			if (append_data.options.offset_size == ArrowOffsetSize::LARGE) {
     				InitializeAppenderForType<appender::ArrowListViewData<>>(append_data);
     			} else {
     				InitializeAppenderForType<appender::ArrowListViewData<int32_t>>(append_data);
     			}
     		} else {
-    			if (arrow_offset_size == ArrowOffsetSize::LARGE) {
+    			if (append_data.options.offset_size == ArrowOffsetSize::LARGE) {
     				InitializeAppenderForType<appender::ArrowListData<>>(append_data);
     			} else {
     				InitializeAppenderForType<appender::ArrowListData<int32_t>>(append_data);
@@ -290,10 +290,10 @@ namespace components::arrow {
     	}
     }
     
-    std::unique_ptr<ArrowAppendData> ArrowAppender::InitializeChild(const complex_logical_type &type, const uint64_t capacity) {
-    	auto result = std::make_unique<ArrowAppendData>();
+    std::unique_ptr<ArrowAppendData> ArrowAppender::InitializeChild(const complex_logical_type &type, uint64_t capacity, const ArrowOptions &options) {
+    	auto result = std::make_unique<ArrowAppendData>(options);
     	InitializeFunctionPointers(*result, type);
-    
+
     	const auto byte_count = (capacity + 7) / 8;
     	result->GetValidityBuffer().reserve(byte_count);
     	result->initialize(*result, type, capacity);
