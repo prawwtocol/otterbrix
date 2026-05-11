@@ -163,7 +163,7 @@ namespace otterbrix {
         if (!rel) {
             return nullptr;
         }
-        return PyExecuteRelation(env, *rel, stream_result);
+        return PyExecuteRelation(env, *rel, stream_result, optimize_);
     }
 
 
