@@ -1,0 +1,110 @@
+## Просмотренные файлы коммита `0ef8b3ff737e0b1ebe74079bf825f828dfc0ec51`
+
+- `benchmarks/bench_lazy_vs_eager.py`
+- `benchmarks/test_bench_smoke.py`
+- `components/compute/kernel_signature.cpp`
+- `components/compute/kernels/aggregate.cpp`
+- `components/logical_plan/CMakeLists.txt`
+- `components/logical_plan/node_join.hpp`
+- `components/logical_plan/optimizer.cpp`
+- `components/logical_plan/optimizer.hpp`
+- `components/physical_plan/operators/aggregate/operator_func.cpp`
+- `components/physical_plan/operators/operator_join.cpp`
+- `components/physical_plan/operators/operator_join.hpp`
+- `components/physical_plan/operators/operator_match.cpp`
+- `components/physical_plan/operators/predicates/utils.cpp`
+- `integration/python/connection_environment/connection_environment.cpp`
+- `integration/python/connection_environment/connection_environment.hpp`
+- `integration/python/connection_environment/relation/relation.cpp`
+- `integration/python/connection_environment/relation/relation.hpp`
+- `integration/python/connection_environment/relation/relation_factory.cpp`
+- `integration/python/connection_environment/relation/relation_factory.hpp`
+- `integration/python/main.cpp`
+- `integration/python/otterbrix/__init__.py`
+- `integration/python/otterbrix/experimental/spark/sql/dataframe.py`
+- `integration/python/otterbrix/experimental/spark/sql/group.py`
+- `integration/python/otterbrix/experimental/spark/sql/logical_plan.py`
+- `integration/python/otterbrix/experimental/spark/sql/session.py`
+- `integration/python/otterbrix_wrapper/pyrelation.cpp`
+- `integration/python/otterbrix_wrapper/pyrelation.hpp`
+- `integration/python/otterbrix_wrapper/relation_initialize.cpp`
+- `integration/python/pyutil.hpp`
+- `integration/python/pywrapper.py`
+- `integration/python/scan/python_replacement_scan.cpp`
+- `integration/python/util/box_render.cpp`
+- `services/dispatcher/dispatcher.cpp`
+- `services/dispatcher/validate_logical_plan.cpp`
+
+## Пропущены без построчного разбора (PNG, CSV, артефакты прогона)
+
+### PNG (`benchmarks/`)
+
+- `benchmarks/chart_chained_filters.png`
+- `benchmarks/chart_filter.png`
+- `benchmarks/chart_groupby_agg.png`
+- `benchmarks/chart_join_filter.png`
+- `benchmarks/chart_join_filter_sel_1.png`
+- `benchmarks/chart_join_filter_sel_10.png`
+- `benchmarks/chart_join_filter_sel_50.png`
+- `benchmarks/chart_join_filter_sel_90.png`
+- `benchmarks/chart_project_filter.png`
+- `benchmarks/chart_speedup_summary.png`
+- `benchmarks/chart_throughput.png`
+
+### Сгенерированные / случайные / логи и WAL
+
+- `benchmarks/results.csv`
+- `commit-1ec6118-changed-files-tree.md`
+- `integration/cpp/vppp.txt`
+- `default/log/python-1775759769.txt`
+- `default/wal/.wal_0`
+- `default/wal/.wal_1`
+- `default/wal/METADATA`
+- `default/wal/WAL_ID`
+- `default/wal/indexes_METADATA`
+- `test_collection_connections/log/python-1775740991.txt`
+- `test_collection_connections/log/python-1775741749.txt`
+- `test_collection_connections/log/python-1775741754.txt`
+- `test_collection_connections/log/python-1775741760.txt`
+- `test_collection_connections/log/python-1775741767.txt`
+- `test_collection_connections/log/python-1775741780.txt`
+- `test_collection_connections/log/python-1775742190.txt`
+- `test_collection_connections/log/python-1775742741.txt`
+- `test_collection_connections/log/python-1775742748.txt`
+- `test_collection_connections/log/python-1775742831.txt`
+- `test_collection_connections/log/python-1775742840.txt`
+- `test_collection_connections/wal/.wal_0`
+- `test_collection_connections/wal/.wal_1`
+- `test_collection_connections/wal/METADATA`
+- `test_collection_connections/wal/WAL_ID`
+- `test_collection_connections/wal/indexes_METADATA`
+- `test_collection_sql/log/python-1775740991.txt`
+- `test_collection_sql/log/python-1775741749.txt`
+- `test_collection_sql/log/python-1775741754.txt`
+- `test_collection_sql/log/python-1775741760.txt`
+- `test_collection_sql/log/python-1775741767.txt`
+- `test_collection_sql/log/python-1775741780.txt`
+- `test_collection_sql/log/python-1775742190.txt`
+- `test_collection_sql/log/python-1775742741.txt`
+- `test_collection_sql/log/python-1775742748.txt`
+- `test_collection_sql/log/python-1775742831.txt`
+- `test_collection_sql/log/python-1775742840.txt`
+- `test_collection_sql/wal/.wal_0`
+- `test_collection_sql/wal/.wal_1`
+- `test_collection_sql/wal/METADATA`
+- `test_collection_sql/wal/WAL_ID`
+- `test_collection_sql/wal/indexes_METADATA`
+- `test_collection_sql2/log/python-1775740991.txt`
+- `test_collection_sql2/log/python-1775741749.txt`
+- `test_collection_sql2/log/python-1775741754.txt`
+- `test_collection_sql2/log/python-1775741760.txt`
+- `test_collection_sql2/log/python-1775742190.txt`
+- `test_collection_sql2/log/python-1775742741.txt`
+- `test_collection_sql2/log/python-1775742749.txt`
+- `test_collection_sql2/log/python-1775742831.txt`
+- `test_collection_sql2/log/python-1775742841.txt`
+- `test_collection_sql2/wal/.wal_0`
+- `test_collection_sql2/wal/.wal_1`
+- `test_collection_sql2/wal/METADATA`
+- `test_collection_sql2/wal/WAL_ID`
+- `test_collection_sql2/wal/indexes_METADATA`

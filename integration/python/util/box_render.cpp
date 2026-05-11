@@ -7,20 +7,6 @@
 #include <stdexcept>
 
 
-/**
-Рендер таблицы (ASCII box) для курсора переведён с документа на курсор + logical_value_t.
-
-Было: цикл до 100 итераций с cursor->next(), по каждой строке — объект value (document) и большой switch по logical_type: чтение через get_bool / get_int / … по json_pointer из имени столбца.
-
-Стало:
-
-цикл while (idx < 100 && cursor->has_next());
-cursor->advance() вместо next();
-для каждого столбца cursor->value(col) и util::LogicalValueToString(val) — единый вывод без перечисления типов вручную.
-Подключён #include <util/util.hpp> для LogicalValueToString.
-
-Зачем: тот же переход, что в pyresult.cpp — курсор отдаёт значения как logical_value, без document API.
-*/
 namespace otterbrix {
 
     using namespace tabulate;

@@ -18,6 +18,7 @@ namespace components::logical_plan {
 
         void extract_from_param(const expressions::param_storage& param,
                                 std::set<std::string>& result) {
+            // из параметра выражения достаёт либо ключ столбца, либо рекурсивно обходит вложенное выражение.
             if (std::holds_alternative<expressions::key_t>(param)) {
                 result.insert(std::get<expressions::key_t>(param).as_string());
             } else if (std::holds_alternative<expressions::expression_ptr>(param)) {
@@ -28,6 +29,7 @@ namespace components::logical_plan {
         }
 
         void collect_subtree_columns(const node_ptr& node, std::set<std::string>& cols) {
+            // для узла data собирает алиасы столбцов из чанка; для остальных спускается к детям (нужно понять, какие имена доступны под веткой join)
             if (!node) return;
             if (node->type() == node_type::data_t) {
                 auto* data = static_cast<node_data_t*>(node.get());
@@ -50,6 +52,7 @@ namespace components::logical_plan {
         if (!expr) return result;
 
         switch (expr->group()) {
+            // обход по типам выражений
             case expressions::expression_group::compare: {
                 auto* cmp = static_cast<expressions::compare_expression_t*>(expr.get());
                 if (expressions::is_union_compare_condition(cmp->type())) {
@@ -100,6 +103,7 @@ namespace components::logical_plan {
     }
 
     node_ptr plan_optimizer_t::pushdown_filter(node_ptr node) {
+        // Обход снизу вверх. Интерес представляют узлы node_aggregate_t с дочерним match и без group и sort то есть внешний чистый фильтр над одним источником
         if (!node) return node;
 
         // Recurse into children first (bottom-up)
