@@ -214,16 +214,7 @@ namespace otterbrix {
     }
 
     pyexpr_ptr PyExpression::SortExpression(components::expressions::sort_order type, const PyExpression& expr) {
-        //todo remove to factory
-        auto sort_expr = std::visit([&type](const auto& expr) -> Expression {
-            using T = std::decay_t<decltype(expr)>;
-            if constexpr (std::is_same_v<T, expressions::key_t>) {
-                return expressions::make_sort_expression(expr, type);
-            }
-            throw std::runtime_error("Undefined sort expression"); 
-        }, expr.expr);
-        return make_shared<PyExpression>(sort_expr, expr.factory);
-        
+        return make_shared<PyExpression>(expr.factory->SortExpression(expr.expr, type), expr.factory);
     }
 
 } // namespace otterbrix

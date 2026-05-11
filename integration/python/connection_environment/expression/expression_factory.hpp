@@ -42,7 +42,8 @@ namespace otterbrix {
 
         Expression SortExpression(const string& arg);
 
-        Expression SortExpression(const Expression& arg);
+        Expression SortExpression(const Expression& arg,
+                                  components::expressions::sort_order order = components::expressions::sort_order::asc);
             
 
         Expression AggregationUnaryExpression(const string& function_name,

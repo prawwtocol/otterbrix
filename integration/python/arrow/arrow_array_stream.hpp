@@ -63,9 +63,10 @@ public:
 
 private:
 	//! We transform a TableFilterSet to an Arrow Expression Object
-    //todo std::unordered_map
-	static py::object TransformFilter(components::table::table_filer_set_t &filters, unordered_map<idx_t, string> &columns,
-	                                  unordered_map<idx_t, idx_t> filter_to_col, const ArrowTableType &arrow_table);
+	static py::object TransformFilter(components::table::table_filer_set_t &filters,
+	                                  std::unordered_map<idx_t, string> &columns,
+	                                  std::unordered_map<idx_t, idx_t> filter_to_col,
+	                                  const ArrowTableType &arrow_table);
 
 	static py::object ProduceScanner(py::object &arrow_scanner, py::handle &arrow_obj_handle,
 	                                 ArrowStreamParameters &parameters);

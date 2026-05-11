@@ -37,11 +37,11 @@ namespace otterbrix {
         return make_sort_expression(expressions::key_t(space->dispatcher()->resource(), arg), sort_order::asc);
     }
 
-    Expression ExpressionFactory::SortExpression(const Expression& arg) {
-        return std::visit([](const auto& expr) -> Expression {
+    Expression ExpressionFactory::SortExpression(const Expression& arg, sort_order order) {
+        return std::visit([order](const auto& expr) -> Expression {
             using T = std::decay_t<decltype(expr)>;
             if constexpr (std::is_same_v<T, expressions::key_t>) {
-                return Expression(make_sort_expression(expr, sort_order::asc));
+                return Expression(make_sort_expression(expr, order));
             } else if constexpr (std::is_same_v<T, expressions::expression_ptr>) {
                 if (expr->group() == expression_group::sort) {
                     return Expression(expr);

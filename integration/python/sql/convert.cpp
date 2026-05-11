@@ -27,7 +27,11 @@ logical_value_t to_value(std::pmr::memory_resource* resource, const py::handle& 
     if (py::isinstance<py::bool_>(obj)) {
         return logical_value_t{resource, obj.cast<bool>()};
     } else if (py::isinstance<py::int_>(obj)) {
-        return logical_value_t{resource, obj.cast<int64_t>()}; //TODO x64 long -> int64_t x32 long -> int32_t
+        if constexpr (sizeof(long) >= sizeof(int64_t)) {
+            return logical_value_t{resource, obj.cast<int64_t>()};
+        } else {
+            return logical_value_t{resource, obj.cast<int32_t>()};
+        }
     } else if (py::isinstance<py::float_>(obj)) {
         return logical_value_t{resource, obj.cast<double>()};
     } else if (py::isinstance<py::bytes>(obj)) {
