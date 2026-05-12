@@ -58,8 +58,8 @@ namespace otterbrix {
                 }
                 bool is_count = aggregate_expr->function_name() == "count";
                 if (is_count) {
-                    name = (aggregate_expr->key().is_null()?"count":aggregate_expr->key().as_string());
-                    type = types::logical_type::INTEGER;
+                    name = "count";
+                    type = types::logical_type::UBIGINT;
                 } else {
 
                     const auto& param = aggregate_expr->params().front();
@@ -74,7 +74,7 @@ namespace otterbrix {
                     }   
                     auto base_type = find_type(founded_name.first, initial);
                     if (aggregate_expr->function_name() == "avg") {
-                        type = types::logical_type::FLOAT;
+                        type = types::logical_type::DOUBLE;
                     } else {
                         type = base_type;
                     }
@@ -126,9 +126,14 @@ namespace otterbrix {
         vector<column_definition_t> operator()(const Relation::Join& join) {
             vector<column_definition_t> result;
             auto left = join.left->GetColumns();
+            // Semi/anti joins only return left columns
+            if (join.join_type == components::logical_plan::join_type::semi ||
+                join.join_type == components::logical_plan::join_type::anti) {
+                return left;
+            }
             auto right = join.right->GetColumns();
             result.reserve(left.size() + right.size());
- 
+
             for (const auto& col : left) {
                 result.emplace_back(col.name(), col.type());
             }
