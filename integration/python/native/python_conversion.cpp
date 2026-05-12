@@ -420,7 +420,10 @@ namespace otterbrix
     bool TryTransformPythonIntegerToDouble(logical_value_t& res, py::handle ele)
     {
         double number = PyLong_AsDouble(ele.ptr());
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
         if (number == -1.0 && PyErr_Occurred())
+#pragma GCC diagnostic pop
         {
             PyErr_Clear();
             return false;
@@ -431,28 +434,28 @@ namespace otterbrix
 
     void TransformPythonUnsigned(uint64_t value, logical_value_t& res)
     {
-        if (value > (uint64_t)std::numeric_limits<uint32_t>::max())
+        if (value > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()))
         {
             res = logical_value_t(std::pmr::get_default_resource(), value);
         }
-        else if (value > (int64_t)std::numeric_limits<uint16_t>::max())
+        else if (value > static_cast<uint64_t>(std::numeric_limits<uint16_t>::max()))
         {
-            res = logical_value_t(std::pmr::get_default_resource(), (uint32_t)value);
+            res = logical_value_t(std::pmr::get_default_resource(), static_cast<uint32_t>(value));
         }
-        else if (value > (int64_t)std::numeric_limits<uint16_t>::max())
+        else if (value > static_cast<int64_t>(std::numeric_limits<uint16_t>::max()))
         {
-            res = logical_value_t(std::pmr::get_default_resource(), (uint16_t)value);
+            res = logical_value_t(std::pmr::get_default_resource(), static_cast<uint16_t>(value));
         }
         else
         {
-            res = logical_value_t(std::pmr::get_default_resource(), (uint8_t)value);
+            res = logical_value_t(std::pmr::get_default_resource(), static_cast<uint8_t>(value));
         }
     }
 
     bool TrySniffPythonNumeric(logical_value_t& res, int64_t value)
     {
-        if (value < (int64_t)std::numeric_limits<int32_t>::min() || value > (int64_t)std::numeric_limits<
-            int32_t>::max())
+        if (value < static_cast<int64_t>(std::numeric_limits<int32_t>::min()) || value > static_cast<int64_t>(std::numeric_limits<
+            int32_t>::max()))
         {
             res = logical_value_t(std::pmr::get_default_resource(), value);
         }
@@ -460,7 +463,7 @@ namespace otterbrix
         {
             // To match default otterbrix behavior, numeric values without a specified type should not become a smaller type
             // than INT32
-            res = logical_value_t(std::pmr::get_default_resource(), (int32_t)value);
+            res = logical_value_t(std::pmr::get_default_resource(), static_cast<int32_t>(value));
         }
         return true;
     }
@@ -612,7 +615,7 @@ namespace otterbrix
             }
         case logical_type::UINTEGER:
             {
-                if (value < 0 || value > (int64_t)std::numeric_limits<uint32_t>::max())
+                if (value < 0 || value > static_cast<int64_t>(std::numeric_limits<uint32_t>::max()))
                 {
                     return false;
                 }
@@ -621,7 +624,7 @@ namespace otterbrix
             }
         case logical_type::USMALLINT:
             {
-                if (value < 0 || value > (int64_t)std::numeric_limits<uint16_t>::max())
+                if (value < 0 || value > static_cast<int64_t>(std::numeric_limits<uint16_t>::max()))
                 {
                     return false;
                 }
@@ -630,7 +633,7 @@ namespace otterbrix
             }
         case logical_type::UTINYINT:
             {
-                if (value < 0 || value > (int64_t)std::numeric_limits<uint8_t>::max())
+                if (value < 0 || value > static_cast<int64_t>(std::numeric_limits<uint8_t>::max()))
                 {
                     return false;
                 }
@@ -818,8 +821,7 @@ namespace otterbrix
             }
         case PythonObjectType::ByteArray:
             {
-                auto byte_array = ele;
-                const_data_ptr_t bytes = const_data_ptr_cast(PyByteArray_AsString(byte_array.ptr())); // NOLINT
+                // const_data_ptr_t bytes = const_data_ptr_cast(PyByteArray_AsString(byte_array.ptr())); // NOLINT
                 // idx_t byte_length = PyUtil::PyByteArrayGetSize(byte_array);                           // NOLINT
                 // return logical_value_t::Blob(bytes, byte_length);
                 throw std::runtime_error("OtterBrix doens\'t support byte array conversation");

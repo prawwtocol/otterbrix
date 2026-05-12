@@ -20,9 +20,9 @@ using components::vector::vector_t;
 // todo check data leak(set_data don't free old data, "get_data" is nullptr?
 template <class T>
 void ScanNumpyColumn(py::array &numpy_col, idx_t stride, idx_t offset, vector_t &out, idx_t count) {
-	auto src_ptr = (T*)numpy_col.data();
+	auto src_ptr = static_cast<const T*>(numpy_col.data());
 	if (stride == sizeof(T)) {
-		out.set_data(reinterpret_cast<std::byte*>(src_ptr + offset));
+		out.set_data(reinterpret_cast<std::byte*>(const_cast<T*>(src_ptr + offset)));
 	} else {
 		auto tgt_ptr = out.data<T>();
 		for (idx_t i = 0; i < count; i++) {
@@ -33,7 +33,7 @@ void ScanNumpyColumn(py::array &numpy_col, idx_t stride, idx_t offset, vector_t 
 
 template <class T, class V>
 void ScanNumpyCategoryTemplated(py::array &column, idx_t offset, vector_t &out, idx_t count) {
-	auto src_ptr = (T*)column.data();
+	auto src_ptr = static_cast<const T*>(column.data());
 	auto tgt_ptr = out.data<T>(); 
 	auto &tgt_mask = out.validity();
 	for (idx_t i = 0; i < count; i++) {
@@ -89,7 +89,7 @@ template <class T>
 void ScanNumpyFpColumn(PandasColumnBindData &bind_data, const T *src_ptr, idx_t stride, idx_t count, idx_t offset, vector_t &out) {
 	auto &mask = out.validity(); 
 	if (stride == sizeof(T)) {
-		out.set_data((std::byte*)(src_ptr + offset)); // NOLINT
+		out.set_data(reinterpret_cast<std::byte*>(const_cast<T*>(src_ptr + offset))); // NOLINT
 		// Turn NaN values into NULL
 		auto tgt_ptr = out.data<T>();
 		for (idx_t i = 0; i < count; i++) {
@@ -131,7 +131,7 @@ static std::string_view DecodePythonUnicode(T *codepoints, idx_t codepoint_count
         } else if (cp <= 0x10FFFF) {
             utf8_length += 4;
         } else {
-            utf8_length += -1;
+            utf8_length -= 1;
         }
 
 		//int len = Utf8Proc::CodepointLength(int(codepoints[i]));
@@ -145,7 +145,7 @@ static std::string_view DecodePythonUnicode(T *codepoints, idx_t codepoint_count
 	//auto target = result.GetDataWriteable();
     // utf8proc_reencode for array
 	for (idx_t i = 0; i < codepoint_count; i++) {
-		sz = utf8proc_encode_char(codepoints[i], target);
+		sz = utf8proc_encode_char(static_cast<utf8proc_int32_t>(codepoints[i]), target);
 		assert(sz >= 1);
 		target += sz;
 	}
@@ -207,7 +207,6 @@ void ScanNumpyObject(PyObject *object, idx_t offset, vector_t &out) {
 void NumpyScan::ScanObjectColumn(PyObject **col, idx_t stride, idx_t count, idx_t offset, vector_t &out) {
 	// numpy_col is a sequential list of objects, that make up one "column" (Vector)
 	out.set_vector_type(components::vector::vector_type::FLAT);
-	auto &mask = out.validity();
 	PythonGILWrapper gil; // We're creating python objects here, so we need the GIL
 
 	if (stride == sizeof(PyObject *)) {
@@ -230,7 +229,6 @@ void NumpyScan::Scan(PandasColumnBindData &bind_data, idx_t count, idx_t offset,
 	assert(bind_data.pandas_col->Backend() == PandasColumnBackend::NUMPY);
 	auto &numpy_col = reinterpret_cast<PandasNumpyColumn &>(*bind_data.pandas_col);
 	auto &array = numpy_col.array;
-	auto stride = numpy_col.stride;
 
 	switch (bind_data.numpy_type.type) {
 	case NumpyNullableType::BOOL:
@@ -269,7 +267,7 @@ void NumpyScan::Scan(PandasColumnBindData &bind_data, idx_t count, idx_t offset,
 	case NumpyNullableType::STRING:
 	case NumpyNullableType::OBJECT: {
 		// Get the source pointer of the numpy array
-		auto src_ptr = (PyObject **)array.data(); // NOLINT
+		auto src_ptr = reinterpret_cast<PyObject **>(const_cast<void *>(array.data())); // NOLINT
 		const bool is_object_col = bind_data.numpy_type.type == NumpyNullableType::OBJECT;
 		if (is_object_col && out.type().type() != components::types::logical_type::STRING_LITERAL) {
 			//! We have determined the underlying logical type of this object column
@@ -329,17 +327,20 @@ void NumpyScan::Scan(PandasColumnBindData &bind_data, idx_t count, idx_t offset,
 				out_mask.set_invalid(row);
 				continue;
 			}
-			if (/*!PyUnicode_Check(val) &&*/ PyUnicode_IS_COMPACT_ASCII(val)) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+			if (/*!PyUnicode_Check(val) &&*/ PyUnicode_IS_COMPACT_ASCII(val))
+#pragma GCC diagnostic pop
+			{
 				// ascii string: we can zero copy
 				tgt_ptr[row] = std::string_view(PyUtil::PyUnicodeData(val_handle), PyUtil::PyUnicodeGetLength(val_handle));
 			} else {
 				// unicode gunk
-				auto ascii_obj = reinterpret_cast<PyASCIIObject *>(val);
 				auto unicode_obj = reinterpret_cast<PyCompactUnicodeObject *>(val);
 				// compact unicode string: is there utf8 data available?
 				if (unicode_obj->utf8) {
 					// there is! zero copy
-					tgt_ptr[row] = std::string_view(const_char_ptr_cast(unicode_obj->utf8), unicode_obj->utf8_length);
+					tgt_ptr[row] = std::string_view(const_char_ptr_cast(unicode_obj->utf8), static_cast<std::string_view::size_type>(unicode_obj->utf8_length));
 				} else if (PyUtil::PyUnicodeIsCompact(unicode_obj) &&
 				           !PyUtil::PyUnicodeIsASCII(unicode_obj)) { // NOLINT
 					auto kind = PyUtil::PyUnicodeKind(val_handle);
