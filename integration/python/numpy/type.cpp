@@ -177,7 +177,7 @@ components::types::complex_logical_type NumpyToLogicalType(const NumpyType &col_
 		return logical_type::TIMESTAMP_US;
 	}
 	default:
-		throw std::runtime_error("No known conversion for NumpyNullableType "+to_string(uint8_t(col_type.type))+" to logical_type");
+		throw std::runtime_error("No known conversion for NumpyNullableType "+to_string(static_cast<unsigned int>(col_type.type))+" to logical_type");
 	}
 }
 
