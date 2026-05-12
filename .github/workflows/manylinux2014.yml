@@ -56,7 +56,7 @@ jobs:
 
       - name: Install system packages
         run: |
-          yum install -y ninja-build python3-pip python3-devel wget unzip zip flex bison
+          yum install -y ninja-build python3-pip python3-devel wget unzip zip flex bison git
 
       - name: Set env conan dependencies
         run: |
@@ -69,7 +69,8 @@ jobs:
       - name: Use conan
         run: |
           conan profile detect --force
-          conan remote add otterbrix http://conan.otterbrix.com
+          git clone --depth 1 https://github.com/duckstax/conan-duckstax.git /tmp/conan-duckstax
+          conan remote add duckstax /tmp/conan-duckstax --type=local-recipes-index --insert 0
 
       - name: Download and Install conan dependencies
         run: |
