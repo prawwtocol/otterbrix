@@ -22,7 +22,7 @@ RUN apt update && \
 RUN    pip3 install --no-cache-dir conan==2.20.0 "cmake<4" && \
        conan profile detect --force && \
        git clone --depth 1 https://github.com/duckstax/conan-duckstax.git /tmp/conan-duckstax && \
-       conan remote add duckstax /tmp/conan-duckstax --type=local-recipes-index --insert 0
+       conan remote add duckstax /tmp/conan-duckstax --type=local-recipes-index
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 

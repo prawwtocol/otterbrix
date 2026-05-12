@@ -25,7 +25,7 @@ jobs:
           python3 -m pip install conan==2.20.0
           conan profile detect --force
           git clone --depth 1 https://github.com/duckstax/conan-duckstax.git /tmp/conan-duckstax
-          conan remote add duckstax /tmp/conan-duckstax --type=local-recipes-index --insert 0
+          conan remote add duckstax /tmp/conan-duckstax --type=local-recipes-index
 
       - name: download dependencies
         run: |
