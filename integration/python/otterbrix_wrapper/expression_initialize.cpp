@@ -261,7 +261,7 @@ namespace otterbrix {
     	m.def("__ror__", &PyExpression::Or, docs);
     }
     
-    static void InitializeImplicitConversion(py::class_<PyExpression, shared_ptr<PyExpression>> &m) {
+    static void InitializeImplicitConversion(py::class_<PyExpression, shared_ptr<PyExpression>> & /*m*/) {
     	// m.def(py::init<>([](const string &name) { return PyExpression::ColumnExpression(name); }));
         /*m.def(py::init<>([](const py::object &obj) {
     		auto val = TransformPythonValue(obj);
