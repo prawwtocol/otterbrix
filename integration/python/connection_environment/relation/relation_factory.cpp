@@ -167,7 +167,7 @@ namespace otterbrix {
         return make_shared<Relation>(relation, count);
     }
 
-    shared_ptr<Relation> RelationFactory::CreateFromSelect(components::logical_plan::node_ptr plan) {
+    shared_ptr<Relation> RelationFactory::CreateFromSelect(components::logical_plan::node_ptr /*plan*/) {
         //return Relation::make_relation(boost::static_pointer_cast<components::logical_plan::node_aggregate_t>(plan));
         return nullptr;
     }
