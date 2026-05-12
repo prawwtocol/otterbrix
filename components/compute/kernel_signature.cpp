@@ -40,11 +40,16 @@ namespace components::compute {
         , output_types(std::move(output_types)) {}
 
     bool kernel_signature_t::matches_inputs(const std::pmr::vector<types::complex_logical_type>& types) const {
-        if (types.size() != input_types.size()) {
+        if (input_types.empty()) {
+            return types.empty();
+        }
+        if (types.size() < input_types.size()) {
             return false;
         }
         for (size_t i = 0; i < types.size(); ++i) {
-            if (!input_types[i].matches(types[i])) {
+            // For extra inputs beyond the signature, repeat the last matcher (variadic)
+            const auto& matcher = input_types[std::min(i, input_types.size() - 1)];
+            if (!matcher.matches(types[i])) {
                 return false;
             }
         }
