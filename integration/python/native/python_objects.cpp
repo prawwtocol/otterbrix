@@ -8,6 +8,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <ctime>
+#include <memory_resource>
 #include <sstream>
 #include <stdexcept>
 #include <limits>
@@ -128,9 +129,9 @@ logical_value_t PyDecimalCastSwitch(std::pmr::memory_resource* r, PyDecimal &dec
 		return OP::template Operation<int64_t>(r, decimal.signed_value, decimal.digits, width, scale);
 	//}
 	/*if (width > DecimalWidth<int16_t>::max) {
-		return OP::template Operation<int32_t>(r, decimal.signed_value, decimal.digits, width, scale);
+		return OP::template Operation<int32_t>(decimal.signed_value, decimal.digits, width, scale);
 	}
-	return OP::template Operation<int16_t>(r, decimal.signed_value, decimal.digits, width, scale);
+	return OP::template Operation<int16_t>(decimal.signed_value, decimal.digits, width, scale);
     */
 }
 
