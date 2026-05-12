@@ -34,17 +34,24 @@ from .functions import _to_column_expr, col
 from otterbrix.experimental.spark.context import SparkContext
 
 class DataFrame:
-    def __init__(self, relation: otterbrix.OtterBrixPyRelation, session: "SparkSession"):
+    def __init__(self, relation: otterbrix.OtterBrixPyRelation, session: "SparkSession",
+                 *, lazy=False, plan=None):
         self.relation = relation
         self.session = session
+        self._lazy = lazy
+        self._plan = plan
         self._schema = None
         if self.relation is not None:
             self._schema = otterbrix_to_spark_schema(self.relation.columns, self.relation.types)
 
     def show(self, **kwargs) -> None:
+        if self._lazy:
+            self.relation.optimize = True
         self.relation.show()
 
     def toPandas(self) -> "PandasDataFrame":
+        if self._lazy:
+            self.relation.optimize = True
         return self.relation.df()
 
     def createOrReplaceTempView(self, name: str) -> None:
@@ -82,7 +89,7 @@ class DataFrame:
         raise NotImplementedError
 
     def withColumnRenamed(self, columnName: str, newName: str) -> "DataFrame":
-        if getattr(self, "_lazy", False):
+        if self._lazy:
             raise NotImplementedError("withColumnRenamed() is not supported in lazy mode.")
         if columnName not in self.relation:
             raise ValueError(f"DataFrame does not contain a column named {columnName}")
@@ -96,7 +103,7 @@ class DataFrame:
         return DataFrame(rel, self.session)
 
     def withColumn(self, columnName: str, col: Column) -> "DataFrame":
-        if getattr(self, "_lazy", False):
+        if self._lazy:
             raise NotImplementedError("withColumn() is not supported in lazy mode.")
         if not isinstance(col, Column):
             raise PySparkTypeError(
@@ -275,23 +282,49 @@ class DataFrame:
         if len(cols) == 1 and isinstance(cols[0], list):
             cols = cols[0]
 
+        def _parse_expr_str(expr_str):
+            """Parse Expression string like 'col: 1' or 'col: -1' into (name, direction).
+            Returns (name, 1) for ascending, (name, -1) for descending, (name, 0) for no direction."""
+            if expr_str.endswith(': 1'):
+                return expr_str[:-3], 1
+            elif expr_str.endswith(': -1'):
+                return expr_str[:-4], -1
+            return expr_str, 0
+
         columns = []
+        col_names = []
+        explicit_dirs = []  # 1=asc, -1=desc, 0=unspecified
         for c in cols:
             _c = c
             if isinstance(c, str):
+                col_names.append(c)
+                explicit_dirs.append(0)
                 _c = col(c)
             elif isinstance(c, int) and not isinstance(c, bool):
                 # ordinal is 1-based
                 if c > 0:
                     _c = self[c - 1]
+                    col_names.append(str(_c.expr))
+                    explicit_dirs.append(0)
                 # negative ordinal means sort by desc
                 elif c < 0:
-                    _c = self[-c - 1].desc()
+                    _c = self[-c - 1]
+                    col_names.append(str(_c.expr))
+                    explicit_dirs.append(-1)
+                    _c = _c.desc()
                 else:
                     raise PySparkIndexError(
                         error_class="ZERO_INDEX",
                         message_parameters={},
                     )
+            elif isinstance(c, Column):
+                name, direction = _parse_expr_str(str(c.expr))
+                col_names.append(name)
+                explicit_dirs.append(direction)
+            else:
+                name, direction = _parse_expr_str(str(c))
+                col_names.append(name)
+                explicit_dirs.append(direction)
             columns.append(_c)
 
         ascending = kwargs.get("ascending", True)
@@ -299,17 +332,38 @@ class DataFrame:
         if isinstance(ascending, (bool, int)):
             if not ascending:
                 columns = [c.desc() for c in columns]
+            base_asc = bool(ascending)
         elif isinstance(ascending, list):
             columns = [c if asc else c.desc() for asc, c in zip(ascending, columns)]
+            base_asc = None  # per-column
         else:
             raise PySparkTypeError(
                 error_class="NOT_BOOL_OR_LIST",
                 message_parameters={"arg_name": "ascending", "arg_type": type(ascending).__name__},
             )
-       
-        columns = [_to_column_expr(c) for c in columns]
-        rel = self.relation.sort(*columns)
-        return DataFrame(rel, self.session)
+
+        # Build final ascending flags
+        asc_flags = []
+        for i, d in enumerate(explicit_dirs):
+            if d != 0:
+                # Column had explicit .asc() or .desc() — respect it
+                asc_flags.append(d == 1)
+            elif base_asc is not None:
+                asc_flags.append(base_asc)
+            else:
+                asc_flags.append(bool(ascending[i]))
+
+        sort_keys = list(zip(col_names, asc_flags))
+
+        # Route through C++ engine for both lazy and eager modes
+        resolved = []
+        for c in columns:
+            if isinstance(c, Column):
+                resolved.append(c.expr)
+            else:
+                resolved.append(c)
+        new_relation = self.relation.sort(*resolved)
+        return DataFrame(new_relation, self.session, lazy=self._lazy)
 
     orderBy = sort
 
@@ -384,8 +438,18 @@ class DataFrame:
                 error_class="NOT_COLUMN_OR_STR",
                 message_parameters={"arg_name": "condition", "arg_type": type(condition).__name__},
             )
-        rel = self.relation.filter(cond)
-        return DataFrame(rel, self.session)
+
+        # Route through C++ engine for both lazy and eager modes
+        if isinstance(condition, Column):
+            new_relation = self.relation.filter(condition.expr)
+            return DataFrame(new_relation, self.session, lazy=self._lazy)
+
+        # String condition fallback — C++ PyRelation.Filter() does not accept strings,
+        # so we convert to a Column expression first
+        raise RuntimeError(
+            f"String filter conditions are not supported via C++ engine. "
+            f"Use Column expressions instead: df.filter(col('x') > 5)"
+        )
 
     where = filter
 
@@ -401,8 +465,10 @@ class DataFrame:
             projections = [
                 cols.expr if isinstance(cols, Column) else ColumnExpression(cols, SparkContext._active_spark_context)
             ]
+
+        # Route through C++ engine for both lazy and eager modes
         rel = self.relation.select(*projections)
-        return DataFrame(rel, self.session)
+        return DataFrame(rel, self.session, lazy=self._lazy)
 
     @property
     def columns(self) -> List[str]:
@@ -512,45 +578,66 @@ class DataFrame:
         if on is not None and not isinstance(on, list):
             on = [on]  # type: ignore[assignment]
 
-        if on is not None:
-            assert isinstance(on, list)
-            # Get (or create) the Expressions from the list of Columns
-            on = [_to_column_expr(x) for x in on]
-
-            # & all the Expressions together to form one Expression
-            assert isinstance(
-                on[0], Expression
-            ), "on should be Column or list of Column"
-            on = reduce(lambda x, y: x.__and__(y), cast(List[Expression], on))
+        def map_to_recognized_jointype(how):
+            known_aliases = {
+                "inner": [],
+                "full": ["outer", "fullouter", "full_outer"],
+                "left": ["leftouter", "left_outer"],
+                "right": ["rightouter", "right_outer"],
+                "anti": ["leftanti", "left_anti"],
+                "semi": ["leftsemi", "left_semi"],
+                "cross": [],
+            }
+            mapped_type = None
+            for type, aliases in known_aliases.items():
+                if how == type or how in aliases:
+                    mapped_type = type
+                    break
+            if not mapped_type:
+                mapped_type = how
+            return mapped_type
 
         if on is None and how is None:
-            result = self.relation.join(other.relation)
+            join_type = "cross"
         else:
             if how is None:
                 how = "inner"
+            join_type = map_to_recognized_jointype(how)
 
-            def map_to_recognized_jointype(how):
-                known_aliases = {
-                    "inner": [],
-                    "full": ["outer", "fullouter", "full_outer"],
-                    "left": ["leftouter", "left_outer"],
-                    "right": ["rightouter", "right_outer"],
-                    "anti": ["leftanti", "left_anti"],
-                    "semi": ["leftsemi", "left_semi"],
-                }
-                mapped_type = None
-                for type, aliases in known_aliases.items():
-                    if how == type or how in aliases:
-                        mapped_type = type
-                        break
+        sc = SparkContext._active_spark_context
 
-                if not mapped_type:
-                    mapped_type = how
-                return mapped_type
-
-            how = map_to_recognized_jointype(how)
-            result = self.relation.join(other.relation, on, how)
-        return DataFrame(result, self.session)
+        # Route through C++ engine for both lazy and eager modes
+        if on is not None:
+            assert isinstance(on, list)
+            all_strings = all(isinstance(x, str) for x in on)
+            if all_strings:
+                # Build C++ equality condition from string column names
+                cond_expr = None
+                for key in on:
+                    eq = ColumnExpression(key, sc).__eq__(ColumnExpression(key, sc))
+                    cond_expr = eq if cond_expr is None else cond_expr.__and__(eq)
+                new_relation = self.relation.join(other.relation, cond_expr, join_type)
+            else:
+                # Build condition expression from Column objects
+                cond_exprs = []
+                for x in on:
+                    if isinstance(x, Column):
+                        cond_exprs.append(x.expr)
+                    else:
+                        cond_exprs.append(x)
+                if len(cond_exprs) == 1:
+                    cond_expr = cond_exprs[0]
+                else:
+                    cond_expr = cond_exprs[0]
+                    for e in cond_exprs[1:]:
+                        cond_expr = cond_expr.__and__(e)
+                new_relation = self.relation.join(other.relation, cond_expr, join_type)
+        else:
+            if join_type == "cross":
+                new_relation = self.relation.cross(other.relation)
+            else:
+                new_relation = self.relation.join(other.relation, None, join_type)
+        return DataFrame(new_relation, self.session, lazy=self._lazy)
 
     def crossJoin(self, other: "DataFrame") -> "DataFrame":
         """Returns the cartesian product with another :class:`DataFrame`.
@@ -589,9 +676,9 @@ class DataFrame:
         | 16|  Bob|    85|
         +---+-----+------+
         """
-        if getattr(self, "_lazy", False):
-            raise NotImplementedError("crossJoin() is not supported in lazy mode.")
-        return DataFrame(self.relation.cross(other.relation), self.session)
+        # Route through C++ engine
+        new_relation = self.relation.cross(other.relation)
+        return DataFrame(new_relation, self.session, lazy=self._lazy)
 
     def alias(self, alias: str) -> "DataFrame":
         """Returns a new :class:`DataFrame` with an alias set.
@@ -624,13 +711,13 @@ class DataFrame:
         |Alice|Alice| 23|
         +-----+-----+---+
         """
-        if getattr(self, "_lazy", False):
+        if self._lazy:
             raise NotImplementedError("alias() is not supported in lazy mode.")
         assert isinstance(alias, str), "alias should be a string"
         return DataFrame(self.relation.set_alias(alias), self.session)
 
     def drop(self, *cols: "ColumnOrName") -> "DataFrame":  # type: ignore[misc]
-        if getattr(self, "_lazy", False):
+        if self._lazy:
             raise NotImplementedError("drop() is not supported in lazy mode.")
         if len(cols) == 1:
             col = cols[0]
@@ -683,6 +770,10 @@ class DataFrame:
         +---+----+
         +---+----+
         """
+
+        if self._lazy:
+            new_relation = self.relation.limit(num)
+            return DataFrame(new_relation, self.session, lazy=True)
         rel = self.relation.limit(num)
         return DataFrame(rel, self.session)
 
@@ -831,6 +922,9 @@ class DataFrame:
             columns = cols[0]
         else:
             columns = cols
+
+        if self._lazy:
+            return GroupedData(Grouping(*columns), self, lazy=True)
         return GroupedData(Grouping(*columns), self)
 
     @property
@@ -883,7 +977,7 @@ class DataFrame:
         |   1|   2|   3|
         +----+----+----+
         """
-        if getattr(self, "_lazy", False):
+        if self._lazy:
             raise NotImplementedError("union() is not supported in lazy mode.")
         return DataFrame(self.relation.union(other.relation), self.session)
 
@@ -1003,7 +1097,7 @@ class DataFrame:
         |Alice|  5|    80|
         +-----+---+------+
         """
-        if getattr(self, "_lazy", False):
+        if self._lazy:
             raise NotImplementedError("dropDuplicates() is not supported in lazy mode.")
         if subset:
             rn_col = f"tmp_col_{uuid.uuid1().hex}"
@@ -1033,7 +1127,7 @@ class DataFrame:
         >>> df.distinct().count()
         2
         """
-        if getattr(self, "_lazy", False):
+        if self._lazy:
             raise NotImplementedError("distinct() is not supported in lazy mode.")
         distinct_rel = self.relation.distinct()
         return DataFrame(distinct_rel, self.session)
@@ -1056,6 +1150,8 @@ class DataFrame:
         >>> df.count()
         3
         """
+        if self._lazy:
+            self.relation.optimize = True
         count_rel = self.relation.count("*")
         return int(count_rel.fetchone()[0])
 
@@ -1073,7 +1169,7 @@ class DataFrame:
         return DataFrame(new_rel, self.session)
 
     def toDF(self, *cols) -> "DataFrame":
-        if getattr(self, "_lazy", False):
+        if self._lazy:
             raise NotImplementedError("toDF() is not supported in lazy mode.")
         existing_columns = self.relation.columns
         column_count = len(cols)
@@ -1089,17 +1185,58 @@ class DataFrame:
         new_rel = self.relation.project(*projections)
         return DataFrame(new_rel, self.session)
 
-    def collect(self) -> List[Row]:
-        columns = self.relation.columns
-        result = self.relation.fetchall()
+    def _execute_plan(self, optimizer=None):
+        """DEPRECATED: All operations now route through C++ engine directly.
+
+        Returns the relation with the optimize flag set based on the optimizer parameter.
+        """
+        use_opt = True
+        if optimizer is not None and not optimizer._rules:
+            use_opt = False
+        if self._lazy and hasattr(self.relation, 'optimize'):
+            self.relation.optimize = use_opt
+        return self.relation
+
+    def explain(self, extended=False):
+        """Print the logical plan before and after optimization."""
+        from .optimizer import PlanOptimizer
+
+        plan = self._plan
+        if plan is None:
+            print("No logical plan available (C++ relation path)")
+            return
+
+        print("== Logical Plan ==")
+        self._print_plan(plan, indent=0)
+        print()
+
+        optimizer = PlanOptimizer()
+        optimized = optimizer.optimize(plan)
+        print("== Optimized Plan ==")
+        self._print_plan(optimized, indent=0)
+
+    @staticmethod
+    def _print_plan(node, indent=0):
+        prefix = "  " * indent
+        print(f"{prefix}{node!r}")
+        for child in node.children:
+            DataFrame._print_plan(child, indent + 1)
+
+    def collect(self, optimize=True) -> List[Row]:
 
         def construct_row(values, names) -> Row:
             row = tuple.__new__(Row, list(values))
             row.__fields__ = list(names)
             return row
 
+        if self._lazy and hasattr(self.relation, 'optimize'):
+            self.relation.optimize = optimize
+        columns = self.relation.columns
+        result = self.relation.fetchall()
         rows = [construct_row(x, columns) for x in result]
         return rows
+
+
 
 
 __all__ = ["DataFrame"]
