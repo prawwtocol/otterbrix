@@ -70,8 +70,8 @@ namespace otterbrix {
        throw std::runtime_error(error);
     }
 
-    unique_ptr<components::tableref::TableRef> 
-        Scan::TryReplacementObject(const py::object &entry, const string &name) {
+    unique_ptr<components::tableref::TableRef>
+        Scan::TryReplacementObject(const py::object &entry, const string & /*name*/) {
         auto table_function = make_unique<components::tableref::TableRef>();
         vector<components::types::logical_value_t> children;
         NumpyObjectType numpy_type;
@@ -140,7 +140,7 @@ namespace otterbrix {
             if (!ref) {
                 ThrowScanFailureError(entry, name);
             }
-            return std::move(ref);
+            return ref;
     }
 
 
@@ -152,12 +152,12 @@ namespace otterbrix {
         auto function_data = ref->function->bind(bind_input, return_types, names);
 
         std::vector<components::table::column_definition_t> col_defs;
-        for (int i = 0; i < return_types.size(); i++) {
+        for (std::size_t i = 0; i < return_types.size(); i++) {
             col_defs.emplace_back(names[i], return_types[i]);
         }
         vector<uint64_t> column_ids;
         column_ids.reserve(return_types.size());
-        for (int i = 0; i < return_types.size(); i++) {
+        for (uint64_t i = 0; i < return_types.size(); i++) {
             column_ids.push_back(i);
         }
         function::TableFunctionInitInput init_input(
@@ -196,20 +196,34 @@ namespace otterbrix {
             pmr_types.push_back(t);
         }
 
-        // Собираем все данные в один data_chunk
-        components::vector::data_chunk_t result_chunk(resource, pmr_types);
-
-        bool has_input;
-        do {
+        // data_chunk_t has no append() yet: accumulate batches and merge row-by-row at the end.
+        std::vector<components::vector::data_chunk_t> chunks;
+        while (true) {
             components::vector::data_chunk_t chunk(resource, pmr_types);
             ref->function->function(input, chunk);
-            if (chunk.size() > 0) {
-                has_input = true;
-                result_chunk.append(chunk, true);
-            } else {
-                has_input = false;
+            if (chunk.size() == 0) {
+                break;
             }
-        } while (has_input);
+            chunks.push_back(std::move(chunk));
+        }
+
+        uint64_t total_rows = 0;
+        for (const auto& c : chunks) {
+            total_rows += c.size();
+        }
+
+        components::vector::data_chunk_t result_chunk(resource, pmr_types,
+                                                      total_rows > 0 ? total_rows : 1);
+        result_chunk.set_cardinality(total_rows);
+        uint64_t row_offset = 0;
+        for (auto& c : chunks) {
+            for (uint64_t r = 0; r < c.size(); r++) {
+                for (uint64_t col = 0; col < pmr_types.size(); col++) {
+                    result_chunk.set_value(col, row_offset + r, c.value(col, r));
+                }
+            }
+            row_offset += c.size();
+        }
 
         return {logical_plan::make_node_raw_data(resource, std::move(result_chunk)),
             make_unique<vector<components::table::column_definition_t>>(std::move(col_defs))};

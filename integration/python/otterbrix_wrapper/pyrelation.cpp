@@ -24,8 +24,8 @@ namespace otterbrix {
         this->executed = false;
     }
 
-    PyRelation::PyRelation(unique_ptr<PyResult> result) : 
-        result(std::move(result)), rel(nullptr) {
+    PyRelation::PyRelation(unique_ptr<PyResult> result) :
+        rel(nullptr), result(std::move(result)) {
         if (!result) {
             throw std::runtime_error("PyRelation created without a result");
         }
@@ -40,7 +40,7 @@ namespace otterbrix {
     }
 
     static cursor::cursor_t_ptr PyExecuteRelation(ConnectionEnvironment* env,
-            const Relation& rel, bool stream_result, bool optimize = false) {
+            const Relation& rel, bool /*stream_result*/, bool optimize = false) {
         assert(py::gil_check());
         py::gil_scoped_release release;
         return env->Execute(rel, optimize);
@@ -167,7 +167,7 @@ namespace otterbrix {
             throw std::runtime_error("ExecuteOrThrow - no query available to execute");
         }
         if (query_result->is_error()) {
-            throw std::runtime_error(query_result->get_error().what);
+            throw std::runtime_error(query_result->get_error().what.c_str());
         }
         result = make_unique<PyResult>(env, std::move(query_result), rel->GetColumns());
     }

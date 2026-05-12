@@ -70,7 +70,7 @@ namespace otterbrix {
         	return make_shared_ptr<OtterBrixPyType>(struct_type);
         }
 
-        shared_ptr<OtterBrixPyType> UnionType(const py::object &members) {
+        shared_ptr<OtterBrixPyType> UnionType(const py::object & /*members*/) {
         	/*auto types = GetChildList(members);
 
         	if (types.empty()) {
@@ -81,17 +81,18 @@ namespace otterbrix {
         	throw std::runtime_error("union_type creation method is not implemented yet");
         }
 
-        shared_ptr<OtterBrixPyType> EnumType(const string &name, const shared_ptr<OtterBrixPyType> &type,
-                const py::list &values_p) {
+        shared_ptr<OtterBrixPyType> EnumType(const string & /*name*/, const shared_ptr<OtterBrixPyType> & /*type*/,
+                const py::list & /*values_p*/) {
         	throw std::runtime_error("enum_type creation method is not implemented yet");
         }
 
         shared_ptr<OtterBrixPyType> DecimalType(int width, int scale) {
-        	auto decimal_type = complex_logical_type::create_decimal(width, scale);
+        	auto decimal_type = complex_logical_type::create_decimal(static_cast<uint8_t>(width),
+        	                                                         static_cast<uint8_t>(scale));
         	return make_shared_ptr<OtterBrixPyType>(decimal_type);
         }
 
-        shared_ptr<OtterBrixPyType> StringType(const string &collation) {
+        shared_ptr<OtterBrixPyType> StringType(const string & /*collation*/) {
         	complex_logical_type type(logical_type::STRING_LITERAL);
         	/*if (collation.empty()) {
         		type = LogicalType::VARCHAR;
