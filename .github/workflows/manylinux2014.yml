@@ -59,8 +59,8 @@ jobs:
 
       - name: Set env conan dependencies
         run: |
-          pip install --user --retries=30 --upgrade pip
-          pip install --user --retries=30 conan==2.24.0
+          python${{ matrix.PYTHON_VERSION }} -m pip install --user --retries=30 --upgrade pip
+          python${{ matrix.PYTHON_VERSION }} -m pip install --user --retries=30 conan==2.24.0
 
       - name: Add user local bin to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
@@ -129,7 +129,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y python3-pip python3-venv
-          pip3 install --retries=30 pytest==6.2.5
+          python3 -m pip install --retries=30 pytest==6.2.5
 
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -144,7 +144,7 @@ jobs:
       - name: Install package from wheel
         run: |
           python3 --version
-          pip3 install --retries=30 ./app/otterbrix-*.whl
+          python3 -m pip install --retries=30 ./app/otterbrix-*.whl
 
       - name: Test package imports
         run: |
@@ -197,7 +197,7 @@ jobs:
 
       - name: Install twine
         run: |
-          pip3 install --retries=30 twine
+          python3 -m pip install --retries=30 twine
 
       - name: Publish wheels
         env:

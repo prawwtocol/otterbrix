@@ -22,7 +22,7 @@ jobs:
 
       - name: conan installation and configuration
         run: |
-          pip install conan==2.15.0
+          python3 -m pip install conan==2.15.0
           conan profile detect --force
           conan remote add otterbrix http://conan.otterbrix.com
 
