@@ -49,8 +49,9 @@ jobs:
           export PYTHON_SHORT_VERSION=$(echo '${{ matrix.PYTHON_VERSION }}' | tr -d '.')
           echo "PYTHON_SHORT_VERSION=${PYTHON_SHORT_VERSION}" >> $GITHUB_ENV 
           export PYTHON_PATH=/opt/python/cp${PYTHON_SHORT_VERSION}-cp${PYTHON_SHORT_VERSION}
+          echo "PYTHON_PATH=${PYTHON_PATH}" >> $GITHUB_ENV
+          echo "PYTHON_EXECUTABLE=${PYTHON_PATH}/bin/python" >> $GITHUB_ENV
           export PATH=$PYTHON_PATH:$PYTHON_PATH/bin:$PATH
-          echo "PYTHON_PATH=${PYTHON_PATH}" >> $GITHUB_ENV 
           echo "PATH=${PATH}" >> $GITHUB_ENV
 
       - name: Install system packages
@@ -59,8 +60,8 @@ jobs:
 
       - name: Set env conan dependencies
         run: |
-          python${{ matrix.PYTHON_VERSION }} -m pip install --user --retries=30 --upgrade pip
-          python${{ matrix.PYTHON_VERSION }} -m pip install --user --retries=30 conan==2.24.0
+          "$PYTHON_EXECUTABLE" -m pip install --user --retries=30 --upgrade pip
+          "$PYTHON_EXECUTABLE" -m pip install --user --retries=30 conan==2.24.0
 
       - name: Add user local bin to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
@@ -72,12 +73,13 @@ jobs:
 
       - name: Download and Install conan dependencies
         run: |
-          python${{ matrix.PYTHON_VERSION }} -m pip install --user --retries=30 --upgrade pip
-          python${{ matrix.PYTHON_VERSION }} -m pip install wheel setuptools scikit-build pytest==6.2.5 cmake==3.28.3
+          "$PYTHON_EXECUTABLE" -m pip install --user --retries=30 --upgrade pip
+          "$PYTHON_EXECUTABLE" -m pip install wheel setuptools scikit-build pytest==6.2.5 cmake==3.28.3
           
           cp integration/python/otterbrix/get_path.py .
-          mkdir -p $(echo "./$(python${{ matrix.PYTHON_VERSION }} get_path.py )")
-          conan install conanfile.py --build missing -s build_type=Release -o build_python=True -of=$(echo "./$(python${{ matrix.PYTHON_VERSION }} get_path.py )")
+          BUILD_OUT="./$("$PYTHON_EXECUTABLE" get_path.py)"
+          mkdir -p "$BUILD_OUT"
+          conan install conanfile.py --build missing -s build_type=Release -o build_python=True -of="$BUILD_OUT"
 
       - name: Build wheel
         run: |
@@ -86,7 +88,7 @@ jobs:
           touch MANIFEST.in
         
           
-          python${{ matrix.PYTHON_VERSION }} setup.py bdist_wheel --verbose
+          "$PYTHON_EXECUTABLE" setup.py bdist_wheel --verbose
 
       - name: Repair wheel
         run: |
