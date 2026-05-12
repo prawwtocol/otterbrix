@@ -67,10 +67,10 @@ namespace otterbrix {
         sql::transform::transformer transformer(space->dispatcher()->resource());
         auto result = transformer.transform(sql::transform::pg_cell_to_node_cast(parse_result)).finalize();
 
-        if (std::holds_alternative<bind_error>(result)) {
-            throw std::runtime_error(std::get<bind_error>(std::move(result)).what());
+        if (result.has_error()) {
+            throw std::runtime_error(result.error().what.c_str());
         }
-        auto view = std::get<result_view>(std::move(result));
+        auto view = std::move(result.value());
         return RelationFactory::CreateFromSelect(std::move(view.node));
     }
 
@@ -84,12 +84,10 @@ namespace otterbrix {
         sql::transform::transformer transformer(space->dispatcher()->resource());
         auto result = transformer.transform(sql::transform::pg_cell_to_node_cast(parse_result)).finalize();
 
-        if (std::holds_alternative<bind_error>(result)) {
-            return components::cursor::make_cursor(space->dispatcher()->resource(),
-                                                   components::cursor::error_code_t::sql_parse_error,
-                                                   std::get<bind_error>(std::move(result)).what());
+        if (result.has_error()) {
+            return components::cursor::make_cursor(space->dispatcher()->resource(), result.error());
         }
-        auto view = std::get<result_view>(std::move(result));
+        auto view = std::move(result.value());
         auto plan = std::move(view.node);
         auto cursor = space->dispatcher()->execute_plan(session, plan, std::move(view.params));
 
