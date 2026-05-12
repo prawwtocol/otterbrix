@@ -455,7 +455,7 @@ void ArrayWrapper::Append(idx_t current_offset, vector_t &input, idx_t source_si
 	assert(input.type() == data->type);
 	bool may_have_null;
 
-	unified_vector_format idata{};
+	unified_vector_format idata(input.resource(), source_size);
 	input.to_unified_format(source_size, idata);
 
 	if (count == components::table::storage::INVALID_INDEX) {

@@ -36,7 +36,9 @@ namespace otterbrix {
         
         unique_ptr<PyRelation> Join(const PyRelation& other, const py::object& condition, const string& type);
         unique_ptr<PyRelation> Cross(const PyRelation& other);
-        
+
+        unique_ptr<PyRelation> Limit(int64_t count);
+
         components::cursor::cursor_t_ptr ExecuteInternal(bool stream_result = false);
 
         void ExecuteOrThrow(bool stream_result = false);
@@ -58,5 +60,6 @@ namespace otterbrix {
         ConnectionEnvironment* env;
         shared_ptr<Relation> rel;
         unique_ptr<PyResult> result;
+        bool optimize_ = false;
     };
 } // namespace otterbrix

@@ -104,68 +104,13 @@ namespace otterbrix {
 
     Result ConnectionEnvironment::Execute(const Relation& rel, bool optimize) {
         auto session = session_id_t();
-        auto resource = space->dispatcher()->resource();
-
-        // Recursively flatten the Relation tree bottom-up,
-        // executing each step and materializing results into node_data_t
-        std::function<logical_plan::node_data_ptr(const Relation&)> flatten;
-        flatten = [&](const Relation& r) -> logical_plan::node_data_ptr {
-            return std::visit([&](const auto& v) -> logical_plan::node_data_ptr {
-                using T = std::decay_t<decltype(v)>;
-
-                if constexpr (std::is_same_v<T, Relation::Data>) {
-                    return v.data;  // base case
-                }
-                else if constexpr (std::is_same_v<T, Relation::Aggregate>) {
-                    auto child_data = flatten(*v.resource);
-                    auto agg = logical_plan::make_node_aggregate(resource, {"tmp", v.name});
-                    agg->append_child(boost::static_pointer_cast<logical_plan::node_t>(child_data));
-                    if (v.group) agg->append_child(v.group);
-                    if (v.match) agg->append_child(v.match);
-                    if (v.sort)  agg->append_child(v.sort);
-                    logical_plan::node_ptr plan = boost::static_pointer_cast<logical_plan::node_t>(agg);
-                    if (optimize) {
-                        logical_plan::plan_optimizer_t opt;
-                        plan = opt.optimize(plan);
-                    }
-                    auto cursor = space->dispatcher()->execute_plan(
-                        session, plan, ExpressionFactory::GetParams());
-                    if (!cursor || cursor->is_error())
-                        throw std::runtime_error(cursor ? cursor->get_error().what : "Execution failed");
-                    return logical_plan::make_node_raw_data(resource, std::move(cursor->chunk_data()));
-                }
-                else if constexpr (std::is_same_v<T, Relation::Join>) {
-                    auto left = flatten(*v.left);
-                    auto right = flatten(*v.right);
-                    auto jn = logical_plan::make_node_join(resource, {}, v.join_type);
-                    jn->append_child(boost::static_pointer_cast<logical_plan::node_t>(left));
-                    jn->append_child(boost::static_pointer_cast<logical_plan::node_t>(right));
-                    if (v.conditions)
-                        for (const auto& e : *v.conditions) jn->append_expression(e);
-                    auto cursor = space->dispatcher()->execute_plan(
-                        session, boost::static_pointer_cast<logical_plan::node_t>(jn), ExpressionFactory::GetParams());
-                    if (!cursor || cursor->is_error())
-                        throw std::runtime_error(cursor ? cursor->get_error().what : "Execution failed");
-                    return logical_plan::make_node_raw_data(resource, std::move(cursor->chunk_data()));
-                }
-                else if constexpr (std::is_same_v<T, Relation::Limit>) {
-                    auto child = flatten(*v.resource);
-                    auto ln = logical_plan::make_node_limit(resource, {}, limit_t(v.count));
-                    ln->append_child(boost::static_pointer_cast<logical_plan::node_t>(child));
-                    auto cursor = space->dispatcher()->execute_plan(
-                        session, boost::static_pointer_cast<logical_plan::node_t>(ln), ExpressionFactory::GetParams());
-                    if (!cursor || cursor->is_error())
-                        throw std::runtime_error(cursor ? cursor->get_error().what : "Execution failed");
-                    return logical_plan::make_node_raw_data(resource, std::move(cursor->chunk_data()));
-                }
-                throw std::runtime_error("Unknown relation type");
-            }, r.relation);
-        };
-
-        // Flatten to data, then execute the final data node to get cursor
-        auto data = flatten(rel);
-        return space->dispatcher()->execute_plan(
-            session, boost::static_pointer_cast<logical_plan::node_t>(data), ExpressionFactory::GetParams());
+        auto plan = RelationFactory::Execute(rel);
+        if (optimize) {
+            components::logical_plan::plan_optimizer_t optimizer;
+            plan = optimizer.optimize(plan);
+        }
+        auto cursor = space->dispatcher()->execute_plan(session, plan, ExpressionFactory::GetParams());
+        return cursor;
     }
 
     cursor::cursor_t_ptr ConnectionEnvironment::QueryRelation(const components::logical_plan::node_ptr &rel) {

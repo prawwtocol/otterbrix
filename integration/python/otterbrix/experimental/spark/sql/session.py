@@ -101,14 +101,23 @@ class SparkSession:
         return DataFrame(rel, self)
 
     def _createDataFrameFromPandas(self, data: "PandasDataFrame", types, names) -> DataFrame:
+        # Rename pandas columns before creating the relation to avoid
+        # going through toDF -> Project -> Group, which segfaults because
+        # Project currently delegates to Group (aggregate path) and the
+        # engine can't handle group nodes with only get_field renames.
+        if names:
+            data = data.copy()
+            data.columns = names
         df = self._create_dataframe(data)
 
         # Cast to types
         #if types:
         #    df = df._cast_types(*types)
-        # Alias to names
-        if names:
-            df = df.toDF(*names)
+        return df
+
+    def _maybe_make_lazy(self, df, lazy, schema=None):
+        if lazy:
+            df._lazy = True
         return df
 
     def createDataFrame(
@@ -117,6 +126,7 @@ class SparkSession:
         schema: Optional[Union[StructType, List[str]]] = None,
         samplingRatio: Optional[float] = None,
         verifySchema: bool = True,
+        lazy: bool = False,
     ) -> DataFrame:
         if samplingRatio:
             raise NotImplementedError
@@ -146,11 +156,13 @@ class SparkSession:
         # Falsey check on pandas dataframe is not defined, so first check if it's not a pandas dataframe
         # Then check if 'data' is None or []
         if has_pandas and isinstance(data, pandas.DataFrame):
-            return self._createDataFrameFromPandas(data, types, names)
+            df = self._createDataFrameFromPandas(data, types, names)
+            return self._maybe_make_lazy(df, lazy, schema)
 
         # TODO temporary decision
         if has_pandas:
-            return DataFrame(self.conn.from_df(pandas.DataFrame(data=data, columns=names)), self)
+            df = DataFrame(self.conn.from_df(pandas.DataFrame(data=data, columns=names)), self)
+            return self._maybe_make_lazy(df, lazy, schema)
         
         raise RuntimeError("Has no select value in OtterBrix to continue process")
 

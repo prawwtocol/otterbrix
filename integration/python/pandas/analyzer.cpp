@@ -180,7 +180,7 @@ static bool UpgradeType(complex_logical_type &left, const complex_logical_type &
                     new_child.set_alias(child_name);
 					children.push_back(new_child);
 				}
-				left = complex_logical_type::create_struct(std::move(children));
+				left = complex_logical_type::create_struct("struct", std::move(children));
 			} else {
 				complex_logical_type value_type = logical_type::NA;
 				if (SatisfiesMapConstraints(left, right, value_type)) {
@@ -368,7 +368,7 @@ complex_logical_type PandasAnalyzer::DictToStruct(const PyDictionary &dict, bool
         val.set_alias(key);
 		struct_children.push_back(val);
 	}
-	return complex_logical_type::create_struct(struct_children);
+	return complex_logical_type::create_struct("struct", struct_children);
 }
 
 //! 'can_convert' is used to communicate if internal structures encountered here are valid
@@ -384,7 +384,7 @@ complex_logical_type PandasAnalyzer::GetItemType(py::object ele, bool &can_conve
 	case PythonObjectType::Bool:
 		return logical_type::BOOLEAN;
 	case PythonObjectType::Integer: {
-		components::types::logical_value_t integer;
+		components::types::logical_value_t integer(std::pmr::get_default_resource(), components::types::logical_type::UNKNOWN);
 		if (!TryTransformPythonNumeric(integer, ele)) {
 			can_convert = false;
 			return logical_type::NA;

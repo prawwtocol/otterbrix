@@ -10,7 +10,6 @@
 #include "trace_full_exception.hpp"
 
 namespace core::detail {
-
     class InvariantError : public trace_full_exception {
         using trace_full_exception::trace_full_exception;
     };
