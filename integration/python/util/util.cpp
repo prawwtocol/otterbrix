@@ -13,13 +13,13 @@ namespace otterbrix {
                 case physical_type::NA:
                     return "NULL";
                 case physical_type::BOOL:
-                    return to_string(value.value<bool>());
+                    return to_string(static_cast<unsigned int>(value.value<bool>()));
                 case physical_type::UINT8:
-                    return to_string(value.value<uint8_t>());
+                    return to_string(static_cast<unsigned int>(value.value<uint8_t>()));
                 case physical_type::INT8:
-                    return to_string(value.value<int8_t>());
+                    return to_string(static_cast<int>(value.value<int8_t>()));
                 case physical_type::UINT16:
-                    return to_string(value.value<uint16_t>());
+                    return to_string(static_cast<unsigned int>(value.value<uint16_t>()));
                 case physical_type::INT16:
                     return to_string(value.value<int16_t>());
                 case physical_type::UINT32:

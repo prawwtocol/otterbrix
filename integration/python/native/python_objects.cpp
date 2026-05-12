@@ -207,14 +207,14 @@ py::object PythonObject::FromStruct(const logical_value_t &val, const complex_lo
 			assert(child_type.alias().empty());
 			py_tuple[i] = FromValue(struct_values[i], child_type);
 		}
-		return std::move(py_tuple);
+		return py_tuple;
 	} else {
 		py::dict py_struct;
 		for (idx_t i = 0; i < struct_values.size(); i++) {
 			auto &child_type = child_types[i];
 			py_struct[child_type.alias().c_str()] = FromValue(struct_values[i], child_type); 
 		}
-		return std::move(py_struct);
+		return py_struct;
 	}
 }
 
@@ -294,13 +294,13 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
         // ss << val.value<int128_t>();
         // auto res = ss.str();
 		// return py::reinterpret_steal<py::object>(PyLong_FromString(res.c_str(), nullptr, 10));
-		std::runtime_error("OtterBrix doen\'t support hugeint conversation to python object");
-    }	
+		throw std::runtime_error("OtterBrix doen\'t support hugeint conversation to python object");
+    }
 	case logical_type::UHUGEINT: {
         // ss << val.value<uint128_t>();
         // auto res = ss.str();
 		// return py::reinterpret_steal<py::object>(PyLong_FromString(res.c_str(), nullptr, 10));
-		std::runtime_error("OtterBrix doen\'t support uhugeint conversation to python object");
+		throw std::runtime_error("OtterBrix doen\'t support uhugeint conversation to python object");
     }
 	case logical_type::FLOAT:
 		return py::cast(val.value<float>());
@@ -315,10 +315,10 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 		return pydigits.attr("__truediv__")(py::cast<int>(scale));
 	}
 	case logical_type::ENUM: {
-		std::runtime_error("OtterBrix doen\'t support enum type");
+		throw std::runtime_error("OtterBrix doen\'t support enum type");
 	}
 	case logical_type::UNION: {
-		std::runtime_error("OtterBrix doen\'t support union type");
+		throw std::runtime_error("OtterBrix doen\'t support union type");
 	}
 	case logical_type::STRING_LITERAL:
 		return py::str(val.value<const std::string&>());
@@ -348,7 +348,7 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 		for (auto &list_elem : list_values) {
 			list.append(FromValue(list_elem, type.child_type()));
 		}
-		return std::move(list);
+		return list;
 	}
 	case logical_type::ARRAY: {
 		auto &array_values = val.children();
@@ -368,7 +368,7 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 		for (idx_t elem_idx = 0; elem_idx < array_size; elem_idx++) {
 			arr[elem_idx] = FromValue(array_values[elem_idx], child_type);
 		}
-		return std::move(arr);
+		return arr;
 	}
 	case logical_type::MAP: {
 		auto &list_values = val.children(); 
@@ -396,7 +396,7 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 			py_struct["key"] = std::move(keys);
 			py_struct["value"] = std::move(values);
 		}
-		return std::move(py_struct);
+		return py_struct;
 	}
 	case logical_type::STRUCT: {
 		return FromStruct(val, type);
@@ -404,7 +404,7 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 	case logical_type::UUID: {
 		// auto uuid_value = val.GetValueUnsafe<int128_t>();
 		// return import_cache.uuid.UUID()(UUID::ToString(uuid_value));
-		std::runtime_error("OtterBrix doen\'t support uhugeint conversation to python object");
+		throw std::runtime_error("OtterBrix doen\'t support uhugeint conversation to python object");
 
 	}
 
