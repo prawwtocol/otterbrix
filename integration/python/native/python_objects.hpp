@@ -16,6 +16,7 @@
 
 #include <array>
 #include <chrono>
+#include <memory_resource>
 #include <utility>
 
 /* Backport for Python < 3.10 */
@@ -68,8 +69,8 @@ namespace otterbrix {
 			template <typename T, typename = std::enable_if<std::numeric_limits<T>::is_integer, T>>
 			static components::types::logical_value_t Operation(
 					std::pmr::memory_resource* r,
-					bool signed_value,
-					vector<uint8_t> &digits,
+					bool signed_value, 
+					vector<uint8_t> &digits, 
 					uint8_t width, uint8_t scale) {
 				T value = 0;
 				for (auto it = digits.begin(); it != digits.end(); it++) {
@@ -101,8 +102,8 @@ namespace otterbrix {
 			template <typename T, typename = std::enable_if<std::numeric_limits<T>::is_integer, T>>
 			static components::types::logical_value_t Operation(
 					std::pmr::memory_resource* r,
-					bool signed_value,
-					vector<uint8_t> &digits,
+					bool signed_value, 
+					vector<uint8_t> &digits, 
 					uint8_t width, uint8_t scale) {
 				T value = 0;
 				for (auto &digit : digits) {

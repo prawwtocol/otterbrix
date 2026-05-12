@@ -39,13 +39,11 @@ namespace otterbrix {
         rel.reset();
     }
 
-    static cursor::cursor_t_ptr PyExecuteRelation(ConnectionEnvironment* env, const Relation& rel, bool stream_result = false) {
-
+    static cursor::cursor_t_ptr PyExecuteRelation(ConnectionEnvironment* env,
+            const Relation& rel, bool stream_result, bool optimize = false) {
         assert(py::gil_check());
         py::gil_scoped_release release;
-        // auto pending_query = context->PendingQuery(rel, stream_result);
-        // return DuckDBPyConnection::CompletePendingQuery(*pending_query);
-        return env->Execute(rel);
+        return env->Execute(rel, optimize);
     }
 
     unique_ptr<PyRelation> PyRelation::Project(const py::args& args) {
@@ -146,12 +144,18 @@ namespace otterbrix {
         return Join(other, py::none(), "cross");
     }
 
+    unique_ptr<PyRelation> PyRelation::Limit(int64_t count) {
+        if (!rel) return nullptr;
+        auto new_rel = env->LimitRelation(rel, count);
+        return make_unique<PyRelation>(env, new_rel);
+    }
+
     cursor::cursor_t_ptr PyRelation::ExecuteInternal(bool stream_result) {
         executed = true;
         if (!rel) {
             return nullptr;
         }
-        return PyExecuteRelation(env, *rel, stream_result);
+        return PyExecuteRelation(env, *rel, stream_result, optimize_);
     }
 
 
@@ -229,7 +233,7 @@ namespace otterbrix {
 
     pyexpr_ptr PyRelation::ColumnExpression(const string& name) {
 
-        return make_shared<PyExpression>(expressions::key_t{name}, GetExpressionFactory());
+        return make_shared<PyExpression>(expressions::key_t(std::pmr::get_default_resource(), name), GetExpressionFactory());
     }
 
     py::list PyRelation::Columns() {

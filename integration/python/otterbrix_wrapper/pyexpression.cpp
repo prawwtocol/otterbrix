@@ -22,7 +22,7 @@ namespace otterbrix {
     PyExpression::~PyExpression() = default;
 
     pyexpr_ptr PyExpression::ColumnExpression(const string& column_name, PyConnection& conn) {
-        return make_shared<PyExpression>(components::expressions::key_t(column_name), conn);
+        return make_shared<PyExpression>(components::expressions::key_t(std::pmr::get_default_resource(), column_name), conn);
     }
 
     pyexpr_ptr PyExpression::ConstantExpression(const py::object& value, PyConnection& conn) {
@@ -176,7 +176,7 @@ namespace otterbrix {
         return expr;
     }
 
-    pyexpr_ptr PyExpression::AggregationExpression(const string& function_name,
+    pyexpr_ptr PyExpression::AggregationExpression(const std::string& function_name,
         const PyExpression& expr) {
         return make_shared<PyExpression>(expr.factory->AggregationUnaryExpression(function_name, expr.expr), expr.factory);
     }
