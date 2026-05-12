@@ -46,11 +46,11 @@ namespace otterbrix {
     public:
 
         struct Aggregate {
-            Aggregate(shared_ptr<Relation> resource, 
-                components::logical_plan::node_group_ptr group, 
-                components::logical_plan::node_match_ptr match, 
-                components::logical_plan::node_sort_ptr sort, string name) 
-                : group(group), match(match), sort(sort), resource(resource), name(std::move(name)) {}
+            Aggregate(shared_ptr<Relation> resource,
+                components::logical_plan::node_group_ptr group,
+                components::logical_plan::node_match_ptr match,
+                components::logical_plan::node_sort_ptr sort, string name)
+                : resource(resource), group(group), match(match), sort(sort), name(std::move(name)) {}
             shared_ptr<Relation> resource;
             components::logical_plan::node_group_ptr group;
             components::logical_plan::node_match_ptr match;
@@ -61,8 +61,8 @@ namespace otterbrix {
         struct Data {
             Data(components::logical_plan::node_data_ptr data,
                 shared_ptr<ExternalDependency> external_dependency,
-                unique_ptr<vector<components::table::column_definition_t>> columns) 
-                : data(data), columns(std::move(columns)) {}
+                unique_ptr<vector<components::table::column_definition_t>> columns)
+                : data(data), external_dependency(std::move(external_dependency)), columns(std::move(columns)) {}
             components::logical_plan::node_data_ptr data;
             shared_ptr<otterbrix::ExternalDependency> external_dependency;
             unique_ptr<vector<components::table::column_definition_t>> columns;
@@ -72,7 +72,7 @@ namespace otterbrix {
             Join(shared_ptr<Relation> left, shared_ptr<Relation> right,
                 unique_ptr<vector<components::expressions::expression_ptr>> conditions,
                 components::logical_plan::join_type join_type)
-                : conditions(std::move(conditions)), left(left), right(right), join_type(join_type) {}
+                : left(left), right(right), conditions(std::move(conditions)), join_type(join_type) {}
             shared_ptr<Relation> left;
             shared_ptr<Relation> right;
             unique_ptr<vector<components::expressions::expression_ptr>> conditions;
