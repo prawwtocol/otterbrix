@@ -126,11 +126,6 @@ namespace otterbrix {
         vector<column_definition_t> operator()(const Relation::Join& join) {
             vector<column_definition_t> result;
             auto left = join.left->GetColumns();
-            // Semi/anti joins only return left columns
-            if (join.join_type == components::logical_plan::join_type::semi ||
-                join.join_type == components::logical_plan::join_type::anti) {
-                return left;
-            }
             auto right = join.right->GetColumns();
             result.reserve(left.size() + right.size());
 
