@@ -501,8 +501,7 @@ class DataFrame:
         how : str, optional
             default ``inner``. Must be one of: ``inner``, ``cross``, ``outer``,
             ``full``, ``fullouter``, ``full_outer``, ``left``, ``leftouter``, ``left_outer``,
-            ``right``, ``rightouter``, ``right_outer``, ``semi``, ``leftsemi``, ``left_semi``,
-            ``anti``, ``leftanti`` and ``left_anti``.
+            ``right``, ``rightouter`` and ``right_outer``.
 
         Returns
         -------
@@ -584,8 +583,6 @@ class DataFrame:
                 "full": ["outer", "fullouter", "full_outer"],
                 "left": ["leftouter", "left_outer"],
                 "right": ["rightouter", "right_outer"],
-                "anti": ["leftanti", "left_anti"],
-                "semi": ["leftsemi", "left_semi"],
                 "cross": [],
             }
             mapped_type = None
