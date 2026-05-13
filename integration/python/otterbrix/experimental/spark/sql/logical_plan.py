@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from typing import Optional
+
+
 class LogicalPlan:
     pass
 
@@ -6,7 +11,7 @@ class LogicalNode(LogicalPlan):
     This is a base logical plan node.
     """
 
-    def __init__(self, children: list["LogicalNode"]|None = None):
+    def __init__(self, children: Optional[list["LogicalNode"]] = None):
         self.children = tuple(children) if children else ()
 
     def __eq__(self, other: object) -> bool:
