@@ -21,8 +21,16 @@ namespace otterbrix {
 
     PyExpression::~PyExpression() = default;
 
-    pyexpr_ptr PyExpression::ColumnExpression(const string& column_name, PyConnection& conn) {
-        return make_shared<PyExpression>(components::expressions::key_t(std::pmr::get_default_resource(), column_name), conn);
+    pyexpr_ptr PyExpression::ColumnExpression(const string& column_name, PyConnection& conn, const string& side) {
+        auto side_val = components::expressions::side_t::undefined;
+        if (side == "left") {
+            side_val = components::expressions::side_t::left;
+        } else if (side == "right") {
+            side_val = components::expressions::side_t::right;
+        }
+        return make_shared<PyExpression>(
+            components::expressions::key_t(std::pmr::get_default_resource(), column_name, side_val),
+            conn);
     }
 
     pyexpr_ptr PyExpression::ConstantExpression(const py::object& value, PyConnection& conn) {
