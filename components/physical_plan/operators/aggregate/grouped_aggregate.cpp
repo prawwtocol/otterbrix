@@ -259,32 +259,10 @@ namespace components::operators::aggregate {
         }
 
         if (agg == builtin_agg::AVG) {
+            (void) col_type;
             double avg = state.count > 0 ? state.f64 / static_cast<double>(state.count) : 0.0;
-            // Return in the original column type (matches existing kernel behavior)
-            switch (col_type) {
-                case types::logical_type::TINYINT:
-                    return types::logical_value_t(resource, static_cast<int8_t>(avg));
-                case types::logical_type::SMALLINT:
-                    return types::logical_value_t(resource, static_cast<int16_t>(avg));
-                case types::logical_type::INTEGER:
-                    return types::logical_value_t(resource, static_cast<int32_t>(avg));
-                case types::logical_type::BIGINT:
-                    return types::logical_value_t(resource, static_cast<int64_t>(avg));
-                case types::logical_type::UTINYINT:
-                    return types::logical_value_t(resource, static_cast<uint8_t>(avg));
-                case types::logical_type::USMALLINT:
-                    return types::logical_value_t(resource, static_cast<uint16_t>(avg));
-                case types::logical_type::UINTEGER:
-                    return types::logical_value_t(resource, static_cast<uint32_t>(avg));
-                case types::logical_type::UBIGINT:
-                    return types::logical_value_t(resource, static_cast<uint64_t>(avg));
-                case types::logical_type::FLOAT:
-                    return types::logical_value_t(resource, static_cast<float>(avg));
-                case types::logical_type::DOUBLE:
-                    return types::logical_value_t(resource, avg);
-                default:
-                    return types::logical_value_t(resource, avg);
-            }
+            // avg always returns DOUBLE (matches make_avg_func kernel signature).
+            return types::logical_value_t(resource, avg);
         }
 
         // SUM, MIN, MAX — return in the original column type
