@@ -374,9 +374,7 @@ TEST_CASE("integration::cpp::test_arithmetic") {
         REQUIRE(cur->is_success());
         REQUIRE(cur->size() == 1);
         // avg(1..100) = 50.5, val = 50.5 * 10 = 505
-        // AVG might return int or double depending on implementation
-        auto val = cur->chunk_data().data[0].data<int64_t>()[0];
-        REQUIRE(val == 505);
+        REQUIRE(core::is_equals(cur->chunk_data().data[0].data<double>()[0], 505.0));
     }
 
     INFO("C4. MIN/MAX of expression") {
