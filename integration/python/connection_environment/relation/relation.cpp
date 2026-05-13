@@ -132,8 +132,21 @@ namespace otterbrix {
             for (const auto& col : left) {
                 result.emplace_back(col.name(), col.type());
             }
+            // Match operator_join_t output schema: right-side columns whose name
+            // already appears on the left are collapsed into the existing slot
+            // (USING-style dedup). Reading past the engine's actual chunk size
+            // would segfault in fetchall.
             for (const auto& col : right) {
-                result.emplace_back(col.name(), col.type());
+                bool duplicate = false;
+                for (const auto& existing : result) {
+                    if (existing.name() == col.name()) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (!duplicate) {
+                    result.emplace_back(col.name(), col.type());
+                }
             }
             return result;
         }
