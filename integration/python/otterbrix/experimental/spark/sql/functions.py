@@ -5,6 +5,7 @@ from otterbrix import (
 #    CoalesceOperator,
     ColumnExpression,
     ConstantExpression,
+    CountExpression,
     Expression,
 #    FunctionExpression,
 )
@@ -564,7 +565,12 @@ def count(col: "ColumnOrName") -> Column:
     """
     #return _invoke_function_over_columns("count", col)
     col_name = col if isinstance(col, str) else str(col)
-    c = Column(_to_column_expr(col).count())
+    if col_name == "*":
+        # COUNT(*) maps to the zero-argument kernel. Wrapping "*" as a key_t
+        # leaves key.path() empty, causing UB in resolve_columns at execute time.
+        c = Column(CountExpression(SparkContext._active_spark_context))
+    else:
+        c = Column(_to_column_expr(col).count())
     c._agg_info = (col_name, 'count', f'count({col_name})')
     return c
 
