@@ -434,3 +434,26 @@ benchmark/data/
 /integration/python/default/wal/METADATA
 /integration/python/default/wal/WAL_ID
 /integration/python/.coverage
+
+# Python wheel build artifacts — CI generates root-level setup.py,
+# pyproject.toml, get_path.py, and MANIFEST.in by copying from
+# integration/python/otterbrix/, so root copies are derived state.
+_skbuild/
+*.egg-info/
+/setup.py
+/pyproject.toml
+/get_path.py
+/MANIFEST.in
+
+# Local Docker-CI helper script
+/build_local_ci.sh
+/build_local_ci.log
+
+# CMakeUserPresets.json is user-local per CMake convention.
+/CMakeUserPresets.json
+
+# Runtime artifacts (log/wal) produced when tests run from the repo root.
+/default/
+/test_collection_connections/
+/test_collection_sql/
+/test_collection_sql2/
