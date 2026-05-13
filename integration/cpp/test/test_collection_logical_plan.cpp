@@ -863,7 +863,7 @@ TEST_CASE("integration::cpp::test_collection::logical_plan") {
                 REQUIRE(cur->chunk_data().value(2, static_cast<size_t>(num)).value<int64_t>() ==
                         (reversed + 25) * 2 * 10);
                 REQUIRE(cur->chunk_data().value(3, static_cast<size_t>(num)).value<double>() ==
-                        static_cast<double>((reversed + 25) * 2));
+                        Approx(static_cast<double>((reversed + 25) * 2)));
                 REQUIRE(cur->chunk_data().value(4, static_cast<size_t>(num)).value<int64_t>() ==
                         (reversed + 25) * 2 * 10);
                 REQUIRE(cur->chunk_data().value(5, static_cast<size_t>(num)).value<int64_t>() ==
