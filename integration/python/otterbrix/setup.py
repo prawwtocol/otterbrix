@@ -28,11 +28,6 @@ setup(
     python_requires='>=3.7',
     # cmake_source_dir=".",
     include_package_data=True,
-    install_requires=[
-        "numpy",
-        "pandas",
-        "typing_extensions",
-    ],
     extras_require={"test": ["pytest"]},
     cmake_args=[
         f"-DCMAKE_TOOLCHAIN_FILE={path_to_generator}",  # Pass toolchain file here
