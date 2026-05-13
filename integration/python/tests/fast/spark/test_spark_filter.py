@@ -16,7 +16,6 @@ from otterbrix.experimental.spark.sql.types import (
 )
 from otterbrix.experimental.spark.sql.functions import col
 from otterbrix.experimental.spark.errors import PySparkTypeError
-import duckdb
 import re
 
 
