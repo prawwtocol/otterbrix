@@ -851,7 +851,7 @@ TEST_CASE("integration::cpp::test_collection::logical_plan") {
             REQUIRE(cur->chunk_data().data[1].type().alias() == "count");
             REQUIRE(cur->chunk_data().data[2].type().type() == types::logical_type::BIGINT);
             REQUIRE(cur->chunk_data().data[2].type().alias() == "sum");
-            REQUIRE(cur->chunk_data().data[3].type().type() == types::logical_type::BIGINT);
+            REQUIRE(cur->chunk_data().data[3].type().type() == types::logical_type::DOUBLE);
             REQUIRE(cur->chunk_data().data[3].type().alias() == "avg");
             REQUIRE(cur->chunk_data().data[4].type().type() == types::logical_type::BIGINT);
             REQUIRE(cur->chunk_data().data[4].type().alias() == "min");
@@ -862,8 +862,8 @@ TEST_CASE("integration::cpp::test_collection::logical_plan") {
                 REQUIRE(cur->chunk_data().value(1, static_cast<size_t>(num)).value<uint64_t>() == 1);
                 REQUIRE(cur->chunk_data().value(2, static_cast<size_t>(num)).value<int64_t>() ==
                         (reversed + 25) * 2 * 10);
-                REQUIRE(cur->chunk_data().value(3, static_cast<size_t>(num)).value<int64_t>() ==
-                        static_cast<int64_t>((reversed + 25) * 2));
+                REQUIRE(cur->chunk_data().value(3, static_cast<size_t>(num)).value<double>() ==
+                        static_cast<double>((reversed + 25) * 2));
                 REQUIRE(cur->chunk_data().value(4, static_cast<size_t>(num)).value<int64_t>() ==
                         (reversed + 25) * 2 * 10);
                 REQUIRE(cur->chunk_data().value(5, static_cast<size_t>(num)).value<int64_t>() ==
