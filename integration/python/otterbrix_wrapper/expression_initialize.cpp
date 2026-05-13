@@ -15,8 +15,9 @@ namespace otterbrix {
             py::arg("value"), py::arg("pyconnection"), docs);
         
 	    // ColumnRef Expression
-	    docs = "Create a column reference from the provided column name";
-	    m.def("ColumnExpression", &PyExpression::ColumnExpression, py::arg("name"), py::arg("pyconnection"), docs);
+	    docs = "Create a column reference from the provided column name. `side` is one of \"left\", \"right\" or empty, used to disambiguate join conditions where both sides have the same column name.";
+	    m.def("ColumnExpression", &PyExpression::ColumnExpression,
+              py::arg("name"), py::arg("pyconnection"), py::arg("side") = std::string{}, docs);
        
         // Count Expression 
         docs = "Create a count expression for aggregation operations";
