@@ -440,6 +440,7 @@ benchmark/data/
 # integration/python/otterbrix/, so root copies are derived state.
 _skbuild/
 *.egg-info/
+/otterbrix.egg-info/
 /setup.py
 /pyproject.toml
 /get_path.py
