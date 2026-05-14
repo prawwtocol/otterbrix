@@ -1,70 +1,40 @@
-project(otterbrix)
 
-set(${PROJECT_NAME}_sql_sources
-        sql/convert.cpp
-        sql/spaces.cpp
-        sql/wrapper_client.cpp
-        sql/wrapper_connection.cpp
-        sql/wrapper_cursor.cpp
-)
-
-set(otterbrix_LIBS
-        otterbrix::log
-        otterbrix::services
-        otterbrix::cursor
-        otterbrix::session
-        otterbrix::locks
-        otterbrix::b_plus_tree
-)
-
-list(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
-set(PYBIND11_FINDPYTHON ON)
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
-find_package(pybind11 CONFIG REQUIRED)
-
-pybind11_add_module(${PROJECT_NAME} main.cpp ${${PROJECT_NAME}_sql_sources})
-
-target_link_libraries(
-        ${PROJECT_NAME} PRIVATE
-        ${otterbrix_LIBS}
-        cpp_otterbrix
-        spdlog::spdlog
-        pybind11::pybind11
-        msgpackc-cxx
-        #CONAN_PKG::date
-        absl::crc32c
-        absl::int128
-        actor-zeta::actor-zeta
-        Boost::boost
-        fmt::fmt
-        #CONAN_PKG::libcurl
-        ZLIB::ZLIB
-        BZip2::BZip2
-        #libbacktrace::libbacktrace
-        #CONAN_PKG::openssl
-
-)
-
-pybind11_extension(${PROJECT_NAME})
-
-if(NOT MSVC AND NOT ${CMAKE_BUILD_TYPE} MATCHES Debug|RelWithDebInfo)
-    # Strip unnecessary sections of the binary on Linux/macOS
-    pybind11_strip(${PROJECT_NAME})
+if(POLICY CMP0148) # Disallow FindPythonLibs
+  cmake_policy(SET CMP0148 NEW)
 endif()
 
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_VISIBILITY_PRESET "hidden")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-#target_compile_definitions(_core PRIVATE VERSION_INFO=${PROJECT_VERSION})
+set(external_LIBS
+  otterbrix_string_util
 
-if(SKBUILD)
-    install(DIRECTORY otterbrix DESTINATION  . )
-    install(TARGETS ${PROJECT_NAME} DESTINATION  ./otterbrix )
-    set(CMAKE_TOOLCHAIN_FILE ="conan_toolchain.cmake")
-endif()
+  otterbrix::otterbrix
+  otterbrix_vector
+  otterbrix_table
+  magic_enum::magic_enum
+  utf8proc::utf8proc
+)
 
-if (DEV_MODE)
-    file(GLOB PY_TESTS
-        "tests/*.py"
-    )
-    file(COPY ${PY_TESTS} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-endif()
+set(ALL_OBJECT_FILES)
+
+add_subdirectory(components)
+add_subdirectory(pybind11)
+# add_subdirectory(common)
+add_subdirectory(connection_environment)
+add_subdirectory(native)
+add_subdirectory(numpy)
+add_subdirectory(pandas)
+add_subdirectory(scan)
+# add_subdirectory(arrow)
+add_subdirectory(otterbrix_wrapper)
+add_subdirectory(pyconnection)
+add_subdirectory(util)
+
+
+set(ALL_OBJECT_FILES ${ALL_OBJECT_FILES} main2.cpp)
+pybind11_add_module(otterbrix ${ALL_OBJECT_FILES})
+target_link_libraries(otterbrix PUBLIC 
+  ${external_LIBS}
+)
+
+install(TARGETS otterbrix DESTINATION .)
