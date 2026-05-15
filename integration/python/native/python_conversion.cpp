@@ -11,6 +11,7 @@
 // #include "datetime.h" //From Python
 
 #include <limits>
+#include <memory_resource>
 #include <core/types/string.hpp>
 #include <core/types/vector.hpp>
 #include <stdexcept>
@@ -23,11 +24,13 @@ using components::types::complex_logical_type;
 namespace otterbrix {
 
 
-    logical_value_t TransformListValue(py::handle ele);
+    logical_value_t TransformListValue(std::pmr::memory_resource* r, py::handle ele,
+        const complex_logical_type& target_type = logical_type::UNKNOWN);
 
     static logical_value_t EmptyMapValue() {
 	    return logical_value_t::create_map(
-                logical_type::NA, logical_type::NA, 
+                std::pmr::get_default_resource(),
+                logical_type::NA, logical_type::NA,
                 vector<logical_value_t>(), vector<logical_value_t>()
                 );
     }
@@ -91,19 +94,20 @@ namespace otterbrix {
     }
 
 logical_value_t TransformDictionaryToStruct(
-        const PyDictionary &dict, 
+        std::pmr::memory_resource* r,
+        const PyDictionary &dict,
         const complex_logical_type &target_type = logical_type::UNKNOWN) {
 	auto struct_keys = TransformStructKeys(dict.keys, dict.len);
 
 	bool struct_target = target_type.type() == logical_type::STRUCT;
-    components::types::struct_logical_type_extention* struct_extention = nullptr;
+    components::types::struct_logical_type_extension* struct_extension = nullptr;
 	if (struct_target) {
-        struct_extention = 
-            static_cast<components::types::struct_logical_type_extention*>(target_type.extention());
-        if (dict.len != struct_extention->child_types().size()) {
+        struct_extension =
+            static_cast<components::types::struct_logical_type_extension*>(target_type.extension());
+        if (dict.len != struct_extension->child_types().size()) {
 		    throw std::runtime_error(
                     "We could not convert the object "+dict.ToString()+" to the target struct type with "+
-                    to_string(struct_extention->child_types().size())+" fields"
+                    to_string(struct_extension->child_types().size())+" fields"
                     );
         }
 	} 
@@ -116,7 +120,7 @@ logical_value_t TransformDictionaryToStruct(
     vector<logical_value_t> struct_values;
 	for (idx_t i = 0; i < dict.len; i++) {
         if (struct_target) {
-            auto& key = struct_extention->child_types().at(i).alias();
+            auto& key = struct_extension->child_types().at(i).alias();
 		    auto value_index = key_mapping[key];
             auto& child_type = target_type.child_types().at(i);
 		    auto val = TransformPythonValue(dict.values.attr("__getitem__")(value_index), child_type);
@@ -131,10 +135,21 @@ logical_value_t TransformDictionaryToStruct(
 		    struct_values.emplace_back(std::move(val));
         }
 	}
-	return logical_value_t::create_struct(struct_values);
+	if (struct_target) {
+		return logical_value_t::create_struct(r, target_type, struct_values);
+	}
+	std::vector<complex_logical_type> child_types;
+	child_types.reserve(struct_values.size());
+	for (idx_t i = 0; i < struct_values.size(); i++) {
+		auto ct = struct_values[i].type();
+		ct.set_alias(struct_keys[i]);
+		child_types.push_back(std::move(ct));
+	}
+	auto struct_type = complex_logical_type::create_struct("", child_types);
+	return logical_value_t::create_struct(r, struct_type, struct_values);
 }
 
-logical_value_t TransformStructFormatDictionaryToMap(const PyDictionary &dict, const complex_logical_type &target_type) {
+logical_value_t TransformStructFormatDictionaryToMap(std::pmr::memory_resource* r, const PyDictionary &dict, const complex_logical_type &target_type) {
 	if (dict.len == 0) {
 		return EmptyMapValue();
 	}
@@ -151,9 +166,9 @@ logical_value_t TransformStructFormatDictionaryToMap(const PyDictionary &dict, c
 	auto size = py::len(dict.keys);
 	assert(size == py::len(dict.values));
 
-    auto* map_extention = static_cast<components::types::map_logical_type_extention*>(target_type.extention()); 
-	auto key_target = map_extention->key();
-	auto value_target = map_extention->value();
+    auto* map_extension = static_cast<components::types::map_logical_type_extension*>(target_type.extension());
+	auto key_target = map_extension->key();
+	auto value_target = map_extension->value();
 
 	complex_logical_type key_type = logical_type::NA;
 	complex_logical_type value_type = logical_type::NA;
@@ -183,14 +198,14 @@ logical_value_t TransformStructFormatDictionaryToMap(const PyDictionary &dict, c
 		value_type = value_target;
 	}
 
-	return logical_value_t::create_map(key_type, value_type, key_values, value_values);
+	return logical_value_t::create_map(r, key_type, value_type, key_values, value_values);
 
 }
 
-logical_value_t TransformDictionaryToMap(const PyDictionary &dict, const complex_logical_type &target_type = logical_type::UNKNOWN) {
+logical_value_t TransformDictionaryToMap(std::pmr::memory_resource* r, const PyDictionary &dict, const complex_logical_type &target_type = logical_type::UNKNOWN) {
 	if (target_type.type() != logical_type::UNKNOWN && !DictionaryHasMapFormat(dict)) {
 		// dict == { 'k1': v1, 'k2': v2, ..., 'kn': vn }
-		return TransformStructFormatDictionaryToMap(dict, target_type);
+		return TransformStructFormatDictionaryToMap(r, dict, target_type);
 	}
 
 	auto keys = dict.values.attr("__getitem__")(0);
@@ -215,9 +230,9 @@ logical_value_t TransformDictionaryToMap(const PyDictionary &dict, const complex
 	complex_logical_type value_target = logical_type::UNKNOWN;
 
 	if (target_type.type() != logical_type::UNKNOWN) {
-        auto* map_extention = static_cast<components::types::map_logical_type_extention*>(target_type.extention()); 
-	    key_target = complex_logical_type::create_list(map_extention->key());
-	    value_target = complex_logical_type::create_list(map_extention->value());
+        auto* map_extension = static_cast<components::types::map_logical_type_extension*>(target_type.extension());
+	    key_target = complex_logical_type::create_list(map_extension->key());
+	    value_target = complex_logical_type::create_list(map_extension->value());
 	}
 
 	auto key_list = TransformPythonValue(keys, key_target);
@@ -247,10 +262,10 @@ logical_value_t TransformDictionaryToMap(const PyDictionary &dict, const complex
         value_values.emplace_back(new_value);
     }
 
-	return logical_value_t::create_map(key_type, value_type, key_values, value_values);
+	return logical_value_t::create_map(r, complex_logical_type(key_type), complex_logical_type(value_type), key_values, value_values);
 }
 
-logical_value_t TransformTupleToStruct(py::handle ele, const complex_logical_type &target_type = logical_type::UNKNOWN) {
+logical_value_t TransformTupleToStruct(std::pmr::memory_resource* r, py::handle ele, const complex_logical_type &target_type = logical_type::UNKNOWN) {
 	auto tuple = py::cast<py::tuple>(ele);
 	auto size = py::len(tuple);
 
@@ -270,11 +285,11 @@ logical_value_t TransformTupleToStruct(py::handle ele, const complex_logical_typ
         converted_value.set_alias(name);
 		children.emplace_back(std::move(converted_value));
 	}
-	auto result = logical_value_t::create_struct(std::move(children));
+	auto result = logical_value_t::create_struct(r, target_type, children);
 	return result;
 }
 
-logical_value_t TransformListValue(py::handle ele, const complex_logical_type &target_type = logical_type::UNKNOWN) {
+logical_value_t TransformListValue(std::pmr::memory_resource* r, py::handle ele, const complex_logical_type &target_type) {
 	auto size = py::len(ele);
 
 	vector<logical_value_t> values;
@@ -293,10 +308,10 @@ logical_value_t TransformListValue(py::handle ele, const complex_logical_type &t
         // todo remove if ForceMaxLogicalType exists
         element_type = child_type;
 	}
-	return logical_value_t::create_list(element_type, values);
+	return logical_value_t::create_list(r, element_type, values);
 }
 
-logical_value_t TransformArrayValue(py::handle ele, const complex_logical_type &target_type = logical_type::UNKNOWN) {
+logical_value_t TransformArrayValue(std::pmr::memory_resource* r, py::handle ele, const complex_logical_type &target_type = logical_type::UNKNOWN) {
 	auto size = py::len(ele);
 
 	vector<logical_value_t> values;
@@ -316,10 +331,10 @@ logical_value_t TransformArrayValue(py::handle ele, const complex_logical_type &
         element_type = child_type;
 	}
 
-	return logical_value_t::create_array(element_type, std::move(values));
+	return logical_value_t::create_array(r, element_type, std::move(values));
 }
 
-logical_value_t TransformDictionary(const PyDictionary &dict) {
+logical_value_t TransformDictionary(std::pmr::memory_resource* r, const PyDictionary &dict) {
 	//! DICT -> MAP FORMAT
 	// keys() = [key, value]
 	// values() = [ [n keys] ], [ [n values] ]
@@ -333,9 +348,9 @@ logical_value_t TransformDictionary(const PyDictionary &dict) {
 	}
 
 	if (DictionaryHasMapFormat(dict)) {
-		return TransformDictionaryToMap(dict);
+		return TransformDictionaryToMap(r, dict);
 	}
-	return TransformDictionaryToStruct(dict);
+	return TransformDictionaryToStruct(r, dict);
 }
 
 bool TryTransformPythonIntegerToDouble(logical_value_t &res, py::handle ele) {
@@ -579,6 +594,7 @@ PythonObjectType GetPythonObjectType(py::handle &ele) {
 }
 
 logical_value_t TransformPythonValue(py::handle ele, const complex_logical_type &target_type, bool nan_as_null) {
+	std::pmr::memory_resource* resource = std::pmr::get_default_resource();
 	auto object_type = GetPythonObjectType(ele);
 
 	switch (object_type) {
@@ -613,7 +629,7 @@ logical_value_t TransformPythonValue(py::handle ele, const complex_logical_type 
 		}
 	case PythonObjectType::Decimal: {
 		PyDecimal decimal(ele);
-		return decimal.to_logical_value();
+		return decimal.to_logical_value(resource);
 	}
 	case PythonObjectType::Uuid: {
 		// auto string_val = py::str(ele).cast<string>();
@@ -664,30 +680,30 @@ logical_value_t TransformPythonValue(py::handle ele, const complex_logical_type 
 	}
 	case PythonObjectType::List:
 		if (target_type.type() == logical_type::ARRAY) {
-			return TransformArrayValue(ele, target_type);
+			return TransformArrayValue(resource, ele, target_type);
 		} else {
-			return TransformListValue(ele, target_type);
+			return TransformListValue(resource, ele, target_type);
 		}
 	case PythonObjectType::Dict: {
 		PyDictionary dict = PyDictionary(py::reinterpret_borrow<py::object>(ele));
 		switch (target_type.type()) {
 		case logical_type::STRUCT:
-			return TransformDictionaryToStruct(dict, target_type);
+			return TransformDictionaryToStruct(resource, dict, target_type);
 		case logical_type::MAP:
-			return TransformDictionaryToMap(dict, target_type);
+			return TransformDictionaryToMap(resource, dict, target_type);
 		default:
-			return TransformDictionary(dict);
+			return TransformDictionary(resource, dict);
 		}
 	}
 	case PythonObjectType::Tuple: {
 		switch (target_type.type()) {
 		case logical_type::STRUCT:
-			return TransformTupleToStruct(ele, target_type);
+			return TransformTupleToStruct(resource, ele, target_type);
 		case logical_type::UNKNOWN:
 		case logical_type::LIST:
-			return TransformListValue(ele, target_type);
+			return TransformListValue(resource, ele, target_type);
 		case logical_type::ARRAY:
-			return TransformArrayValue(ele, target_type);
+			return TransformArrayValue(resource, ele, target_type);
 		default:
 			throw std::runtime_error("Can't convert tuple to a Value of type ");//+target_type.ToString());
 		}

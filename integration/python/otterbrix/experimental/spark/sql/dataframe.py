@@ -82,6 +82,8 @@ class DataFrame:
         raise NotImplementedError
 
     def withColumnRenamed(self, columnName: str, newName: str) -> "DataFrame":
+        if getattr(self, "_lazy", False):
+            raise NotImplementedError("withColumnRenamed() is not supported in lazy mode.")
         if columnName not in self.relation:
             raise ValueError(f"DataFrame does not contain a column named {columnName}")
         cols = []
@@ -94,6 +96,8 @@ class DataFrame:
         return DataFrame(rel, self.session)
 
     def withColumn(self, columnName: str, col: Column) -> "DataFrame":
+        if getattr(self, "_lazy", False):
+            raise NotImplementedError("withColumn() is not supported in lazy mode.")
         if not isinstance(col, Column):
             raise PySparkTypeError(
                 error_class="NOT_COLUMN",
@@ -585,6 +589,8 @@ class DataFrame:
         | 16|  Bob|    85|
         +---+-----+------+
         """
+        if getattr(self, "_lazy", False):
+            raise NotImplementedError("crossJoin() is not supported in lazy mode.")
         return DataFrame(self.relation.cross(other.relation), self.session)
 
     def alias(self, alias: str) -> "DataFrame":
@@ -618,10 +624,14 @@ class DataFrame:
         |Alice|Alice| 23|
         +-----+-----+---+
         """
+        if getattr(self, "_lazy", False):
+            raise NotImplementedError("alias() is not supported in lazy mode.")
         assert isinstance(alias, str), "alias should be a string"
         return DataFrame(self.relation.set_alias(alias), self.session)
 
     def drop(self, *cols: "ColumnOrName") -> "DataFrame":  # type: ignore[misc]
+        if getattr(self, "_lazy", False):
+            raise NotImplementedError("drop() is not supported in lazy mode.")
         if len(cols) == 1:
             col = cols[0]
             if isinstance(col, str):
@@ -873,6 +883,8 @@ class DataFrame:
         |   1|   2|   3|
         +----+----+----+
         """
+        if getattr(self, "_lazy", False):
+            raise NotImplementedError("union() is not supported in lazy mode.")
         return DataFrame(self.relation.union(other.relation), self.session)
 
     unionAll = union
@@ -991,6 +1003,8 @@ class DataFrame:
         |Alice|  5|    80|
         +-----+---+------+
         """
+        if getattr(self, "_lazy", False):
+            raise NotImplementedError("dropDuplicates() is not supported in lazy mode.")
         if subset:
             rn_col = f"tmp_col_{uuid.uuid1().hex}"
             subset_str = ', '.join([f'"{c}"' for c in subset])
@@ -1019,6 +1033,8 @@ class DataFrame:
         >>> df.distinct().count()
         2
         """
+        if getattr(self, "_lazy", False):
+            raise NotImplementedError("distinct() is not supported in lazy mode.")
         distinct_rel = self.relation.distinct()
         return DataFrame(distinct_rel, self.session)
 
@@ -1057,6 +1073,8 @@ class DataFrame:
         return DataFrame(new_rel, self.session)
 
     def toDF(self, *cols) -> "DataFrame":
+        if getattr(self, "_lazy", False):
+            raise NotImplementedError("toDF() is not supported in lazy mode.")
         existing_columns = self.relation.columns
         column_count = len(cols)
         if column_count != len(existing_columns):
