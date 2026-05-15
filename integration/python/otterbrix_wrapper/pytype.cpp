@@ -66,13 +66,13 @@ namespace otterbrix {
     		return make_shared_ptr<OtterBrixPyType>(type.child_type());
     	}
     	if (type.type() == logical_type::MAP) {
-            auto* extention = static_cast<map_logical_type_extention*>(type.extention());
+            auto* extension = static_cast<map_logical_type_extension*>(type.extension());
     		auto is_key = string_utils::CIEquals(name, "key");
     		auto is_value = string_utils::CIEquals(name, "value");
     		if (is_key) {
-    			return make_shared_ptr<OtterBrixPyType>(extention->key());
+    			return make_shared_ptr<OtterBrixPyType>(extension->key());
     		} else if (is_value) {
-    			return make_shared_ptr<OtterBrixPyType>(extention->value());
+    			return make_shared_ptr<OtterBrixPyType>(extension->value());
     		} else {
     			throw py::attribute_error("Tried to get a child from a map by the name of " + name + 
                     ", but this type only has 'key' and 'value' children");
@@ -406,8 +406,8 @@ namespace otterbrix {
     	}
     	if (id == logical_type::ARRAY) {
     		children.append(py::make_tuple("child", make_shared_ptr<OtterBrixPyType>(type.child_type())));
-			auto* extention = static_cast<array_logical_type_extention*>(type.extention());
-    		children.append(py::make_tuple("size", extention->size()));
+			auto* extension = static_cast<array_logical_type_extension*>(type.extension());
+    		children.append(py::make_tuple("size", extension->size()));
     		return children;
     	}
     	if (id == logical_type::ENUM) {
@@ -431,15 +431,15 @@ namespace otterbrix {
     		return children;
     	}
     	if (id == logical_type::MAP) {
-            auto* extention = static_cast<map_logical_type_extention*>(type.extention());
-    		children.append(py::make_tuple("key", make_shared_ptr<OtterBrixPyType>(extention->key())));
-    		children.append(py::make_tuple("value", make_shared_ptr<OtterBrixPyType>(extention->value())));
+            auto* extension = static_cast<map_logical_type_extension*>(type.extension());
+    		children.append(py::make_tuple("key", make_shared_ptr<OtterBrixPyType>(extension->key())));
+    		children.append(py::make_tuple("value", make_shared_ptr<OtterBrixPyType>(extension->value())));
     		return children;
     	}
     	if (id == logical_type::DECIMAL) {
-            auto* extention = static_cast<decimal_logical_type_extention*>(type.extention());
-    		children.append(py::make_tuple("precision", extention->width()));
-    		children.append(py::make_tuple("scale", extention->scale()));
+            auto* extension = static_cast<decimal_logical_type_extension*>(type.extension());
+    		children.append(py::make_tuple("precision", extension->width()));
+    		children.append(py::make_tuple("scale", extension->scale()));
     		return children;
     	}
     	throw std::runtime_error("Children is not implemented for this type");

@@ -56,7 +56,7 @@ namespace otterbrix {
                 if (aggregate_expr->params().size() > 1) {
                     return column_definition_t(name, type);
                 }
-                bool is_count = aggregate_expr->type() == expressions::aggregate_type::count;
+                bool is_count = aggregate_expr->function_name() == "count";
                 if (is_count) {
                     name = (aggregate_expr->key().is_null()?"count":aggregate_expr->key().as_string());
                     type = types::logical_type::INTEGER;
@@ -66,19 +66,17 @@ namespace otterbrix {
                     auto founded_name = find_param_name(param);
                 
                     if (aggregate_expr->key().is_null()) {
-                        string agg_str = string(magic_enum::enum_name(aggregate_expr->type()));
+                        string agg_str = aggregate_expr->function_name();
                         name =  agg_str + 
                         "(" + founded_name.first +")";
                     } else {
                         name = aggregate_expr->key().as_string();
                     }   
-                    auto base_type = find_type(founded_name.first, initial); 
-                    switch (aggregate_expr->type()) {
-                        case aggregate_type::avg:
-                            type = types::logical_type::FLOAT;
-                            break;
-                        default:
-                            type = base_type;
+                    auto base_type = find_type(founded_name.first, initial);
+                    if (aggregate_expr->function_name() == "avg") {
+                        type = types::logical_type::FLOAT;
+                    } else {
+                        type = base_type;
                     }
                 }
                 return column_definition_t(name, type); 
@@ -140,6 +138,10 @@ namespace otterbrix {
             return result;
         }
 
+        vector<column_definition_t> operator()(const Relation::Limit& limit) {
+            return limit.resource->GetColumns();
+        }
+
         vector<column_definition_t> operator()(const Relation::Aggregate& aggregate) {
             // define types
             auto initial = aggregate.resource->GetColumns();
@@ -199,6 +201,10 @@ namespace otterbrix {
             logical_plan::join_type join_type) 
             : relation(Relation::Join(left, right, std::move(conditions), join_type)) {
 
+    }
+
+    Relation::Relation(shared_ptr<Relation> resource, int64_t limit_count)
+            : relation(Limit(resource, limit_count)) {
     }
 
     Relation::Relation(Relation&& other) noexcept = default;

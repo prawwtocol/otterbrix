@@ -5,7 +5,6 @@
 #include <components/expressions/aggregate_expression.hpp>
 #include <components/expressions/scalar_expression.hpp>
 
-#include <util/convert_value.hpp>
 #include <util/util.hpp>
 
 #include <magic_enum.hpp>
@@ -31,7 +30,7 @@ namespace otterbrix {
     }
 
     Expression ExpressionFactory::MakeCountExpression() {
-        return make_aggregate_expression(space->dispatcher()->resource(), aggregate_type::count, expressions::key_t("count"));
+        return make_aggregate_expression(space->dispatcher()->resource(), "count", expressions::key_t("count"));
     }
 
     Expression ExpressionFactory::SortExpression(const string& arg) {
@@ -56,13 +55,13 @@ namespace otterbrix {
             }}, arg);
     }
 
-    Expression ExpressionFactory::AggregationUnaryExpression(components::expressions::aggregate_type type, 
+    Expression ExpressionFactory::AggregationUnaryExpression(const string& function_name,
         const Expression& expr) {
         string sub_name = std::visit([](const auto& param) -> string {
                 using T = std::decay_t<decltype(param)>;
                 if constexpr (std::is_same_v<T, expressions::key_t>) {
                     return param.as_string();
-                } else if (std::is_same_v<T, expressions::expression_ptr> || 
+                } else if (std::is_same_v<T, expressions::expression_ptr> ||
                         std::is_same_v<T, core::parameter_id_t>) {
                     throw std::runtime_error("Current configuration support only column names as argument of aggregation function");
                 } else {
@@ -70,9 +69,9 @@ namespace otterbrix {
                 }
                 }, expr);
 
-        string agg_str = string(magic_enum::enum_name(type));
+        string agg_str = function_name;
         agg_str += "(" + sub_name +")";
-        auto aggregation_expression = expressions::make_aggregate_expression(space->dispatcher()->resource(), type, expressions::key_t(agg_str));
+        auto aggregation_expression = expressions::make_aggregate_expression(space->dispatcher()->resource(), function_name, expressions::key_t(agg_str));
         aggregation_expression->append_param(expr);
         return Expression(aggregation_expression);
     }
@@ -144,7 +143,7 @@ namespace otterbrix {
             } else  if constexpr (std::is_same_v<T, expressions::expression_ptr>) {
                 if (expr->group() == expression_group::aggregate) {
                     const auto& agg = boost::static_pointer_cast<expressions::aggregate_expression_t>(expr);
-                    auto alias_expr = make_aggregate_expression(resource, agg->type(), expressions::key_t(alias));
+                    auto alias_expr = make_aggregate_expression(resource, agg->function_name(), expressions::key_t(alias));
                     for (const auto& param : agg->params()) {
                         alias_expr->append_param(param);
                     }
