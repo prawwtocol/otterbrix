@@ -414,8 +414,8 @@ static bool ConvertDecimalInternal(NumpyAppendData &append_data, double division
 
 static bool ConvertDecimal(NumpyAppendData &append_data) {
 	auto &decimal_type = append_data.input.type();
-    auto* decimal_extention = static_cast<decimal_logical_type_extention*>(decimal_type.extention());
-	auto dec_scale = decimal_extention->scale();
+    auto* decimal_extension = static_cast<decimal_logical_type_extension*>(decimal_type.extension());
+	auto dec_scale = decimal_extension->scale();
 	double division = pow(10, dec_scale);
 	/*switch (decimal_type.to_physical_type()) {
 	case physical_type::INT16:

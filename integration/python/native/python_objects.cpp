@@ -120,29 +120,29 @@ static bool WidthFitsInDecimal(int32_t width) {
 }
 
 template <class OP>
-logical_value_t PyDecimalCastSwitch(PyDecimal &decimal, uint8_t width, uint8_t scale) {
+logical_value_t PyDecimalCastSwitch(std::pmr::memory_resource* r, PyDecimal &decimal, uint8_t width, uint8_t scale) {
 	/*if (width > DecimalWidth<int64_t>::max) {
-		return OP::template Operation<int128_t>(decimal.signed_value, decimal.digits, width, scale);
+		return OP::template Operation<int128_t>(r, decimal.signed_value, decimal.digits, width, scale);
 	}*/
 	//if (width > DecimalWidth<int32_t>::max) {
-		return OP::template Operation<int64_t>(decimal.signed_value, decimal.digits, width, scale);
+		return OP::template Operation<int64_t>(r, decimal.signed_value, decimal.digits, width, scale);
 	//}
 	/*if (width > DecimalWidth<int16_t>::max) {
-		return OP::template Operation<int32_t>(decimal.signed_value, decimal.digits, width, scale);
+		return OP::template Operation<int32_t>(r, decimal.signed_value, decimal.digits, width, scale);
 	}
-	return OP::template Operation<int16_t>(decimal.signed_value, decimal.digits, width, scale);
+	return OP::template Operation<int16_t>(r, decimal.signed_value, decimal.digits, width, scale);
     */
 }
 
 // Wont fit in a DECIMAL, fall back to DOUBLE
-static logical_value_t CastToDouble(py::handle &obj) {
-	return logical_value_t(py::cast<double>(obj));
+static logical_value_t CastToDouble(std::pmr::memory_resource* r, py::handle &obj) {
+	return logical_value_t(r, py::cast<double>(obj));
 }
 
-logical_value_t PyDecimal::to_logical_value() {
+logical_value_t PyDecimal::to_logical_value(std::pmr::memory_resource* r) {
 	int32_t width = digits.size();
 	if (!WidthFitsInDecimal(width)) {
-		return CastToDouble(obj);
+		return CastToDouble(r, obj);
 	}
 	switch (exponent_type) {
 	case PyDecimalExponentType::EXPONENT_SCALE: {
@@ -153,23 +153,23 @@ logical_value_t PyDecimal::to_logical_value() {
 			width = scale + 1; // leave 1 room for the non-decimal value
 		}
 		if (!WidthFitsInDecimal(width)) {
-			return CastToDouble(obj);
+			return CastToDouble(r, obj);
 		}
-		return PyDecimalCastSwitch<PyDecimalScaleConverter>(*this, width, scale);
+		return PyDecimalCastSwitch<PyDecimalScaleConverter>(r, *this, width, scale);
 	}
 	case PyDecimalExponentType::EXPONENT_POWER: {
 		uint8_t scale = exponent_value;
 		width += scale;
 		if (!WidthFitsInDecimal(width)) {
-			return CastToDouble(obj);
+			return CastToDouble(r, obj);
 		}
-		return PyDecimalCastSwitch<PyDecimalPowerConverter>(*this, width, scale);
+		return PyDecimalCastSwitch<PyDecimalPowerConverter>(r, *this, width, scale);
 	}
 	case PyDecimalExponentType::EXPONENT_NAN: {
-		return logical_value_t(NAN);
+		return logical_value_t(r, NAN);
 	}
 	case PyDecimalExponentType::EXPONENT_INFINITY: {
-		return logical_value_t(INFINITY);
+		return logical_value_t(r, INFINITY);
 	}
 	// LCOV_EXCL_START
 	default: {
@@ -307,8 +307,8 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 		return py::cast(val.value<double>());
     case logical_type::DECIMAL: {
         int64_t value = val.value<int64_t>();
-		auto* extention = static_cast<components::types::decimal_logical_type_extention*>(val.type().extention());
-		auto scale = extention->scale();
+		auto* extension = static_cast<components::types::decimal_logical_type_extension*>(val.type().extension());
+		auto scale = extension->scale();
         std::string digits = std::to_string(value);
         auto pydigits = import_cache.decimal.Decimal()(digits);
 		return pydigits.attr("__truediv__")(py::cast<int>(scale));
@@ -351,8 +351,8 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 	}
 	case logical_type::ARRAY: {
 		auto &array_values = val.children();
-		auto* extention = static_cast<components::types::array_logical_type_extention*>(type.extention());
-		auto array_size = extention->size();
+		auto* extension = static_cast<components::types::array_logical_type_extension*>(type.extension());
+		auto array_size = extension->size();
 		auto &child_type = type.child_type();
 
 		// do not remove the static cast here, it's required for building
@@ -372,9 +372,9 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 	case logical_type::MAP: {
 		auto &list_values = val.children(); 
 
-        auto* map_extention = static_cast<components::types::map_logical_type_extention*>(type.extention()); 
-		auto &key_type = map_extention->key();
-		auto &val_type = map_extention->value();
+        auto* map_extension = static_cast<components::types::map_logical_type_extension*>(type.extension());
+		auto &key_type = map_extension->key();
+		auto &val_type = map_extension->value();
 
 		py::dict py_struct;
 		if (KeyIsHashable(key_type)) {

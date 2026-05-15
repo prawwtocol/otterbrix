@@ -14,7 +14,7 @@
 namespace otterbrix {
     using components::types::logical_type;
     using components::types::complex_logical_type;
-    using components::types::map_logical_type_extention;
+    using components::types::map_logical_type_extension;
     
 static bool SameTypeRealm(const complex_logical_type &a, const complex_logical_type &b) {
 	auto a_id = a.type();
@@ -194,7 +194,7 @@ static bool UpgradeType(complex_logical_type &left, const complex_logical_type &
 			// Left: STRUCT, Right: MAP
 			// Combine all the child types of the STRUCT into the value type of the MAP
             auto value_type = 
-                static_cast<map_logical_type_extention*>(right.extention())->value();
+                static_cast<map_logical_type_extension*>(right.extension())->value();
 			if (!CombineStructTypes(value_type, left)) {
 				return false;
 			}
@@ -208,31 +208,31 @@ static bool UpgradeType(complex_logical_type &left, const complex_logical_type &
 		throw std::runtime_error("UNION types are not being detected yet, this should never happen");
 	}
     case logical_type::MAP: {
-        auto left_map_extention = 
-            static_cast<map_logical_type_extention*>(left.extention());
+        auto left_map_extension =
+            static_cast<map_logical_type_extension*>(left.extension());
 		if (right.type() == logical_type::MAP) {
-            auto right_map_extention = 
-                static_cast<map_logical_type_extention*>(right.extention());
+            auto right_map_extension =
+                static_cast<map_logical_type_extension*>(right.extension());
 			// Key Type
 			complex_logical_type key_type = logical_type::NA;
-			if (!UpgradeType(key_type, left_map_extention->key())) {
+			if (!UpgradeType(key_type, left_map_extension->key())) {
 				return false;
 			}
-			if (!UpgradeType(key_type, right_map_extention->key())) {
+			if (!UpgradeType(key_type, right_map_extension->key())) {
 				return false;
 			}
 
 			// Value Type
 			complex_logical_type value_type = logical_type::NA;
-			if (!UpgradeType(value_type, left_map_extention->value())) {
+			if (!UpgradeType(value_type, left_map_extension->value())) {
 				return false;
 			}
-			if (!UpgradeType(value_type, right_map_extention->value())) {
+			if (!UpgradeType(value_type, right_map_extension->value())) {
 				return false;
 			}
 			left = complex_logical_type::create_map(key_type, value_type);
 		} else if (right.type() == logical_type::STRUCT) {
-			auto value_type = left_map_extention->value();
+			auto value_type = left_map_extension->value();
 			if (!CombineStructTypes(value_type, right)) {
 				return false;
 			}
