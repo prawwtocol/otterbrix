@@ -5,8 +5,6 @@
 #include <connection_environment/framework_object_detection.hpp>
 #include <otterbrix_wrapper/python_dependency.hpp>
 #include <pandas/pandas_scan.hpp>
-#include <util/convert_value.hpp>
-
 #include <components/tableref/tableref.hpp>
 #include <components/types/logical_value.hpp>
 #include <components/vector/data_chunk.hpp>
@@ -148,12 +146,11 @@ namespace otterbrix {
 
     std::pair<logical_plan::node_data_ptr, unique_ptr<vector<components::table::column_definition_t>>>
             Scan::FetchObjectData(std::pmr::memory_resource* resource, unique_ptr<components::tableref::TableRef> ref) {
-        std::pmr::vector<components::document::document_ptr> result;
         function::TableFunctionBindInput bind_input(ref->children, *ref);
         vector<types::complex_logical_type> return_types;
         vector<string> names;
         auto function_data = ref->function->bind(bind_input, return_types, names);
-        // coluns_definition
+
         std::vector<components::table::column_definition_t> col_defs;
         for (int i = 0; i < return_types.size(); i++) {
             col_defs.emplace_back(names[i], return_types[i]);
@@ -171,26 +168,32 @@ namespace otterbrix {
         auto local_state = ref->function->init_local(init_input, global_state.get());
 
         function::TableFunctionInput input{
-                otterbrix::optional_ptr<function::FunctionData>(function_data), 
-                otterbrix::optional_ptr<function::LocalTableFunctionState>(local_state), 
+                otterbrix::optional_ptr<function::FunctionData>(function_data),
+                otterbrix::optional_ptr<function::LocalTableFunctionState>(local_state),
                 otterbrix::optional_ptr<function::GlobalTableFunctionState>(global_state)};
 
-        
+        // Конвертируем std::vector → std::pmr::vector для конструктора data_chunk_t
+        std::pmr::vector<types::complex_logical_type> pmr_types(resource);
+        for (const auto& t : return_types) {
+            pmr_types.push_back(t);
+        }
+
+        // Собираем все данные в один data_chunk
+        components::vector::data_chunk_t result_chunk(resource, pmr_types);
+
         bool has_input;
         do {
-            components::vector::data_chunk_t chunk(resource, return_types);
+            components::vector::data_chunk_t chunk(resource, pmr_types);
             ref->function->function(input, chunk);
             if (chunk.size() > 0) {
                 has_input = true;
-                auto result_chunk = util::ToDocuments(resource, chunk, names);
-                result.reserve(result.size() + result_chunk.size());
-                result.insert(result.end(), result_chunk.begin(), result_chunk.end());
-                
+                result_chunk.append(chunk, true);
             } else {
                 has_input = false;
             }
         } while (has_input);
-        return {logical_plan::make_node_raw_data(resource, std::move(result)), 
+
+        return {logical_plan::make_node_raw_data(resource, std::move(result_chunk)),
             make_unique<vector<components::table::column_definition_t>>(std::move(col_defs))};
     }
 

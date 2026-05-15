@@ -39,8 +39,10 @@ namespace otterbrix {
         shared_ptr<Relation> SortRelation(shared_ptr<Relation> relation, const vector<Expression>& exprs);
         shared_ptr<Relation> GroupRelation(shared_ptr<Relation> relation, const vector<Expression>& exprs);
 
-        shared_ptr<Relation> JoinRelation(shared_ptr<Relation> relation, shared_ptr<Relation> other, 
+        shared_ptr<Relation> JoinRelation(shared_ptr<Relation> relation, shared_ptr<Relation> other,
                 const vector<Expression>& exprs, components::logical_plan::join_type type);
+
+        shared_ptr<Relation> LimitRelation(shared_ptr<Relation> relation, int64_t count);
 
 
         shared_ptr<Relation> CreateFromSelect(components::logical_plan::node_ptr plan);
