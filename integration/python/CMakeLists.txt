@@ -86,10 +86,24 @@ if(NOT MSVC AND NOT ${CMAKE_BUILD_TYPE} MATCHES Debug|RelWithDebInfo)
     pybind11_strip(otterbrix_python)
 endif()
 
+# Emit extension next to otterbrix/__init__.py so PYTHONPATH=integration/python works
+# after build (benchmarks/scripts do not probe cmake build dirs).
+set(_otterbrix_py_ext_out "${CMAKE_CURRENT_SOURCE_DIR}/otterbrix")
 set_target_properties(otterbrix_python PROPERTIES
     OUTPUT_NAME "otterbrix"
     CXX_VISIBILITY_PRESET "hidden"
+    LIBRARY_OUTPUT_DIRECTORY "${_otterbrix_py_ext_out}"
+    RUNTIME_OUTPUT_DIRECTORY "${_otterbrix_py_ext_out}"
 )
+if(CMAKE_CONFIGURATION_TYPES)
+    foreach(cfg ${CMAKE_CONFIGURATION_TYPES})
+        string(TOUPPER ${cfg} OTTERBRIX_PYTHON_CFG_UPPER)
+        set_target_properties(otterbrix_python PROPERTIES
+            LIBRARY_OUTPUT_DIRECTORY_${OTTERBRIX_PYTHON_CFG_UPPER} "${_otterbrix_py_ext_out}"
+            RUNTIME_OUTPUT_DIRECTORY_${OTTERBRIX_PYTHON_CFG_UPPER} "${_otterbrix_py_ext_out}"
+        )
+    endforeach()
+endif()
 
 # ── Install rules ────────────────────────────────────────────────────────────
 if(SKBUILD)
