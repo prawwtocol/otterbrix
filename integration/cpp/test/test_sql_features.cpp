@@ -2,7 +2,6 @@
 #include "types/operations_helper.hpp"
 
 #include <catch2/catch.hpp>
-#include <core/operations_helper.hpp>
 
 static const database_name_t database_name = "testdatabase";
 static const collection_name_t collection_name = "testcollection";
@@ -934,7 +933,7 @@ TEST_CASE("integration::cpp::test_sql_features::case_when_in_aggregate") {
     }
 
     INFO("AVG(CASE WHEN ... THEN col ELSE 0 END) — average over all rows with zero default") {
-        // (95 + 72 + 0 + 88 + 0) / 5 = 51.
+        // (95 + 72 + 0 + 88 + 0) / 5 = 51 (integer division).
         auto session = otterbrix::session_id_t();
         auto cur = dispatcher->execute_sql(session,
                                            "SELECT AVG(CASE WHEN score >= 70 THEN score ELSE 0 END) AS a "
