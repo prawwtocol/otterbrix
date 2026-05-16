@@ -14,7 +14,7 @@
 #include <vector>
 
 namespace components::tableref {
-    struct TableRef;
+    class TableRef;
 } // namespace components::tableref
 
 namespace components::function {
