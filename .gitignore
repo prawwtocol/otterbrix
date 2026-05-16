@@ -427,12 +427,9 @@ build
 *.wal
 *.txt.user
 benchmark/data/
-/integration/python/default/log/python-1773985676.txt
-/integration/python/default/wal/.wal_0
-/integration/python/default/wal/.wal_1
-/integration/python/default/wal/indexes_METADATA
-/integration/python/default/wal/METADATA
-/integration/python/default/wal/WAL_ID
+# Python integration tests: per-instance log and WAL directories.
+integration/python/**/log/
+integration/python/**/wal/
 /integration/python/.coverage
 
 # Python wheel build artifacts — CI generates root-level setup.py,
@@ -453,11 +450,6 @@ _skbuild/
 # CMakeUserPresets.json is user-local per CMake convention.
 /CMakeUserPresets.json
 
-# Runtime artifacts (log/wal) produced when tests run from the repo root.
-/default/
-/test_collection_connections/
-/test_collection_sql/
-/test_collection_sql2/
 build-verify/build.ninja
 build-verify/conanfile.py
 build-verify/components/catalog/tests/DartConfiguration.tcl
