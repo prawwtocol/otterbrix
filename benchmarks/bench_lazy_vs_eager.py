@@ -26,7 +26,10 @@ import statistics
 import random
 from typing import List, Tuple, Callable, Dict, Any
 
-sys.path.insert(0, "otterbrix/integration/python")
+_repo_integration_python = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "integration", "python")
+)
+sys.path.append(_repo_integration_python)
 
 from otterbrix.experimental.spark.sql import SparkSession
 from otterbrix.experimental.spark.sql.functions import col, sum as spark_sum

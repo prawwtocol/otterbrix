@@ -59,7 +59,7 @@ static NumpyNullableType ConvertNumpyTypeInternal(const string &col_type_str) {
 	if (col_type_str == "float64" || col_type_str == "Float64") {
 		return NumpyNullableType::FLOAT_64;
 	}
-	if (col_type_str == "string") {
+	if (col_type_str == "string" || col_type_str == "str") {
 		return NumpyNullableType::STRING;
 	}
 	if (col_type_str == "object") {
