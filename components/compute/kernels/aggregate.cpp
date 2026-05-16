@@ -457,12 +457,7 @@ namespace {
 
     static core::error_t avg_merge(aggregate_kernel_context& ctx, kernel_state&& from, kernel_state&) {
         auto& s = static_cast<avg_kernel_state&>(from);
-        // avg returns DOUBLE regardless of input type. Cast the running sum to
-        // double before dividing so integer inputs produce fractional averages.
-        auto double_sum = s.value.cast_as(complex_logical_type{logical_type::DOUBLE});
-        double divisor = s.count == 0 ? 1.0 : static_cast<double>(s.count);
-        ctx.batch_results.push_back(
-            logical_value_t{s.value.resource(), double_sum.value<double>() / divisor});
+        ctx.batch_results.push_back(operator_switch<divide_operator_t>(s.value, s.count));
         return core::error_t::no_error();
     }
 
@@ -556,7 +551,7 @@ namespace {
 
         kernel_signature_t sig(function_type_t::aggregate,
                                {numeric_types_matcher()},
-                               {output_type::fixed(logical_type::DOUBLE)});
+                               {output_type::computed(same_type_resolver(0))});
         aggregate_kernel k{std::move(sig), avg_init, avg_consume, avg_merge, avg_finalize};
 
         fn->add_kernel(resource, std::move(k));

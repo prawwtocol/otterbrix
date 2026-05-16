@@ -167,7 +167,7 @@ public class Tests
                 Assert.IsTrue(nameVal.GetString() == "Name " + number.ToString());
                 Assert.IsTrue(countVal.GetInt() == 10);
                 Assert.IsTrue(sumVal.GetInt() == 5 * (number % 20) + 5 * ((number + 10) % 20));
-                Assert.IsTrue(avgVal.GetDouble() == (number % 20 + (number + 10) % 20) / 2);
+                Assert.IsTrue(avgVal.GetInt() == (number % 20 + (number + 10) % 20) / 2);
                 Assert.IsTrue(minVal.GetInt() == number % 20);
                 Assert.IsTrue(maxVal.GetInt() == (number + 10) % 20);
             }
@@ -191,7 +191,7 @@ public class Tests
                 Assert.IsTrue(nameVal.GetString() == "Name " + number.ToString());
                 Assert.IsTrue(countVal.GetInt() == 10);
                 Assert.IsTrue(sumVal.GetInt() == 5 * (number % 20) + 5 * ((number + 10) % 20));
-                Assert.IsTrue(avgVal.GetDouble() == (number % 20 + (number + 10) % 20) / 2);
+                Assert.IsTrue(avgVal.GetInt() == (number % 20 + (number + 10) % 20) / 2);
                 Assert.IsTrue(minVal.GetInt() == number % 20);
                 Assert.IsTrue(maxVal.GetInt() == (number + 10) % 20);
             }
