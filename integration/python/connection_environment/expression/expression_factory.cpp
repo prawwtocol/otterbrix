@@ -75,9 +75,11 @@ namespace otterbrix {
         auto aggregation_expression =
             expressions::make_aggregate_expression(resource, function_name, expressions::key_t(resource, agg_str));
 
-        // Spark/Catalyst-style avg over integers uses floating accumulator; grouped_aggregate truncates back to the
-        // column type when the input vector is integral. Multiply by 1.0 so arithmetic promotes to DOUBLE,
-        // vectorization path skips this aggregate, and operator_func + avg kernel yield a fractional mean.
+        // Spark-style avg over integers uses floating accumulator:
+        // https://github.com/apache/spark/blob/master/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/aggregate/Average.scala#L63-L79
+        // But grouped_aggregate truncates back to the column type when the input vector is integral:
+        // https://github.com/prawwtocol/otterbrix/blob/main/components/physical_plan/operators/aggregate/grouped_aggregate.cpp#L265
+        // Multiply by 1.0 so arithmetic promotes to DOUBLE
         if (function_name == "avg") {
             Expression one = MakeConstant(types::logical_value_t(resource, 1.0));
             Expression scaled = ScalarBinaryExpression(scalar_type::multiply, expr, std::move(one));
