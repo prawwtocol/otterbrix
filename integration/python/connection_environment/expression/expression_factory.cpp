@@ -57,22 +57,43 @@ namespace otterbrix {
 
     Expression ExpressionFactory::AggregationUnaryExpression(const string& function_name,
         const Expression& expr) {
+        auto* resource = space->dispatcher()->resource();
         string sub_name = std::visit([](const auto& param) -> string {
                 using T = std::decay_t<decltype(param)>;
                 if constexpr (std::is_same_v<T, expressions::key_t>) {
                     return param.as_string();
-                } else if (std::is_same_v<T, expressions::expression_ptr> || 
-                        std::is_same_v<T, core::parameter_id_t>) {
+                } else if (std::is_same_v<T, expressions::expression_ptr> ||
+                           std::is_same_v<T, core::parameter_id_t>) {
                     throw std::runtime_error("Current configuration support only column names as argument of aggregation function");
                 } else {
                     throw std::runtime_error("Implementation Error. Undefined parameter of aggregaton function");
                 }
-                }, expr);
+            },
+            expr);
 
-        // string agg_str = string(magic_enum::enum_name(type));
-        string agg_str = function_name;
-        agg_str += "(" + sub_name +")";
-        auto aggregation_expression = expressions::make_aggregate_expression(space->dispatcher()->resource(), function_name, expressions::key_t(space->dispatcher()->resource(), agg_str));
+        string agg_str = function_name + "(" + sub_name + ")";
+        auto aggregation_expression =
+            expressions::make_aggregate_expression(resource, function_name, expressions::key_t(resource, agg_str));
+
+        // Spark/Catalyst-style avg over integers uses floating accumulator; grouped_aggregate truncates back to the
+        // column type when the input vector is integral. Multiply by 1.0 so arithmetic promotes to DOUBLE,
+        // vectorization path skips this aggregate, and operator_func + avg kernel yield a fractional mean.
+        if (function_name == "avg") {
+            Expression one = MakeConstant(types::logical_value_t(resource, 1.0));
+            Expression scaled = ScalarBinaryExpression(scalar_type::multiply, expr, std::move(one));
+            std::visit(
+                [&](const auto& inner) {
+                    using T = std::decay_t<decltype(inner)>;
+                    if constexpr (std::is_same_v<T, expressions::expression_ptr>) {
+                        aggregation_expression->append_param(inner);
+                    } else {
+                        throw std::runtime_error("avg: internal multiply expression expected");
+                    }
+                },
+                scaled);
+            return Expression(aggregation_expression);
+        }
+
         aggregation_expression->append_param(expr);
         return Expression(aggregation_expression);
     }
