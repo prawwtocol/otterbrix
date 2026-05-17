@@ -11,6 +11,7 @@
 #include <components/logical_plan/node_join.hpp>
 #include <components/logical_plan/node_group.hpp>
 #include <components/logical_plan/node_match.hpp>
+#include <components/logical_plan/node_select.hpp>
 #include <components/logical_plan/node_sort.hpp>
 #include <components/logical_plan/node_aggregate.hpp>
 #include <components/logical_plan/node_limit.hpp>
@@ -32,10 +33,11 @@ namespace otterbrix {
                 shared_ptr<otterbrix::ExternalDependency> external_dependency,
                 unique_ptr<vector<components::table::column_definition_t>> columns);
 
-        Relation(shared_ptr<Relation> resource, 
+        Relation(shared_ptr<Relation> resource,
                 components::logical_plan::node_group_ptr group,
                 components::logical_plan::node_match_ptr match,
-                components::logical_plan::node_sort_ptr sort, string name);
+                components::logical_plan::node_sort_ptr sort,
+                components::logical_plan::node_select_ptr select, string name);
 
         Relation(shared_ptr<Relation> left, shared_ptr<Relation> right,
                 unique_ptr<vector<components::expressions::expression_ptr>> conditions,
@@ -49,12 +51,15 @@ namespace otterbrix {
             Aggregate(shared_ptr<Relation> resource,
                 components::logical_plan::node_group_ptr group,
                 components::logical_plan::node_match_ptr match,
-                components::logical_plan::node_sort_ptr sort, string name)
-                : resource(resource), group(group), match(match), sort(sort), name(std::move(name)) {}
+                components::logical_plan::node_sort_ptr sort,
+                components::logical_plan::node_select_ptr select, string name)
+                : resource(resource), group(group), match(match), sort(sort), select(select),
+                  name(std::move(name)) {}
             shared_ptr<Relation> resource;
             components::logical_plan::node_group_ptr group;
             components::logical_plan::node_match_ptr match;
             components::logical_plan::node_sort_ptr sort;
+            components::logical_plan::node_select_ptr select;
             string name;
         };
         

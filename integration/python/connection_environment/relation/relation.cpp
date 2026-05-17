@@ -160,6 +160,27 @@ namespace otterbrix {
             auto initial = aggregate.resource->GetColumns();
             vector<column_definition_t> result;
             auto group = aggregate.group;
+            auto select = aggregate.select;
+
+            // Pure projection (select-only): output schema is exactly the SELECT exprs,
+            // independent of upstream group state.
+            if (select && !group) {
+                const auto& exprs = select->expressions();
+                result.reserve(exprs.size());
+                for (const auto& expr : exprs) {
+                    switch (expr->group()) {
+                        case expression_group::scalar:
+                            result.push_back(process_scalar(
+                                boost::static_pointer_cast<scalar_expression_t>(expr),
+                                initial));
+                            break;
+                        default:
+                            result.emplace_back(error_str, components::types::logical_type::UNKNOWN);
+                    }
+                }
+                return result;
+            }
+
             if (!group) {
                 result.reserve(initial.size());
                 for (const auto& col : initial) {
@@ -183,7 +204,7 @@ namespace otterbrix {
                             initial));
                         break;
                     default:
-                        result.emplace_back(error_str, components::types::logical_type::UNKNOWN);                        
+                        result.emplace_back(error_str, components::types::logical_type::UNKNOWN);
                 }
             }
             return result;
@@ -201,11 +222,12 @@ namespace otterbrix {
     }
 
     
-    Relation::Relation(shared_ptr<Relation> resource, 
-            node_group_ptr group, 
-            node_match_ptr match, 
-            node_sort_ptr sort, string name) 
-            : relation(Aggregate(resource, group, match, sort, std::move(name))) {
+    Relation::Relation(shared_ptr<Relation> resource,
+            node_group_ptr group,
+            node_match_ptr match,
+            node_sort_ptr sort,
+            node_select_ptr select, string name)
+            : relation(Aggregate(resource, group, match, sort, select, std::move(name))) {
     }
 
 
