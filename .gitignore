@@ -550,3 +550,10 @@ build-verify/services/wal/tests/DartConfiguration.tcl
 build-verify/services/wal/tests/test_wal
 build-verify/services/wal/tests/test_wal_include-b12d07c.cmake
 build-verify/services/wal/tests/test_wal_tests-b12d07c.cmake
+benchmarks/default/log/python-1779011658.txt
+benchmarks/default/wal/.wal_0_000000
+benchmarks/default/wal/.wal_1_000000
+benchmarks/default/wal/catalog.otbx
+benchmarks/default/wal/indexes_METADATA
+benchmarks/default/wal/WAL_ID
+*.png

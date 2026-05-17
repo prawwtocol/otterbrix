@@ -2,13 +2,18 @@
 Benchmark: Lazy vs Eager DataFrame execution in OtterBrix Spark API.
 
 Scenarios:
-  1. filter          — df.filter(col("age") > threshold)           O(n)
-  2. project+filter  — df.select("a","b").filter(col("a") > t)     O(n)
-  3. chained_filters — df.filter(a).filter(b).filter(c)            O(n)
-  4. groupby_agg     — df.groupBy("key").agg(sum("value"))         O(n*k)
-  5. join+filter     — df1.join(df2, "id").filter(col("v") > t)    O(n²)
+  1. filter                   — df.filter(col("age") > threshold)              O(n)
+  2. project+filter           — df.select("a","b").filter(col("a") > t)        O(n)        [pushdown]
+  3. chained_filters          — df.filter(a).filter(b).filter(c)               O(n)
+  4. groupby_agg              — df.groupBy("key").agg(sum("value"))            O(n*k)
+  5. filter_over_sort         — df.sort("name").filter(col("age") > t)         O(n log n)  [pushdown]
+  6. filter_over_groupby_key  — df.groupBy("key").agg(...).filter(key == c)    O(n)        [pushdown]
+  7. join+filter              — df1.join(df2, "id").filter(col("v") > t)       O(n²)       [pushdown]
+  8. filter_over_sort_sel_*   — variant of (5) at multiple filter selectivities (1/10/50/90%)
+  9. join_filter_sel_*        — variant of (7) at multiple filter selectivities (1/10/50/90%)
 
-Modes: eager, lazy.
+Modes: eager, lazy (selectivity sweeps also expose lazy_no_opt vs lazy_opt
+to isolate the pushdown effect from lazy plan overhead).
 
 Data sizes are per-scenario — fast O(n) scenarios run up to 1M rows,
 while O(n²) join uses smaller sizes to keep total runtime ~5-10 min.
@@ -73,15 +78,18 @@ JOIN_SCHEMA = ["id", "extra_value"]
 
 SIZES_FAST = [1_000, 10_000, 100_000]               # filter, project, chained
 SIZES_GROUPBY = [1_000, 10_000]                     # groupby_agg  (O(n*k) + transpose is very slow)
-SIZES_JOIN = [1_000, 5_000, 10_000]                 # join+filter, selectivity
+SIZES_JOIN = [1_000, 3_000]                         # join+filter, selectivity (O(n²), capped early)
 
 SCENARIO_SIZES = {
-    "filter":          SIZES_FAST,
-    "project_filter":  SIZES_FAST,
-    "chained_filters": SIZES_FAST,
-    "groupby_agg":     SIZES_GROUPBY,
-    "join_filter":     SIZES_JOIN,
-    "selectivity":     SIZES_JOIN,
+    "filter":                  SIZES_FAST,
+    "project_filter":          SIZES_FAST,
+    "chained_filters":         SIZES_FAST,
+    "filter_over_sort":        SIZES_FAST,
+    "filter_over_groupby_key": SIZES_FAST,
+    "filter_over_sort_sel":    SIZES_FAST,
+    "groupby_agg":             SIZES_GROUPBY,
+    "join_filter":             SIZES_JOIN,
+    "selectivity":             SIZES_JOIN,
 }
 
 # Fallback for --sizes CLI override (applies to all scenarios uniformly)
@@ -292,6 +300,31 @@ def scenario_groupby(spark: SparkSession, data: List[Tuple], lazy: bool) -> Call
     return run
 
 
+def scenario_filter_over_sort(spark: SparkSession, data: List[Tuple], lazy: bool) -> Callable:
+    """sort('name').filter(col('age') > 50)
+
+    Pushdown: filter moves below sort, reducing the number of rows sorted.
+    Effect grows with size (sort is O(n log n)) and with filter selectivity.
+    """
+    df = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=lazy)
+    def run():
+        df.sort("name").filter(col("age") > 50).collect(optimize=True)
+    return run
+
+
+def scenario_filter_over_groupby_key(spark: SparkSession, data: List[Tuple], lazy: bool) -> Callable:
+    """groupBy('group_key').agg(sum('value')).filter(col('group_key') == 'g0')
+
+    Pushdown: filter on a group key moves below the groupBy, so fewer rows
+    participate in the aggregation. Effect is largest when the predicate is
+    selective (here 1/50 = 2% of rows match a single key).
+    """
+    df = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=lazy)
+    def run():
+        df.groupBy("group_key").agg(spark_sum("value")).filter(col("group_key") == "g0").collect(optimize=True)
+    return run
+
+
 def scenario_join_filter(spark: SparkSession, data: List[Tuple],
                          join_data: List[Tuple], lazy: bool) -> Callable:
     """join(df2, 'id').filter(value > 500)"""
@@ -343,8 +376,34 @@ SCENARIOS = {
     "project_filter": scenario_project_filter,
     "chained_filters": scenario_chained_filters,
     "groupby_agg": scenario_groupby,
+    "filter_over_sort": scenario_filter_over_sort,
+    "filter_over_groupby_key": scenario_filter_over_groupby_key,
     # join_filter handled separately because it needs extra join_data arg
 }
+
+
+def scenario_filter_over_sort_selectivity(spark: SparkSession, data: List[Tuple],
+                                          mode: str, threshold: int) -> Callable:
+    """sort('name').filter(col('value') > threshold) with configurable optimizer.
+
+    Non-quadratic counterpart of the join+filter selectivity sweep — lets us
+    show pushdown impact on large data (up to 100k rows) without paying O(n^2).
+
+    mode: 'eager', 'lazy_no_opt', or 'lazy_opt'
+    """
+    lazy = mode != "eager"
+    df = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=lazy)
+
+    if mode == "lazy_no_opt":
+        def run():
+            df.sort("name").filter(col("value") > threshold).collect(optimize=False)
+    elif mode == "eager":
+        def run():
+            df.sort("name").filter(col("value") > threshold).collect()
+    else:  # lazy_opt
+        def run():
+            df.sort("name").filter(col("value") > threshold).collect(optimize=True)
+    return run
 
 
 # ---------------------------------------------------------------------------
@@ -398,6 +457,12 @@ def _build_task_list(sizes_override=None):
         for threshold, pct in SELECTIVITY_POINTS:
             for mode in ["eager", "lazy_no_opt", "lazy_opt"]:
                 tasks.append(("selectivity", size, f"join_filter_sel_{pct}", mode, threshold))
+
+    # Filter-over-sort selectivity sweep (O(n log n), runs on fast sizes)
+    for size in _sizes_for("filter_over_sort_sel"):
+        for threshold, pct in SELECTIVITY_POINTS:
+            for mode in ["eager", "lazy_no_opt", "lazy_opt"]:
+                tasks.append(("filter_over_sort_sel", size, f"filter_over_sort_sel_{pct}", mode, threshold))
 
     return tasks
 
@@ -465,6 +530,8 @@ def run_benchmarks(sizes=None):
             scenario_key = "join_filter"
         elif kind == "selectivity":
             scenario_key = "selectivity"
+        elif kind == "filter_over_sort_sel":
+            scenario_key = "filter_over_sort_sel"
 
         n_runs = runs_for_size(size, scenario=scenario_key)
         budget = time_budget(scenario_key)
@@ -487,6 +554,12 @@ def run_benchmarks(sizes=None):
                     df_tmp = df_tmp.filter(col("age") > 20).filter(col("age") < 80).filter(col("value") > 100)
                 elif scenario_name == "groupby_agg":
                     df_tmp = df_tmp.groupBy("group_key").agg(spark_sum("value"))
+                elif scenario_name == "filter_over_sort":
+                    df_tmp = df_tmp.sort("name").filter(col("age") > 50)
+                elif scenario_name == "filter_over_groupby_key":
+                    df_tmp = (df_tmp.groupBy("group_key")
+                                    .agg(spark_sum("value"))
+                                    .filter(col("group_key") == "g0"))
                 plan_nodes = count_plan_nodes(df_tmp._plan)
             results.append(_make_result(scenario_name, mode, size, stats, mem_mb, plan_nodes))
 
@@ -513,6 +586,18 @@ def run_benchmarks(sizes=None):
                 df1 = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=True)
                 df2 = spark.createDataFrame(join_data, schema=JOIN_SCHEMA, lazy=True)
                 df_tmp = df1.join(df2, "id").filter(col("value") > threshold)
+                plan_nodes = count_plan_nodes(df_tmp._plan)
+            results.append(_make_result(scenario_name, mode, size, stats, mem_mb, plan_nodes))
+
+        elif kind == "filter_over_sort_sel":
+            threshold = task[4]
+            fn = scenario_filter_over_sort_selectivity(spark, data, mode, threshold)
+            stats = measure(fn, runs=n_runs, budget=budget)
+            mem_mb = measure_memory(fn)
+            plan_nodes = None
+            if mode in ("lazy_no_opt", "lazy_opt"):
+                df_tmp = spark.createDataFrame(data, schema=MAIN_SCHEMA, lazy=True)
+                df_tmp = df_tmp.sort("name").filter(col("value") > threshold)
                 plan_nodes = count_plan_nodes(df_tmp._plan)
             results.append(_make_result(scenario_name, mode, size, stats, mem_mb, plan_nodes))
 
