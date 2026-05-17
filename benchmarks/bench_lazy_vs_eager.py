@@ -12,8 +12,7 @@ Scenarios:
   8. filter_over_sort_sel_*   — variant of (5) at multiple filter selectivities (1/10/50/90%)
   9. join_filter_sel_*        — variant of (7) at multiple filter selectivities (1/10/50/90%)
 
-Modes: eager, lazy (selectivity sweeps also expose lazy_no_opt vs lazy_opt
-to isolate the pushdown effect from lazy plan overhead).
+Modes: eager, lazy_no_opt, lazy_opt (pushdown sweeps compare lazy_no_opt vs lazy_opt).
 
 Data sizes are per-scenario — fast O(n) scenarios run up to 1M rows,
 while O(n²) join uses smaller sizes to keep total runtime ~5-10 min.
@@ -443,13 +442,13 @@ def _build_task_list(sizes_override=None):
     for name in SCENARIOS:
         for size in _sizes_for(name):
             for lazy in [False, True]:
-                mode = "lazy" if lazy else "eager"
+                mode = "lazy_no_opt" if lazy else "eager"
                 tasks.append(("scenario", size, name, mode, lazy))
 
     # Join scenario
     for size in _sizes_for("join_filter"):
         for lazy in [False, True]:
-            mode = "lazy" if lazy else "eager"
+            mode = "lazy_no_opt" if lazy else "eager"
             tasks.append(("join", size, "join_filter", mode, lazy))
 
     # Selectivity sweep
@@ -639,7 +638,7 @@ def print_summary_table(df, raw_results=None):
     for scenario in df["scenario"].unique():
         for size in sorted(df["rows"].unique()):
             row_e = df[(df["scenario"] == scenario) & (df["mode"] == "eager") & (df["rows"] == size)]
-            row_l = df[(df["scenario"] == scenario) & (df["mode"] == "lazy") & (df["rows"] == size)]
+            row_l = df[(df["scenario"] == scenario) & (df["mode"] == "lazy_no_opt") & (df["rows"] == size)]
             if row_e.empty or row_l.empty:
                 continue
             e = row_e.iloc[0]
@@ -649,7 +648,7 @@ def print_summary_table(df, raw_results=None):
             # Significance test
             sig = ""
             runs_e = runs_lookup.get((scenario, "eager", size), [])
-            runs_l = runs_lookup.get((scenario, "lazy", size), [])
+            runs_l = runs_lookup.get((scenario, "lazy_no_opt", size), [])
             if runs_e and runs_l:
                 cmp = compare_significance(runs_e, runs_l)
                 sig = "*" if cmp["significant"] else "ns"
@@ -661,10 +660,10 @@ def print_summary_table(df, raw_results=None):
         print()
 
     # Plan node summary for lazy mode
-    lazy_with_plans = df[(df["mode"] == "lazy") & (df["plan_nodes"].notna())]
+    lazy_with_plans = df[(df["mode"] == "lazy_no_opt") & (df["plan_nodes"].notna())]
     if not lazy_with_plans.empty:
         print(f"\n{'='*60}")
-        print("Plan Nodes (lazy mode)")
+        print("Plan Nodes (lazy_no_opt)")
         print(f"{'='*60}")
         for _, row in lazy_with_plans.drop_duplicates(["scenario"]).iterrows():
             print(f"  {row['scenario']:25s}: {int(row['plan_nodes'])} nodes")
@@ -719,7 +718,7 @@ def print_selectivity_summary(df, raw_results=None):
 
 
 def plot_results(df):
-    """Generate bar charts: one per scenario, x=data_size, bars=eager/lazy."""
+    """Generate bar charts: one per scenario, x=data_size, bars eager/lazy_no_opt (or three modes for sweeps)."""
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -733,7 +732,10 @@ def plot_results(df):
     for scenario in scenarios:
         sub = df[df["scenario"] == scenario]
         modes = sorted(sub["mode"].unique())
-        is_selectivity = scenario.startswith("join_filter_sel_")
+        is_selectivity = (
+            scenario.startswith("join_filter_sel_")
+            or scenario.startswith("filter_over_sort_sel_")
+        )
         fig, ax = plt.subplots(figsize=(10, 6))
 
         sizes = sorted(sub["rows"].unique())
@@ -755,11 +757,11 @@ def plot_results(df):
         else:
             width = 0.35
             eager = sub[sub["mode"] == "eager"].set_index("rows").reindex(sizes)
-            lazy = sub[sub["mode"] == "lazy"].set_index("rows").reindex(sizes)
+            lazy_no_opt = sub[sub["mode"] == "lazy_no_opt"].set_index("rows").reindex(sizes)
             bars1 = ax.bar([p - width/2 for p in x_pos], eager["mean_s"].values,
                            width, label="eager", color="#4C72B0", alpha=0.85)
-            bars2 = ax.bar([p + width/2 for p in x_pos], lazy["mean_s"].values,
-                           width, label="lazy", color="#DD8452", alpha=0.85)
+            bars2 = ax.bar([p + width/2 for p in x_pos], lazy_no_opt["mean_s"].values,
+                           width, label="lazy_no_opt", color="#DD8452", alpha=0.85)
             all_bars = list(bars1) + list(bars2)
 
         ax.set_xlabel("Rows")
@@ -789,14 +791,14 @@ def plot_results(df):
     summary = df[df["rows"] == max_size].pivot(
         index="scenario", columns="mode", values="mean_s"
     )
-    if "eager" in summary.columns and "lazy" in summary.columns:
-        summary["speedup"] = summary["eager"] / summary["lazy"]
+    if "eager" in summary.columns and "lazy_no_opt" in summary.columns:
+        summary["speedup"] = summary["eager"] / summary["lazy_no_opt"]
 
         fig, ax = plt.subplots(figsize=(10, 6))
         summary["speedup"].plot(kind="bar", ax=ax, color="#55A868", alpha=0.85)
         ax.axhline(y=1.0, color="red", linestyle="--", alpha=0.5, label="break-even")
-        ax.set_ylabel("Speedup (eager_time / lazy_time)")
-        ax.set_title(f"Lazy vs Eager Speedup at {max_size:,} rows")
+        ax.set_ylabel("Speedup (eager_time / lazy_no_opt_time)")
+        ax.set_title(f"lazy_no_opt vs Eager Speedup at {max_size:,} rows")
         ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
         ax.legend()
         ax.grid(axis="y", alpha=0.3)
@@ -808,7 +810,7 @@ def plot_results(df):
 
     # Throughput chart
     fig, ax = plt.subplots(figsize=(12, 6))
-    for mode in ["eager", "lazy"]:
+    for mode in ["eager", "lazy_no_opt"]:
         sub = df[(df["mode"] == mode) & (df["rows"] == max_size)]
         ax.bar([f"{s}\n({mode})" for s in sub["scenario"]],
                sub["throughput_rows_per_s"] / 1000,
