@@ -557,3 +557,9 @@ benchmarks/default/wal/catalog.otbx
 benchmarks/default/wal/indexes_METADATA
 benchmarks/default/wal/WAL_ID
 *.png
+default/log/python-1779014098.txt
+default/wal/.wal_0_000000
+default/wal/.wal_1_000000
+default/wal/catalog.otbx
+default/wal/indexes_METADATA
+default/wal/WAL_ID
