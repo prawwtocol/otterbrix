@@ -299,11 +299,11 @@ std::unique_ptr<ArrowArrayStreamWrapper> ProduceArrowScan(const ArrowScanFunctio
 	return function.scanner_producer(function.stream_factory_ptr, parameters);
 }
 
-uint64_t ArrowTableFunction::ArrowScanMaxThreads(const FunctionData *bind_data_p) {
+uint64_t ArrowTableFunction::ArrowScanMaxThreads(const FunctionData * /*bind_data_p*/) {
 	return 999999;//context.db->NumberOfThreads();
 }
 
-bool ArrowTableFunction::ArrowScanParallelStateNext(const FunctionData *bind_data_p,
+bool ArrowTableFunction::ArrowScanParallelStateNext(const FunctionData * /*bind_data_p*/,
                                                     ArrowScanLocalState &state, ArrowScanGlobalState &parallel_state) {
     std::lock_guard<std::mutex> parallel_lock(parallel_state.main_mutex);
 	if (parallel_state.done) {
@@ -398,7 +398,7 @@ void ArrowTableFunction::ArrowScanFunction(TableFunctionInput &data_p, component
 	state.chunk_offset += output.size();
 }
 
-std::unique_ptr<NodeStatistics> ArrowTableFunction::ArrowScanCardinality(const FunctionData *data) {
+std::unique_ptr<NodeStatistics> ArrowTableFunction::ArrowScanCardinality(const FunctionData * /*data*/) {
 	return std::make_unique<NodeStatistics>();
 }
 
