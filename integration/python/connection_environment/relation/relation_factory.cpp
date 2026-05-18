@@ -127,9 +127,6 @@ namespace otterbrix {
     }
 
     shared_ptr<Relation> RelationFactory::SelectRelation(shared_ptr<Relation> relation, const vector<Expression>& exprs) {
-        // Pure projection: build node_select_t holding scalar exprs only.
-        // Aggregates belong in group (see DataFrame .groupBy().agg()); rejecting them
-        // here avoids the silent group-by-keys behaviour that pre-fix Project() produced.
         auto* resource = space->dispatcher()->resource();
         auto select = make_node_select(resource, {});
         for (const auto& expr : exprs) {
