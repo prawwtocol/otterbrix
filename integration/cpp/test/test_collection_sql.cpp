@@ -481,7 +481,7 @@ TEST_CASE("integration::cpp::test_collection::sql::group_by") {
             REQUIRE(cur->chunk_data().value(2, number).value<int64_t>() ==
                     5 * (static_cast<int64_t>(number) % 20) + 5 * ((static_cast<int64_t>(number) + 10) % 20));
             REQUIRE(cur->chunk_data().value(3, number).value<int64_t>() ==
-                    static_cast<int64_t>((number % 20 + (number + 10) % 20) / 2));
+                    static_cast<int64_t>((number % 20 + (number + 10) % 20)) / 2);
             REQUIRE(cur->chunk_data().value(4, number).value<int64_t>() == static_cast<int64_t>(number) % 20);
             REQUIRE(cur->chunk_data().value(5, number).value<int64_t>() == (static_cast<int64_t>(number) + 10) % 20);
         }
@@ -504,7 +504,7 @@ TEST_CASE("integration::cpp::test_collection::sql::group_by") {
             REQUIRE(cur->chunk_data().value(1, row).value<uint64_t>() == 10);
             REQUIRE(cur->chunk_data().value(2, row).value<int64_t>() == 5 * (number % 20) + 5 * ((number + 10) % 20));
             REQUIRE(cur->chunk_data().value(3, row).value<int64_t>() ==
-                    static_cast<int64_t>((number % 20 + (number + 10) % 20) / 2));
+                    static_cast<int64_t>((number % 20 + (number + 10) % 20)) / 2);
             REQUIRE(cur->chunk_data().value(4, row).value<int64_t>() == number % 20);
             REQUIRE(cur->chunk_data().value(5, row).value<int64_t>() == (number + 10) % 20);
         }
