@@ -22,7 +22,7 @@ set( ${PROJECT_NAME}_SOURCES
         test_arithmetic.cpp
         test_column_projection.cpp
         test_computed_schema.cpp
-        test_pushdown_filter_select.cpp
+        test_pushdown_filter.cpp
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${${PROJECT_NAME}_SOURCES})
