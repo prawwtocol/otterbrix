@@ -5,7 +5,6 @@ from otterbrix import (
 #    CoalesceOperator,
     ColumnExpression,
     ConstantExpression,
-    CountExpression,
     Expression,
 #    FunctionExpression,
 )
@@ -340,10 +339,7 @@ def avg(col: "ColumnOrName") -> Column:
     +-------+
     """
     #return _invoke_function_over_columns("avg", col)
-    col_name = col if isinstance(col, str) else str(col)
-    c = Column(_to_column_expr(col).avg())
-    c._agg_info = (col_name, 'avg', f'avg({col_name})')
-    return c
+    return Column(_to_column_expr(col).avg())
 
 
 def sum(col: "ColumnOrName") -> Column:
@@ -376,10 +372,7 @@ def sum(col: "ColumnOrName") -> Column:
     +-------+
     """
     #return _invoke_function_over_columns("sum", col)
-    col_name = col if isinstance(col, str) else str(col)
-    c = Column(_to_column_expr(col).sum())
-    c._agg_info = (col_name, 'sum', f'sum({col_name})')
-    return c
+    return Column(_to_column_expr(col).sum())
 
 
 def max(col: "ColumnOrName") -> Column:
@@ -412,10 +405,7 @@ def max(col: "ColumnOrName") -> Column:
     +-------+
     """
     #return _invoke_function_over_columns("max", col)
-    col_name = col if isinstance(col, str) else str(col)
-    c = Column(_to_column_expr(col).max())
-    c._agg_info = (col_name, 'max', f'max({col_name})')
-    return c
+    return Column(_to_column_expr(col).max())
 
 
 
@@ -450,10 +440,7 @@ def mean(col: "ColumnOrName") -> Column:
     +-------+
     """
     #return _invoke_function_over_columns("mean", col)
-    col_name = col if isinstance(col, str) else str(col)
-    c = Column(_to_column_expr(col).avg())
-    c._agg_info = (col_name, 'avg', f'avg({col_name})')
-    return c
+    return Column(_to_column_expr(col).avg())
 
 
 
@@ -487,10 +474,7 @@ def min(col: "ColumnOrName") -> Column:
     +-------+
     """
     #return _invoke_function_over_columns("min", col)
-    col_name = col if isinstance(col, str) else str(col)
-    c = Column(_to_column_expr(col).min())
-    c._agg_info = (col_name, 'min', f'min({col_name})')
-    return c
+    return Column(_to_column_expr(col).min())
 
 
 
@@ -559,15 +543,7 @@ def count(col: "ColumnOrName") -> Column:
     +--------+----------------+
     """
     #return _invoke_function_over_columns("count", col)
-    col_name = col if isinstance(col, str) else str(col)
-    if col_name == "*":
-        # COUNT(*) maps to the zero-argument kernel. Wrapping "*" as a key_t
-        # leaves key.path() empty, causing UB in resolve_columns at execute time.
-        c = Column(CountExpression(SparkContext._active_spark_context))
-    else:
-        c = Column(_to_column_expr(col).count())
-    c._agg_info = (col_name, 'count', f'count({col_name})')
-    return c
+    return Column(_to_column_expr(col).count())
 
 
 
