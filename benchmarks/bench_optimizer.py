@@ -181,7 +181,8 @@ def measure(fn: Callable[[], Any], warmup: int = WARMUP_RUNS,
     except ImportError:
         # Fallback: use z=1.96 for large n
         t_val = 1.96
-    ci_half = t_val * (stdev / sqrt(n)) if n > 1 else 0.0
+    sem = stdev / sqrt(n) if n > 1 else 0.0
+    ci_half = t_val * sem
 
     cv = stdev / mean if mean > 0 else 0.0
 
@@ -193,6 +194,8 @@ def measure(fn: Callable[[], Any], warmup: int = WARMUP_RUNS,
         "max": max(times),
         "p95": sorted_times[int(n * 0.95)] if n >= 20 else sorted_times[-1],
         "p99": sorted_times[int(n * 0.99)] if n >= 100 else sorted_times[-1],
+        "sem": sem,
+        "t_val": t_val,
         "ci_95_low": mean - ci_half,
         "ci_95_high": mean + ci_half,
         "cv": cv,
@@ -457,6 +460,9 @@ def _make_result(scenario, mode, size, stats, mem_mb, plan_nodes):
         "stdev_s": stats["stdev"],
         "min_s": stats["min"],
         "max_s": stats["max"],
+        "actual_runs": stats["actual_runs"],
+        "sem": stats["sem"],
+        "t_val": stats["t_val"],
         "ci_95_low": stats["ci_95_low"],
         "ci_95_high": stats["ci_95_high"],
         "cv": stats["cv"],
@@ -581,6 +587,32 @@ def run_benchmarks(sizes=None):
         pbar.update(1)
 
     pbar.close()
+
+    # Post-process: compute pairwise significance for each (scenario, rows) pair
+    runs_lookup = {}
+    for r in results:
+        key = (r["scenario"], r["mode"], r["rows"])
+        runs_lookup[key] = r.get("raw_runs", [])
+
+    for r in results:
+        scenario, mode, rows = r["scenario"], r["mode"], r["rows"]
+        other_mode = "opt" if mode == "no_opt" else "no_opt"
+        runs_self = runs_lookup.get((scenario, mode, rows), [])
+        runs_other = runs_lookup.get((scenario, other_mode, rows), [])
+        if runs_self and runs_other:
+            cmp = compare_significance(runs_self, runs_other)
+            r["sig"] = "*" if cmp["significant"] else "ns"
+            r["p_value"] = cmp["p_value"]
+            r["speedup"] = cmp["speedup"]
+            r["bootstrap_l"] = cmp["ci_95"][0]
+            r["bootstrap_r"] = cmp["ci_95"][1]
+        else:
+            r["sig"] = ""
+            r["p_value"] = None
+            r["speedup"] = None
+            r["bootstrap_l"] = None
+            r["bootstrap_r"] = None
+
     return results
 
 
