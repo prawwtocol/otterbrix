@@ -17,8 +17,6 @@ namespace components::logical_plan {
 
     namespace {
 
-        // Predicate may move below node_select_t only if every filter column is a visible
-        // select output with a get_field that does not rename (same output and input name).
         bool filter_supported_through_identity_select(const node_select_t& sel,
                                                       const std::set<std::string>& filter_cols,
                                                       const std::set<std::string>& input_cols) {
@@ -69,18 +67,15 @@ namespace components::logical_plan {
 
         void extract_from_param(const expressions::param_storage& param,
                                 std::set<std::string>& result) {
-            // из параметра выражения достаёт либо ключ столбца, либо рекурсивно обходит вложенное выражение.
             if (std::holds_alternative<expressions::key_t>(param)) {
                 result.insert(std::get<expressions::key_t>(param).as_string());
             } else if (std::holds_alternative<expressions::expression_ptr>(param)) {
                 auto cols = collect_referenced_columns(std::get<expressions::expression_ptr>(param));
                 result.insert(cols.begin(), cols.end());
             }
-            // parameter_id_t — literal constant, no column refs
         }
 
         void collect_subtree_columns(const node_ptr& node, std::set<std::string>& cols) {
-            // для узла data собирает алиасы столбцов из чанка; для остальных спускается к детям (нужно понять, какие имена доступны под веткой join)
             if (!node) return;
             if (node->type() == node_type::data_t) {
                 auto* data = static_cast<node_data_t*>(node.get());
@@ -103,7 +98,6 @@ namespace components::logical_plan {
         if (!expr) return result;
 
         switch (expr->group()) {
-            // обход по типам выражений
             case expressions::expression_group::compare: {
                 auto* cmp = static_cast<expressions::compare_expression_t*>(expr.get());
                 if (expressions::is_union_compare_condition(cmp->type())) {
@@ -154,10 +148,8 @@ namespace components::logical_plan {
     }
 
     node_ptr plan_optimizer_t::pushdown_filter(node_ptr node) {
-        // Обход снизу вверх. Интерес представляют узлы node_aggregate_t с дочерним match и без group и sort то есть внешний чистый фильтр над одним источником
         if (!node) return node;
 
-        // Recurse into children first (bottom-up)
         for (size_t i = 0; i < node->children().size(); ++i) {
             auto& child = node->children()[i];
             auto optimized = pushdown_filter(child);
@@ -166,13 +158,11 @@ namespace components::logical_plan {
             }
         }
 
-        // Only process node_aggregate_t
         if (node->type() != node_type::aggregate_t) return node;
 
         auto* agg = static_cast<node_aggregate_t*>(node.get());
         if (agg->children().size() < 2) return node;
 
-        // Classify children: find match, group, sort
         node_ptr match_child = nullptr;
         node_ptr group_child = nullptr;
         node_ptr sort_child = nullptr;
@@ -186,12 +176,10 @@ namespace components::logical_plan {
             if (c->type() == node_type::sort_t) sort_child = c;
         }
 
-        // Only handle "pure filter" aggregates (match only, no group/sort)
         if (!match_child || group_child || sort_child) return node;
 
         auto source = agg->children()[0];
 
-        // --- Rule: filter over sort ---
         if (source->type() == node_type::aggregate_t) {
             auto* source_agg = static_cast<node_aggregate_t*>(source.get());
             bool source_has_sort = false;
@@ -206,15 +194,11 @@ namespace components::logical_plan {
                 if (source_agg->children()[i]->type() == node_type::select_t) source_has_select = true;
             }
 
-            // Filter over pure sort: always safe to push down
             if (source_has_sort && !source_has_group && !source_has_match) {
-                // Move match_child into source_agg, remove from current agg
                 source_agg->append_child(match_child);
-                // Current agg becomes passthrough: replace with source
                 return pushdown_filter(source);
             }
 
-            // Filter over pure select: только «тождественные» столбцы, без sort/match/group рядом с select
             if (source_has_select && !source_has_sort && !source_has_group && !source_has_match) {
                 node_ptr src_select_wrapped = nullptr;
                 for (size_t i = 1; i < source_agg->children().size(); ++i) {
@@ -235,9 +219,7 @@ namespace components::logical_plan {
                 }
             }
 
-            // Filter over projection (group with only scalar expressions, no aggregates)
             if (source_has_group && !source_has_sort && !source_has_match) {
-                // Find the group node
                 node_ptr src_group = nullptr;
                 for (size_t i = 1; i < source_agg->children().size(); ++i) {
                     if (source_agg->children()[i]->type() == node_type::group_t) {
@@ -245,7 +227,6 @@ namespace components::logical_plan {
                         break;
                     }
                 }
-                // Check if it's a projection (all scalar, no aggregate expressions)
                 bool is_projection = true;
                 std::set<std::string> output_cols;
                 for (const auto& expr : src_group->expressions()) {
@@ -270,7 +251,6 @@ namespace components::logical_plan {
                 }
             }
 
-            // Filter over groupBy (group with aggregate expressions)
             if (source_has_group && !source_has_sort && !source_has_match) {
                 node_ptr src_group = nullptr;
                 for (size_t i = 1; i < source_agg->children().size(); ++i) {
@@ -279,7 +259,6 @@ namespace components::logical_plan {
                         break;
                     }
                 }
-                // Extract group keys (scalar expressions with group_field type)
                 std::set<std::string> group_keys;
                 for (const auto& expr : src_group->expressions()) {
                     if (expr->group() == expressions::expression_group::scalar) {
@@ -301,7 +280,6 @@ namespace components::logical_plan {
             }
         }
 
-        // --- Rule: filter over join ---
         if (source->type() == node_type::join_t) {
             auto* join = static_cast<node_join_t*>(source.get());
             if (join->children().size() >= 2) {
