@@ -31,7 +31,6 @@ namespace otterbrix {
         if (!result) {
             throw std::runtime_error("result closed");
         }
-        // Cursor-операции без GIL (чистый C++)
         bool has_data = false;
         {
             py::gil_scoped_release release;
