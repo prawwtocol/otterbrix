@@ -427,6 +427,10 @@ build
 *.wal
 *.txt.user
 benchmark/data/
+benchmarks/results.before_rounding.csv
+benchmarks/bench_lazy_vs_eager.py
+benchmarks/results.before_rounding.csv
+benchmarks/bench_lazy_vs_eager.py
 # Python integration tests: per-instance log and WAL directories.
 integration/python/**/log/
 integration/python/**/wal/
