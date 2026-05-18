@@ -13,8 +13,6 @@
 #include <otterbrix_wrapper/type_creation.hpp>
 #include <pyconnection/pyconnection.hpp>
 
-// The bug related to the use of RTTI by the pybind11 library has been fixed: a
-// declaration should be in each translation unit.
 PYBIND11_DECLARE_HOLDER_TYPE(T, boost::intrusive_ptr<T>)
 
 #ifndef OTTERBRIX_PYTHON_LIB_NAME
@@ -25,7 +23,6 @@ using namespace otterbrix;
 
 PYBIND11_MODULE(OTTERBRIX_PYTHON_LIB_NAME, m) {
 
-    // ── New modular API ─────────────────────────────────────────────────
     OtterBrixPyTyping::Initialize(m);
     TypeCreation::Initialize(m);
     PyExpression::Initialize(m);
@@ -38,15 +35,12 @@ PYBIND11_MODULE(OTTERBRIX_PYTHON_LIB_NAME, m) {
           pybind11::arg("database") = "default", pybind11::arg("read_only") = false,
           pybind11::arg_v("config", pybind11::dict(), "None"));
 
-    // Module destructor: clean up the default connection on unload
     // https://pybind11.readthedocs.io/en/stable/advanced/misc.html#module-destructors
     auto clean_default_connection = []() {
         PyConnection::Cleanup();
     };
     m.add_object("_clean_default_connection", pybind11::capsule(clean_default_connection));
 
-    // ── Legacy SQL-based API (backwards compatibility) ──────────────────
-    // Use pybind11:: explicitly to avoid ambiguity with otterbrix::py
     pybind11::class_<wrapper_client>(m, "Client")
         .def(pybind11::init([]() { return new wrapper_client(spaces::get_instance()); }))
         .def(pybind11::init([](const pybind11::str& s) { return new wrapper_client(spaces::get_instance(std::string(s))); }))
