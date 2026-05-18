@@ -557,3 +557,8 @@ build-verify/services/wal/tests/test_wal_tests-b12d07c.cmake
 benchmarks/default/*
 *.png
 default/*
+log/python-1779303476.txt
+wal/.wal_0_000000
+wal/.wal_1_000000
+wal/indexes_METADATA
+wal/WAL_ID
