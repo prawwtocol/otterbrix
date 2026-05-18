@@ -240,8 +240,11 @@ def measure_memory(fn: Callable[[], Any]) -> float:
 def compare_significance(runs_a: List[float], runs_b: List[float]) -> Dict[str, Any]:
     """Compare two sets of timing runs via Welch's t-test and bootstrap CI.
 
-    Returns speedup (mean_a / mean_b), 95% bootstrap CI for speedup,
+    Returns ratio mean_a / mean_b with a 95% bootstrap CI for that ratio,
     p-value, and whether the difference is significant at alpha=0.05.
+
+    For optimizer CSV rows, pass baseline ``no_opt`` runs as ``runs_a`` and
+    ``opt`` runs as ``runs_b`` so the ratio is speedup vs baseline ``no_opt``.
     """
     import numpy as np
 
@@ -530,16 +533,21 @@ def run_benchmarks(sizes=None):
 
     for r in results:
         scenario, mode, rows = r["scenario"], r["mode"], r["rows"]
-        other_mode = "opt" if mode == "no_opt" else "no_opt"
-        runs_self = runs_lookup.get((scenario, mode, rows), [])
-        runs_other = runs_lookup.get((scenario, other_mode, rows), [])
-        if runs_self and runs_other:
-            cmp = compare_significance(runs_self, runs_other)
+        runs_no = runs_lookup.get((scenario, "no_opt", rows), [])
+        runs_opt = runs_lookup.get((scenario, "opt", rows), [])
+        if runs_no and runs_opt:
+            cmp = compare_significance(runs_no, runs_opt)
             r["sig"] = "*" if cmp["significant"] else "ns"
             r["p_value"] = cmp["p_value"]
-            r["speedup"] = cmp["speedup"]
-            r["bootstrap_l"] = cmp["ci_95"][0]
-            r["bootstrap_r"] = cmp["ci_95"][1]
+            # Speedup vs baseline no_opt: 1 on no_opt rows; mean(no_opt)/mean(opt) on opt.
+            if mode == "no_opt":
+                r["speedup"] = 1.0
+                r["bootstrap_l"] = 1.0
+                r["bootstrap_r"] = 1.0
+            else:
+                r["speedup"] = cmp["speedup"]
+                r["bootstrap_l"] = cmp["ci_95"][0]
+                r["bootstrap_r"] = cmp["ci_95"][1]
         else:
             r["sig"] = ""
             r["p_value"] = None
