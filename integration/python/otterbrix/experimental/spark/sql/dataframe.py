@@ -35,11 +35,10 @@ from otterbrix.experimental.spark.context import SparkContext
 
 class DataFrame:
     def __init__(self, relation: otterbrix.OtterBrixPyRelation, session: "SparkSession",
-                 *, optimize=False, plan=None):
+                 *, optimize=False):
         self.relation = relation
         self.session = session
         self._optimize = optimize
-        self._plan = plan
         self._schema = None
         if self.relation is not None:
             self._schema = otterbrix_to_spark_schema(self.relation.columns, self.relation.types)
@@ -1161,43 +1160,6 @@ class DataFrame:
         ]
         new_rel = self.relation.project(*projections)
         return DataFrame(new_rel, self.session)
-
-    def _execute_plan(self, optimizer=None):
-        """DEPRECATED: All operations now route through C++ engine directly.
-
-        Returns the relation with the optimize flag set based on the optimizer parameter.
-        """
-        use_opt = True
-        if optimizer is not None and not optimizer._rules:
-            use_opt = False
-        if self._optimize and hasattr(self.relation, 'optimize'):
-            self.relation.optimize = use_opt
-        return self.relation
-
-    def explain(self, extended=False):
-        """Print the logical plan before and after optimization."""
-        from .optimizer import PlanOptimizer
-
-        plan = self._plan
-        if plan is None:
-            print("No logical plan available (C++ relation path)")
-            return
-
-        print("== Logical Plan ==")
-        self._print_plan(plan, indent=0)
-        print()
-
-        optimizer = PlanOptimizer()
-        optimized = optimizer.optimize(plan)
-        print("== Optimized Plan ==")
-        self._print_plan(optimized, indent=0)
-
-    @staticmethod
-    def _print_plan(node, indent=0):
-        prefix = "  " * indent
-        print(f"{prefix}{node!r}")
-        for child in node.children:
-            DataFrame._print_plan(child, indent + 1)
 
     def collect(self, optimize=None) -> List[Row]:
 

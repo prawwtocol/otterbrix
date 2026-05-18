@@ -384,20 +384,6 @@ def scenario_filter_over_sort_selectivity(spark: SparkSession, data: List[Tuple]
     return run
 
 
-# ---------------------------------------------------------------------------
-# Plan node counter
-# ---------------------------------------------------------------------------
-
-def count_plan_nodes(node) -> int:
-    """Recursively count nodes in a logical plan tree."""
-    if node is None:
-        return 0
-    count = 1
-    if hasattr(node, "children"):
-        for child in node.children:
-            count += count_plan_nodes(child)
-    return count
-
 
 # ---------------------------------------------------------------------------
 # Main runner
@@ -516,48 +502,21 @@ def run_benchmarks(sizes=None):
             fn = factory(spark, data, optimize)
             stats = measure(fn, runs=n_runs, budget=budget)
             mem_mb = measure_memory(fn)
-            plan_nodes = None
-            if optimize:
-                df_tmp = spark.createDataFrame(data, schema=MAIN_SCHEMA, optimize=True)
-                if scenario_name == "filter":
-                    df_tmp = df_tmp.filter(col("age") > 50)
-                elif scenario_name == "project_filter":
-                    df_tmp = df_tmp.select("id", "name", "age").filter(col("age") > 50)
-                elif scenario_name == "chained_filters":
-                    df_tmp = df_tmp.filter(col("age") > 20).filter(col("age") < 80).filter(col("value") > 100)
-                elif scenario_name == "groupby_agg":
-                    df_tmp = df_tmp.groupBy("group_key").agg(spark_sum("value"))
-                elif scenario_name == "filter_over_groupby_key":
-                    df_tmp = (df_tmp.groupBy("group_key")
-                                    .agg(spark_sum("value"))
-                                    .filter(col("group_key") == "g0"))
-                plan_nodes = count_plan_nodes(df_tmp._plan)
-            results.append(_make_result(scenario_name, mode, size, stats, mem_mb, plan_nodes))
+            results.append(_make_result(scenario_name, mode, size, stats, mem_mb, None))
 
         elif kind == "selectivity":
             threshold = task[4]
             fn = scenario_join_filter_selectivity(spark, data, join_data, mode, threshold)
             stats = measure(fn, runs=n_runs, budget=budget)
             mem_mb = measure_memory(fn)
-            plan_nodes = None
-            if mode == "opt":
-                df1 = spark.createDataFrame(data, schema=MAIN_SCHEMA, optimize=True)
-                df2 = spark.createDataFrame(join_data, schema=JOIN_SCHEMA, optimize=True)
-                df_tmp = df1.join(df2, "id").filter(col("value") > threshold)
-                plan_nodes = count_plan_nodes(df_tmp._plan)
-            results.append(_make_result(scenario_name, mode, size, stats, mem_mb, plan_nodes))
+            results.append(_make_result(scenario_name, mode, size, stats, mem_mb, None))
 
         elif kind == "filter_over_sort_sel":
             threshold = task[4]
             fn = scenario_filter_over_sort_selectivity(spark, data, mode, threshold)
             stats = measure(fn, runs=n_runs, budget=budget)
             mem_mb = measure_memory(fn)
-            plan_nodes = None
-            if mode == "opt":
-                df_tmp = spark.createDataFrame(data, schema=MAIN_SCHEMA, optimize=True)
-                df_tmp = df_tmp.sort("name").filter(col("value") > threshold)
-                plan_nodes = count_plan_nodes(df_tmp._plan)
-            results.append(_make_result(scenario_name, mode, size, stats, mem_mb, plan_nodes))
+            results.append(_make_result(scenario_name, mode, size, stats, mem_mb, None))
 
         pbar.update(1)
 
@@ -644,14 +603,6 @@ def print_summary_table(df, raw_results=None):
                   f"{o_ci:>16s} {speedup:7.2f}x {sig:>5s} {no['cv']:5.1%} {o['cv']:5.1%}")
         print()
 
-    # Plan node summary for opt mode
-    opt_with_plans = df[(df["mode"] == "opt") & (df["plan_nodes"].notna())]
-    if not opt_with_plans.empty:
-        print(f"\n{'='*60}")
-        print("Plan Nodes (opt)")
-        print(f"{'='*60}")
-        for _, row in opt_with_plans.drop_duplicates(["scenario"]).iterrows():
-            print(f"  {row['scenario']:25s}: {int(row['plan_nodes'])} nodes")
 
 
 def print_selectivity_summary(df, raw_results=None):
