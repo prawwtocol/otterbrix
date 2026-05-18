@@ -115,18 +115,13 @@ class SparkSession:
         #    df = df._cast_types(*types)
         return df
 
-    def _maybe_make_lazy(self, df, lazy, schema=None):
-        if lazy:
-            df._lazy = True
-        return df
-
     def createDataFrame(
         self,
         data: Union["PandasDataFrame", Iterable[Any]],
         schema: Optional[Union[StructType, List[str]]] = None,
         samplingRatio: Optional[float] = None,
         verifySchema: bool = True,
-        lazy: bool = False,
+        optimize: bool = False,
     ) -> DataFrame:
         if samplingRatio:
             raise NotImplementedError
@@ -157,12 +152,14 @@ class SparkSession:
         # Then check if 'data' is None or []
         if has_pandas and isinstance(data, pandas.DataFrame):
             df = self._createDataFrameFromPandas(data, types, names)
-            return self._maybe_make_lazy(df, lazy, schema)
+            df._optimize = optimize
+            return df
 
         # TODO temporary decision
         if has_pandas:
             df = DataFrame(self.conn.from_df(pandas.DataFrame(data=data, columns=names)), self)
-            return self._maybe_make_lazy(df, lazy, schema)
+            df._optimize = optimize
+            return df
         
         raise RuntimeError("Has no select value in OtterBrix to continue process")
 
