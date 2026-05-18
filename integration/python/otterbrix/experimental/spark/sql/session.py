@@ -101,10 +101,6 @@ class SparkSession:
         return DataFrame(rel, self)
 
     def _createDataFrameFromPandas(self, data: "PandasDataFrame", types, names) -> DataFrame:
-        # Rename pandas columns before creating the relation to avoid
-        # going through toDF -> Project -> Group, which segfaults because
-        # Project currently delegates to Group (aggregate path) and the
-        # engine can't handle group nodes with only get_field renames.
         if names:
             data = data.copy()
             data.columns = names
