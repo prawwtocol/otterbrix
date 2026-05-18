@@ -2,20 +2,20 @@
 Benchmark: Optimized vs non-optimized DataFrame execution in OtterBrix Spark API.
 
 Scenarios:
-  1. filter                   — df.filter(col("age") > threshold)              O(n)
-  2. project+filter           — df.select("a","b").filter(col("a") > t)        O(n)        [pushdown]
-  3. chained_filters          — df.filter(a).filter(b).filter(c)              O(n)
-  4. groupby_agg              — df.groupBy("key").agg(sum("value"))            O(n*k)
-  5. filter_over_groupby_key  — df.groupBy("key").agg(...).filter(key == c)    O(n)        [post-agg filter
+  1. filter — df.filter(col("age") > threshold) O(n)
+  2. project+filter — df.select("a","b").filter(col("a") > t) O(n) [pushdown]
+  3. chained_filters — df.filter(a).filter(b).filter(c) O(n)
+  4. groupby_agg — df.groupBy("key").agg(sum("value")) O(n*k)
+  5. filter_over_groupby_key — df.groupBy("key").agg(...).filter(key == c) O(n) [post-agg filter]
   6. filter_over_sort_sel_* — df.sort(...).filter(...) at ~1/10/50/90% pass
-  7. join_filter_sel_*        — df.join(...).filter(...) at ~1/10/50/90% pass  O(n²)       [pushdown]
+  7. join_filter_sel_* — df.join(...).filter(...) at ~1/10/50/90% pass O(n²) [pushdown]
 
 Modes: no_opt (optimize=False), opt (optimize=True).
 
-Data sizes are per-scenario — `filter` at 10k/100k/1M, `project_filter` at
-100k/1M, `chained_filters` at 10k/100k, `groupby_agg` at 10k/100k,
-`filter_over_groupby_key` at 100k/1M; `filter_over_sort_sel_*` uses
-`SIZES_FAST`; join selectivity sweep uses smaller sizes (O(n²)).
+Data sizes are per-scenario: `filter` at 10k/100k/1M, `project_filter` at 100k/1M,
+`chained_filters` at 10k/100k, `groupby_agg` at 10k/100k, `filter_over_groupby_key`
+at 100k/1M; `filter_over_sort_sel_*` uses `SIZES_FAST`; join selectivity sweep uses
+smaller sizes (O(n²)).
 
 Data types covered: int (id, age), float (value), string (name, group_key).
 """
@@ -96,9 +96,12 @@ SIZES_FILTER = [10_000, 100_000, 1_000_000]
 SIZES_PROJECT_FILTER = [100_000, 1_000_000]
 SIZES_CHAINED = [10_000, 100_000]
 SIZES_FILTER_OVER_GROUPBY_KEY = [100_000, 1_000_000]
-SIZES_FAST = [1_000, 10_000, 100_000]               # filter_over_sort_sel_* only
-SIZES_GROUPBY = [10_000, 100_000]                    # groupby_agg
-SIZES_JOIN_SELECTIVITY = [1_000, 3_000]             # join_filter_sel_* (O(n²), capped early)
+# filter_over_sort_sel_* only
+SIZES_FAST = [1_000, 10_000, 100_000]
+# groupby_agg
+SIZES_GROUPBY = [10_000, 100_000]
+# join_filter_sel_* (O(n²), capped early)
+SIZES_JOIN_SELECTIVITY = [1_000, 3_000]
 
 SCENARIO_SIZES = {
     "filter":                  SIZES_FILTER,
@@ -135,13 +138,15 @@ def runs_for_size(n: int, scenario: str = "filter") -> int:
             return 30
         if n <= 5_000:
             return 15
-        return 10                   # 10k: ~1s/run → 10 runs ≈ 10s
+        # 10k: ~1s/run → 10 runs ≈ 10s
+        return 10
     if is_groupby:
         if n <= 1_000:
             return 50
         if n <= 10_000:
             return 30
-        return 15                   # 100k: ~1s/run → 15 runs ≈ 15s
+        # 100k: ~1s/run → 15 runs ≈ 15s
+        return 15
     # fast O(n) scenarios
     if n <= 1_000:
         return 100
@@ -155,10 +160,12 @@ def runs_for_size(n: int, scenario: str = "filter") -> int:
 def time_budget(scenario: str) -> float:
     """Per-scenario wall-clock budget in seconds (excludes warmup)."""
     if scenario == "selectivity":
-        return 120          # O(n²) needs more headroom per size
+        # O(n²) needs more headroom per size
+        return 120
     if scenario == "groupby_agg":
         return 60
-    return 30               # O(n) filter scenarios
+    # O(n) filter scenarios
+    return 30
 
 
 def measure(fn: Callable[[], Any], warmup: int = WARMUP_RUNS,
@@ -171,7 +178,8 @@ def measure(fn: Callable[[], Any], warmup: int = WARMUP_RUNS,
     """
     from math import sqrt
 
-    MIN_RUNS = 8  # minimum for Welch's t-test + bootstrap
+    # minimum for Welch's t-test + bootstrap
+    MIN_RUNS = 8
 
     for _ in range(warmup):
         fn()
@@ -231,7 +239,8 @@ def measure_memory(fn: Callable[[], Any]) -> float:
     fn()
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
-    return peak / (1024 * 1024)  # MB
+    # MB
+    return peak / (1024 * 1024)
 
 
 def compare_significance(runs_a: List[float], runs_b: List[float]) -> Dict[str, Any]:
@@ -320,8 +329,8 @@ def scenario_filter_over_groupby_key(spark: SparkSession, data: List[Tuple], opt
     """groupBy('group_key').agg(sum('value')).filter(col('group_key') == 'g0')
 
     Данные: 50 ключей (g{i % 50}); для «g0» селективность ~1/50. Текущий оптимизатор
-    не переносит фильтр под агрегацию
-    поэтому сравнение no_opt/opt здесь в основном фиксирует это поведение, а не выигрыш.
+    не переносит фильтр под агрегацию, поэтому сравнение no_opt/opt здесь в основном
+    фиксирует это поведение, а не выигрыш.
     """
     df = spark.createDataFrame(data, schema=MAIN_SCHEMA, optimize=optimize)
     def run():
@@ -335,10 +344,14 @@ def scenario_filter_over_groupby_key(spark: SparkSession, data: List[Tuple], opt
 
 # threshold -> approximate % of rows passing (uniform 0..1000)
 SELECTIVITY_POINTS = [
-    (100, 90),   # ~90% pass
-    (500, 50),   # ~50% pass
-    (900, 10),   # ~10% pass
-    (990, 1),    # ~1% pass
+    # ~90% pass
+    (100, 90),
+    # ~50% pass
+    (500, 50),
+    # ~10% pass
+    (900, 10),
+    # ~1% pass
+    (990, 1),
 ]
 
 
@@ -393,7 +406,7 @@ def _build_task_list(sizes_override=None):
     """Pre-compute the list of (label, ...) tasks for progress tracking.
 
     When *sizes_override* is given (from --sizes CLI), it applies to ALL
-    scenarios uniformly.  Otherwise each scenario uses its own size list
+    scenarios uniformly. Otherwise each scenario uses its own size list
     from SCENARIO_SIZES.
     """
     tasks = []
@@ -457,7 +470,8 @@ def run_benchmarks(sizes=None):
     spark = SparkSession.builder.master("local[2]").appName("benchmark").getOrCreate()
     results = []
 
-    sizes_override = sizes  # None means use per-scenario defaults
+    # None means use per-scenario defaults
+    sizes_override = sizes
     tasks = _build_task_list(sizes_override)
     pbar = tqdm(total=len(tasks), desc="Benchmarks", unit="bench",
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]")
@@ -657,103 +671,6 @@ def print_selectivity_summary(df, raw_results=None):
                   f"{pushdown_speedup:9.2f}x {sig:>5s} {opt_cv:6.1%}")
 
 
-def plot_results(df):
-    """Generate bar charts: one per scenario, x=data_size, bars no_opt/opt."""
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print("matplotlib not installed, skipping charts")
-        return
-
-    out_dir = os.path.dirname(os.path.abspath(__file__))
-    scenarios = df["scenario"].unique()
-    for scenario in scenarios:
-        sub = df[df["scenario"] == scenario]
-        modes = sorted(sub["mode"].unique())
-        is_selectivity = (
-            scenario.startswith("join_filter_sel_")
-            or scenario.startswith("filter_over_sort_sel_")
-        )
-        fig, ax = plt.subplots(figsize=(10, 6))
-
-        sizes = sorted(sub["rows"].unique())
-        x_labels = [f"{s:,}" for s in sizes]
-        x_pos = list(range(len(sizes)))
-
-        width = 0.35
-        colors = {"no_opt": "#C44E52", "opt": "#55A868"}
-        no_opt_data = sub[sub["mode"] == "no_opt"].set_index("rows").reindex(sizes)
-        opt_data = sub[sub["mode"] == "opt"].set_index("rows").reindex(sizes)
-        bars1 = ax.bar([p - width/2 for p in x_pos], no_opt_data["mean_s"].values,
-                       width, label="no_opt", color=colors["no_opt"], alpha=0.85)
-        bars2 = ax.bar([p + width/2 for p in x_pos], opt_data["mean_s"].values,
-                       width, label="opt", color=colors["opt"], alpha=0.85)
-        all_bars = list(bars1) + list(bars2)
-
-        ax.set_xlabel("Rows")
-        ax.set_ylabel("Mean time (seconds)")
-        ax.set_title(f"Benchmark: {scenario}")
-        ax.set_xticks(x_pos)
-        ax.set_xticklabels(x_labels)
-        ax.legend()
-        ax.grid(axis="y", alpha=0.3)
-
-        for bar in all_bars:
-            h = bar.get_height()
-            if h > 0:
-                ax.annotate(f"{h:.3f}",
-                            xy=(bar.get_x() + bar.get_width() / 2, h),
-                            xytext=(0, 3), textcoords="offset points",
-                            ha="center", va="bottom", fontsize=8)
-
-        fig.tight_layout()
-        chart_path = os.path.join(out_dir, f"chart_{scenario}.png")
-        fig.savefig(chart_path, dpi=150)
-        plt.close(fig)
-        print(f"Chart saved: {chart_path}")
-
-    # Speedup summary chart at largest data size
-    max_size = max(df["rows"])
-    summary = df[df["rows"] == max_size].pivot(
-        index="scenario", columns="mode", values="mean_s"
-    )
-    if "no_opt" in summary.columns and "opt" in summary.columns:
-        summary["speedup"] = summary["no_opt"] / summary["opt"]
-
-        fig, ax = plt.subplots(figsize=(10, 6))
-        summary["speedup"].plot(kind="bar", ax=ax, color="#55A868", alpha=0.85)
-        ax.axhline(y=1.0, color="red", linestyle="--", alpha=0.5, label="break-even")
-        ax.set_ylabel("Speedup (no_opt / opt)")
-        ax.set_title(f"Optimizer Speedup at {max_size:,} rows")
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
-        ax.legend()
-        ax.grid(axis="y", alpha=0.3)
-        fig.tight_layout()
-        chart_path = os.path.join(out_dir, "chart_speedup_summary.png")
-        fig.savefig(chart_path, dpi=150)
-        plt.close(fig)
-        print(f"Chart saved: {chart_path}")
-
-    # Throughput chart
-    fig, ax = plt.subplots(figsize=(12, 6))
-    for mode in ["no_opt", "opt"]:
-        sub = df[(df["mode"] == mode) & (df["rows"] == max_size)]
-        ax.bar([f"{s}\n({mode})" for s in sub["scenario"]],
-               sub["throughput_rows_per_s"] / 1000,
-               alpha=0.85, label=mode)
-    ax.set_ylabel("Throughput (krows/s)")
-    ax.set_title(f"Throughput at {max_size:,} rows")
-    ax.legend()
-    ax.grid(axis="y", alpha=0.3)
-    fig.tight_layout()
-    chart_path = os.path.join(out_dir, "chart_throughput.png")
-    fig.savefig(chart_path, dpi=150)
-    plt.close(fig)
-    print(f"Chart saved: {chart_path}")
-
-
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
@@ -771,10 +688,10 @@ if __name__ == "__main__":
         help="Override data sizes for ALL scenarios (e.g. --sizes 1000 5000)",
     )
     args = parser.parse_args()
-    sizes = args.sizes if args.sizes else None  # None → per-scenario defaults
+    # None → per-scenario defaults
+    sizes = args.sizes if args.sizes else None
 
     results = run_benchmarks(sizes=sizes)
     df = save_csv(results)
     print_summary_table(df, raw_results=results)
     print_selectivity_summary(df, raw_results=results)
-    plot_results(df)

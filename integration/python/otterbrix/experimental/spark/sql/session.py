@@ -155,7 +155,7 @@ class SparkSession:
             df._optimize = optimize
             return df
 
-        # TODO temporary decision
+        # TODO 1 temporary decision
         if has_pandas:
             df = DataFrame(self.conn.from_df(pandas.DataFrame(data=data, columns=names)), self)
             df._optimize = optimize
