@@ -44,11 +44,13 @@ class DataFrame:
             self._schema = otterbrix_to_spark_schema(self.relation.columns, self.relation.types)
 
     def show(self, **kwargs) -> None:
-        self.relation.optimize = self._optimize
+        if hasattr(self.relation, 'optimize'):
+            self.relation.optimize = self._optimize
         self.relation.show()
 
     def toPandas(self) -> "PandasDataFrame":
-        self.relation.optimize = self._optimize
+        if hasattr(self.relation, 'optimize'):
+            self.relation.optimize = self._optimize
         return self.relation.df()
 
     def createOrReplaceTempView(self, name: str) -> None:
@@ -1128,7 +1130,8 @@ class DataFrame:
         >>> df.count()
         3
         """
-        self.relation.optimize = self._optimize
+        if hasattr(self.relation, 'optimize'):
+            self.relation.optimize = self._optimize
         count_rel = self.relation.count("*")
         return int(count_rel.fetchone()[0])
 
