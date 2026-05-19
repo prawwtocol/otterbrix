@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2024-2026 otterbrix contributors
+# SPDX-License-Identifier: MIT
+#
+# REUSE specification 3.3 — https://reuse.software/spec-3.3/
+#
+# This file declares licensing for the integration/python/ subtree of
+# otterbrix. Other parts of the repository are intentionally not declared
+# here and will be covered in subsequent work. `reuse lint` will report
+# them as missing until then — this is expected.
+#
+# Ordering note (REUSE 3.3):
+#   "If a Covered File is covered by multiple [[annotations]] tables in
+#    the same REUSE.toml file, then exclusively the last matching table
+#    in the file is used."
+# So tables MUST be ordered from broadest to most specific.
+#
+# Default precedence is "closest": file-level SPDX headers (if present)
+# take precedence over the TOML; the TOML is the fallback. This is the
+# correct semantic for the Spark files, which already carry Apache-2.0
+# headers.
+
+version = 1
+
+# Rule 1 (broadest): integration/python/** defaults to MIT with dual
+# copyright. Covers the bulk of the subtree, derived from DuckDB's
+# tools/pythonpkg and from select files in duckdb/src/.
+[[annotations]]
+path = "integration/python/**"
+SPDX-FileCopyrightText = [
+    "2018-2026 Stichting DuckDB Foundation",
+    "2024-2026 otterbrix contributors",
+]
+SPDX-License-Identifier = "MIT"
+
+# Rule 2: otterbrix-original carve-out. These paths have no counterpart
+# in upstream DuckDB (verified by basename comparison against
+# duckdb v1.1.3 plus content spot-checks). MIT, otterbrix copyright only.
+[[annotations]]
+path = [
+    "integration/python/sql/**",
+    "integration/python/util/**",
+    "integration/python/connection_environment/connection_environment.*",
+    "integration/python/connection_environment/framework_object_detection.*",
+    "integration/python/connection_environment/python_abstract.*",
+    "integration/python/connection_environment/module_cheker.hpp",
+    "integration/python/connection_environment/expression/**",
+    "integration/python/connection_environment/relation/**",
+    "integration/python/otterbrix_wrapper/expression_initialize.cpp",
+    "integration/python/otterbrix_wrapper/relation_initialize.cpp",
+    "integration/python/otterbrix_wrapper/type_creation.hpp",
+    "integration/python/components/function/table/arrow/arrow_otterbrix_schema.*",
+]
+SPDX-FileCopyrightText = "2024-2026 otterbrix contributors"
+SPDX-License-Identifier = "MIT"
+
+# Rule 3 (most specific): Apache Spark-derived subtree. Per-file Apache
+# headers already exist in these files; this entry exists as a fallback
+# and for scanner discoverability.
+[[annotations]]
+path = "integration/python/otterbrix/experimental/spark/**"
+SPDX-FileCopyrightText = "The Apache Software Foundation"
+SPDX-License-Identifier = "Apache-2.0"
