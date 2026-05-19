@@ -557,3 +557,5 @@ build-verify/services/wal/tests/test_wal_tests-b12d07c.cmake
 benchmarks/default/*
 *.png
 default/*
+wal/*
+log/*
