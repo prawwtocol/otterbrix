@@ -12,7 +12,7 @@ namespace components::arrow::appender {
     	auto array_size = array_extension->size();
     	auto &child_type = array_extension->internal_type();
 
-    	auto child_buffer = ArrowAppender::InitializeChild(child_type, capacity * array_size);
+    	auto child_buffer = ArrowAppender::InitializeChild(child_type, capacity * array_size, result.options);
     	result.child_data.push_back(std::move(child_buffer));
     }
     
