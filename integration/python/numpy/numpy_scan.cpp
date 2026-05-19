@@ -11,22 +11,26 @@
 //#include "function/scalar/nested_functions.hpp"
 #include <utf8proc.h>
 
+#include <cstring>
 #include <string_view>
 
 namespace otterbrix {
 
 using components::vector::vector_t;
 
-// todo check data leak(set_data don't free old data, "get_data" is nullptr?
+// Copy into the vector's owned buffer instead of aliasing numpy memory via set_data:
+// the previous zero-copy made data_ point at numpy storage while buffer_ held an unused
+// allocation, and left the vector dangling if the source py::array was released first.
 template <class T>
 void ScanNumpyColumn(py::array &numpy_col, idx_t stride, idx_t offset, vector_t &out, idx_t count) {
 	auto src_ptr = static_cast<const T*>(numpy_col.data());
+	auto tgt_ptr = out.data<T>();
 	if (stride == sizeof(T)) {
-		out.set_data(reinterpret_cast<std::byte*>(const_cast<T*>(src_ptr + offset)));
+		std::memcpy(tgt_ptr, src_ptr + offset, count * sizeof(T));
 	} else {
-		auto tgt_ptr = out.data<T>();
+		const idx_t step = stride / sizeof(T);
 		for (idx_t i = 0; i < count; i++) {
-			tgt_ptr[i] = src_ptr[stride / sizeof(T) * (i + offset)];
+			tgt_ptr[i] = src_ptr[step * (i + offset)];
 		}
 	}
 }
@@ -87,20 +91,19 @@ void ScanNumpyMasked(PandasColumnBindData &bind_data, idx_t count, idx_t offset,
 
 template <class T>
 void ScanNumpyFpColumn(PandasColumnBindData &bind_data, const T *src_ptr, idx_t stride, idx_t count, idx_t offset, vector_t &out) {
-	auto &mask = out.validity(); 
+	auto &mask = out.validity();
+	auto tgt_ptr = out.data<T>();
 	if (stride == sizeof(T)) {
-		out.set_data(reinterpret_cast<std::byte*>(const_cast<T*>(src_ptr + offset))); // NOLINT
-		// Turn NaN values into NULL
-		auto tgt_ptr = out.data<T>();
+		std::memcpy(tgt_ptr, src_ptr + offset, count * sizeof(T));
 		for (idx_t i = 0; i < count; i++) {
 			if (std::isnan(tgt_ptr[i])) {
 				mask.set_invalid(i);
 			}
 		}
 	} else {
-		auto tgt_ptr = out.data<T>();
+		const idx_t step = stride / sizeof(T);
 		for (idx_t i = 0; i < count; i++) {
-			tgt_ptr[i] = src_ptr[stride / sizeof(T) * (i + offset)];
+			tgt_ptr[i] = src_ptr[step * (i + offset)];
 			if (std::isnan(tgt_ptr[i])) {
 				mask.set_invalid(i);
 			}
