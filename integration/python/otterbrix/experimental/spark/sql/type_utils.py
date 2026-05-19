@@ -24,10 +24,12 @@ from .types import (
     UnsignedLongType,
     HugeIntegerType,
     UnsignedHugeIntegerType,
+    NullType,
     ArrayType,
     MapType,
     StructField,
     StructType,
+    UnionType,
 )
 
 _sqltype_to_spark_class = {
@@ -53,9 +55,10 @@ _sqltype_to_spark_class = {
     'list': ArrayType,
     'struct': StructType,
     'map': MapType,
-    # union
-    # enum
-    # null (???)
+    'union': UnionType,
+    'null': NullType,
+    # enum: C++ binding does not expose enum metadata yet, and Spark has no
+    # native enum DataType — leave unmapped until both sides exist.
     'float': FloatType,
     'double': DoubleType,
     'decimal': DecimalType,
@@ -67,7 +70,8 @@ def convert_nested_type(dtype: OtterBrixPyType) -> DataType:
     if id == 'list' or id == 'array':
         children = dtype.children
         return ArrayType(convert_type(children[0][1]))
-    # TODO: add support for 'union'
+    if id == 'union':
+        return UnionType()
     if id == 'struct':
         children: List[Tuple[str, OtterBrixPyType]] = dtype.children
         fields = [StructField(x[0], convert_type(x[1])) for x in children]
@@ -79,7 +83,7 @@ def convert_nested_type(dtype: OtterBrixPyType) -> DataType:
 
 def convert_type(dtype: OtterBrixPyType) -> DataType:
     id = dtype.id
-    if id in ['list', 'struct', 'map', 'array']:
+    if id in ['list', 'struct', 'map', 'array', 'union']:
         return convert_nested_type(dtype)
     if id == 'decimal':
         children: List[Tuple[str, OtterBrixPyType]] = dtype.children
