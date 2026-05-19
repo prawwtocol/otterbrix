@@ -9,21 +9,31 @@ namespace components::planner {
     logical_plan::node_ptr optimize(std::pmr::memory_resource* resource,
                                     logical_plan::node_ptr node,
                                     const catalog::catalog* /*catalog*/,
-                                    logical_plan::parameter_node_t* parameters) {
+                                    logical_plan::parameter_node_t* parameters,
+                                    const optimizer_options& options) {
         if (!node) {
             return nullptr;
         }
 
         // Constant folding: resolve arithmetic on parameters at plan time
-        if (parameters) {
+        if (options.fold_constants && parameters) {
             optimizer::fold_constants(resource, node, parameters);
         }
 
         // Filter pushdown: relocate node_match_t closer to its data source.
         // Safe to run before validate_schema — operates on symbolic column names.
-        node = optimizer::pushdown_filter(node);
+        if (options.pushdown_filter) {
+            node = optimizer::pushdown_filter(node);
+        }
 
         return node;
+    }
+
+    logical_plan::node_ptr optimize(std::pmr::memory_resource* resource,
+                                    logical_plan::node_ptr node,
+                                    const catalog::catalog* catalog,
+                                    logical_plan::parameter_node_t* parameters) {
+        return optimize(resource, std::move(node), catalog, parameters, optimizer_options{});
     }
 
     logical_plan::node_ptr post_validate_optimize(std::pmr::memory_resource* /*resource*/,

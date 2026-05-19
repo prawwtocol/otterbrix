@@ -9,8 +9,20 @@ namespace components::catalog {
 
 namespace components::planner {
 
+    struct optimizer_options {
+        bool fold_constants = true;
+        bool pushdown_filter = true;
+    };
+
     // Optimizes logical plan. Called after planner, BEFORE the schema validator.
     // Safe rules only: those that don't need resolved column paths.
+    logical_plan::node_ptr optimize(std::pmr::memory_resource* resource,
+                                    logical_plan::node_ptr node,
+                                    const catalog::catalog* catalog,
+                                    logical_plan::parameter_node_t* parameters,
+                                    const optimizer_options& options);
+
+    // Backwards-compatible 4-arg overload: applies the default options.
     logical_plan::node_ptr optimize(std::pmr::memory_resource* resource,
                                     logical_plan::node_ptr node,
                                     const catalog::catalog* catalog,
