@@ -40,10 +40,10 @@ namespace otterbrix {
     }
 
     static cursor::cursor_t_ptr PyExecuteRelation(ConnectionEnvironment* env, const Relation& rel,
-            bool /*stream_result*/ = false, bool optimize = false) {
+            bool /*stream_result*/ = false) {
         assert(py::gil_check());
         py::gil_scoped_release release;
-        return env->Execute(rel, optimize);
+        return env->Execute(rel);
     }
 
     unique_ptr<PyRelation> PyRelation::Project(const py::args& args) {

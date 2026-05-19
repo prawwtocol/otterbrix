@@ -32,7 +32,6 @@ set(SOURCE_${PROJECT_NAME}
         node_update.cpp
         node_vacuum.cpp
         forward.cpp
-        optimizer.cpp
         param_storage.cpp
 )
 

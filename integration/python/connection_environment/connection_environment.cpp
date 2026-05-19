@@ -6,7 +6,6 @@
 #include <components/sql/parser/parser.h>
 #include <components/sql/transformer/transformer.hpp>
 #include <components/sql/transformer/utils.hpp>
-#include <components/logical_plan/optimizer.hpp>
 using namespace components;
 
 namespace otterbrix {
@@ -100,13 +99,10 @@ namespace otterbrix {
         return cursor;
     }
 
-    Result ConnectionEnvironment::Execute(const Relation& rel, bool optimize) {
+    Result ConnectionEnvironment::Execute(const Relation& rel) {
         auto session = session_id_t();
         auto plan = RelationFactory::Execute(rel);
-        if (optimize) {
-            components::logical_plan::plan_optimizer_t optimizer;
-            plan = optimizer.optimize(plan);
-        }
+        // Optimization (constant folding, filter pushdown) runs inside the dispatcher.
         auto cursor = space->dispatcher()->execute_plan(session, plan, ExpressionFactory::GetParams());
         return cursor;
     }

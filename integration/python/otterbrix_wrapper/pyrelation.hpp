@@ -60,6 +60,5 @@ namespace otterbrix {
         ConnectionEnvironment* env;
         shared_ptr<Relation> rel;
         unique_ptr<PyResult> result;
-        bool optimize_ = false;
     };
 } // namespace otterbrix
