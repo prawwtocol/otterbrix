@@ -1,0 +1,58 @@
+otterbrix Python integration
+Copyright (c) 2024-2026 otterbrix contributors
+
+This product includes software developed by third parties, listed below.
+See the sibling `LICENSE` file for the primary license text and details.
+
+--------------------------------------------------------------------------------
+DuckDB
+  Upstream:  https://github.com/duckdb/duckdb
+  License:   MIT
+  Copyright: 2018-2026 Stichting DuckDB Foundation
+
+  Most C++ sources and pybind11-based bindings in this directory are derived
+  from DuckDB's Python package (`tools/pythonpkg`). Relevant subtrees include
+  (non-exhaustive):
+    - native/                   (Python <-> native object conversion)
+    - numpy/                    (NumPy array wrappers and scans)
+    - arrow/                    (Arrow array stream interop)
+    - pybind11/                 (pybind11 helpers, GIL wrapper, registered objects)
+    - pyconnection/             (PyConnection, ex-DuckDBPyConnection)
+    - otterbrix_wrapper/        (PyRelation/PyType/PyExpression, ex-DuckDBPy*)
+    - connection_environment/   (framework/object detection, import cache)
+    - scan/                     (Python replacement scan)
+    - util/                     (box renderer, value conversion utilities)
+    - common/                   (exception mapping)
+    - components/               (Arrow appenders, table function helpers)
+    - main.cpp, pyutil.hpp, conversions/
+
+  These files retain the upstream DuckDB MIT notice as required by that
+  license. Modifications carry the otterbrix copyright above.
+
+--------------------------------------------------------------------------------
+Apache Spark
+  Upstream:  https://github.com/apache/spark
+  License:   Apache License, Version 2.0
+  Copyright: The Apache Software Foundation
+
+  Files under `otterbrix/experimental/spark/` are derived from Apache Spark's
+  PySpark sources. The full Apache 2.0 license text is preserved in
+  `otterbrix/experimental/spark/LICENSE`. Per-file Apache headers are kept
+  intact, and modifications are made under the same license.
+
+--------------------------------------------------------------------------------
+pybind11 (used as a build dependency, not vendored here)
+  Upstream:  https://github.com/pybind/pybind11
+  License:   BSD-3-Clause
+
+  pybind11 is linked at build time. Its license applies to the pybind11
+  sources themselves, which are obtained separately and not redistributed
+  inside this directory.
+
+--------------------------------------------------------------------------------
+Notes
+  - If any file in this tree is later determined to originate from a source
+    other than those listed above, add an entry here and ensure its license
+    text is preserved.
+  - File-level SPDX identifiers may be added over time; their absence does
+    not change the licensing described above.
