@@ -18,6 +18,8 @@
 #include <chrono>
 #include <core/executor.hpp>
 #include <core/tracy/tracy.hpp>
+#include <cstdlib>
+#include <string_view>
 #include <thread>
 
 #include <components/physical_plan_generator/create_plan.hpp>
@@ -231,8 +233,18 @@ namespace services::dispatcher {
         params_for_wal->set_parameters(params->parameters());
 
         auto logic_plan = create_logic_plan(plan);
-        // Optimizer: constant folding, etc.
-        logic_plan = components::planner::optimize(resource(), logic_plan, &catalog_, params.get());
+        // Optimizer: constant folding, filter pushdown, etc.
+        // OTTERBRIX_DISABLE_PUSHDOWN=1 (or any non-empty / non-"0" value) disables
+        // the filter pushdown rule — used by benchmarks to measure its impact.
+        static const components::planner::optimizer_options optimizer_opts = []() {
+            components::planner::optimizer_options opts;
+            if (const char* v = std::getenv("OTTERBRIX_DISABLE_PUSHDOWN");
+                v && *v && std::string_view(v) != "0") {
+                opts.pushdown_filter = false;
+            }
+            return opts;
+        }();
+        logic_plan = components::planner::optimize(resource(), logic_plan, &catalog_, params.get(), optimizer_opts);
         table_id id(resource(), logic_plan->collection_full_name());
         core::error_t error = core::error_t::no_error();
         switch (logic_plan->type()) {
