@@ -151,34 +151,8 @@ class SparkSession:
             df._optimize = optimize
             return df
 
-        # TODO 1 temporary decision
-        if has_pandas:
-            df = DataFrame(self.conn.from_df(pandas.DataFrame(data=data, columns=names)), self)
-            df._optimize = optimize
-            return df
-        
-        raise RuntimeError("Has no select value in OtterBrix to continue process")
-
-        # Finally check if a schema was provided
-        is_empty = False
-        if not data and names:
-            # Create NULLs for every type in our dataframe
-            is_empty = True
-            data = [tuple(None for _ in names)]
-
-        df = self._create_dataframe(data)
-        if is_empty:
-            rel = df.relation
-            # Add impossible where clause
-            #rel = rel.filter('1=0')
-            df = DataFrame(rel, self)
-
-        # Cast to types
-        if types:
-            df = df._cast_types(*types)
-        # Alias to names
-        if names:
-            df = df.toDF(*names)
+        df = DataFrame(self.conn.from_df(pandas.DataFrame(data=data, columns=names)), self)
+        df._optimize = optimize
         return df
 
     def newSession(self) -> "SparkSession":
