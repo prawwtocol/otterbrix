@@ -91,6 +91,43 @@ namespace components::logical_plan {
             }
         }
 
+        std::vector<expressions::expression_ptr>
+        split_conjuncts(const expressions::expression_ptr& expr) {
+            std::vector<expressions::expression_ptr> result;
+            if (!expr) {
+                return result;
+            }
+            if (expr->group() == expressions::expression_group::compare) {
+                auto* cmp = static_cast<expressions::compare_expression_t*>(expr.get());
+                if (cmp->type() == expressions::compare_type::union_and) {
+                    for (const auto& child : cmp->children()) {
+                        auto sub = split_conjuncts(child);
+                        result.insert(result.end(), sub.begin(), sub.end());
+                    }
+                    return result;
+                }
+            }
+            result.push_back(expr);
+            return result;
+        }
+
+        expressions::expression_ptr
+        rebuild_conjunction(std::pmr::memory_resource* resource,
+                            const std::vector<expressions::expression_ptr>& conjuncts) {
+            if (conjuncts.empty()) {
+                return nullptr;
+            }
+            if (conjuncts.size() == 1) {
+                return conjuncts.front();
+            }
+            auto conj = expressions::make_compare_union_expression(
+                resource, expressions::compare_type::union_and);
+            for (const auto& c : conjuncts) {
+                conj->append_child(c);
+            }
+            return conj;
+        }
+
     } // anonymous namespace
 
     std::set<std::string> collect_referenced_columns(const expressions::expression_ptr& expr) {
@@ -282,35 +319,57 @@ namespace components::logical_plan {
 
         if (source->type() == node_type::join_t) {
             auto* join = static_cast<node_join_t*>(source.get());
-            if (join->children().size() >= 2) {
+            if (join->children().size() >= 2 && !match_child->expressions().empty()) {
                 std::set<std::string> left_cols, right_cols;
                 collect_subtree_columns(join->children()[0], left_cols);
                 collect_subtree_columns(join->children()[1], right_cols);
 
-                if (!match_child->expressions().empty()) {
-                    auto filter_cols = collect_referenced_columns(match_child->expressions()[0]);
-                    bool all_left = true, all_right = true;
-                    for (const auto& c : filter_cols) {
-                        if (left_cols.find(c) == left_cols.end()) all_left = false;
-                        if (right_cols.find(c) == right_cols.end()) all_right = false;
+                auto conjuncts = split_conjuncts(match_child->expressions()[0]);
+                std::vector<expressions::expression_ptr> left_bucket, right_bucket, residual;
+                for (const auto& conj : conjuncts) {
+                    auto cols = collect_referenced_columns(conj);
+                    bool in_left = !cols.empty() &&
+                        std::includes(left_cols.begin(), left_cols.end(),
+                                      cols.begin(), cols.end());
+                    bool in_right = !cols.empty() &&
+                        std::includes(right_cols.begin(), right_cols.end(),
+                                      cols.begin(), cols.end());
+                    if (in_left && !in_right) {
+                        left_bucket.push_back(conj);
+                    } else if (in_right && !in_left) {
+                        right_bucket.push_back(conj);
+                    } else {
+                        residual.push_back(conj);
                     }
+                }
 
-                    if (all_left && !all_right) {
+                if (!left_bucket.empty() || !right_bucket.empty()) {
+                    auto coll = match_child->collection_full_name();
+                    if (!left_bucket.empty()) {
                         auto new_agg = make_node_aggregate(
                             node->resource(), join->children()[0]->collection_full_name());
                         new_agg->append_child(join->children()[0]);
-                        new_agg->append_child(match_child);
+                        new_agg->append_child(make_node_match(
+                            node->resource(), coll,
+                            rebuild_conjunction(node->resource(), left_bucket)));
                         join->children()[0] = boost::static_pointer_cast<node_t>(new_agg);
-                        return pushdown_filter(source);
                     }
-                    if (all_right && !all_left) {
+                    if (!right_bucket.empty()) {
                         auto new_agg = make_node_aggregate(
                             node->resource(), join->children()[1]->collection_full_name());
                         new_agg->append_child(join->children()[1]);
-                        new_agg->append_child(match_child);
+                        new_agg->append_child(make_node_match(
+                            node->resource(), coll,
+                            rebuild_conjunction(node->resource(), right_bucket)));
                         join->children()[1] = boost::static_pointer_cast<node_t>(new_agg);
+                    }
+                    auto residual_expr = rebuild_conjunction(node->resource(), residual);
+                    if (!residual_expr) {
                         return pushdown_filter(source);
                     }
+                    match_child->expressions()[0] = residual_expr;
+                    node->children()[0] = pushdown_filter(source);
+                    return node;
                 }
             }
         }

@@ -263,3 +263,92 @@ TEST_CASE("logical_plan::pushdown_filter_skips_group_by_aggregate_output") {
     REQUIRE(inner->children().size() == 2);
     REQUIRE(inner->children()[1]->type() == node_type::group_t);
 }
+
+// --- Conjunction splitting through join ------------------------------------
+
+// in:  aggregate[ join[data(a,b), data(c,d)], match((a > ?) AND (c > ?)) ]
+// out: join[ aggregate[data(a,b), match(a > ?)], aggregate[data(c,d), match(c > ?)] ]
+// Each conjunct references only one side, so the AND is split across branches.
+TEST_CASE("logical_plan::pushdown_filter_splits_conjunction_into_both_join_branches") {
+    auto resource = std::pmr::synchronized_pool_resource();
+    auto c = coll();
+    auto left_data = make_data(&resource, {"a", "b"});
+    auto right_data = make_data(&resource, {"c", "d"});
+
+    auto join = make_node_join(&resource, c, join_type::inner);
+    join->append_child(left_data);
+    join->append_child(right_data);
+
+    auto cmp_a =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "a", side_t::left), id_par{1});
+    auto cmp_c =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "c", side_t::left), id_par{2});
+    auto conj = make_compare_union_expression(&resource, compare_type::union_and);
+    conj->append_child(cmp_a);
+    conj->append_child(cmp_c);
+
+    node_aggregate_ptr outer = make_node_aggregate(&resource, c);
+    outer->append_child(join);
+    outer->append_child(make_node_match(&resource, c, conj));
+
+    plan_optimizer_t optimizer;
+    node_ptr out = optimizer.optimize(outer);
+
+    REQUIRE(out == join);
+    REQUIRE(join->children().size() == 2);
+    REQUIRE(join->children()[0]->type() == node_type::aggregate_t);
+    REQUIRE(join->children()[1]->type() == node_type::aggregate_t);
+
+    auto left_pushed = join->children()[0];
+    REQUIRE(left_pushed->children().size() == 2);
+    REQUIRE(left_pushed->children()[0]->type() == node_type::data_t);
+    REQUIRE(left_pushed->children()[1]->type() == node_type::match_t);
+
+    auto right_pushed = join->children()[1];
+    REQUIRE(right_pushed->children().size() == 2);
+    REQUIRE(right_pushed->children()[0]->type() == node_type::data_t);
+    REQUIRE(right_pushed->children()[1]->type() == node_type::match_t);
+}
+
+// in:  aggregate[ join[data(a,b), data(c,d)], match((a > ?) AND (a == c)) ]
+// out: aggregate[ join[ aggregate[data(a,b), match(a > ?)], data(c,d) ], match(a == c) ]
+// The (a == c) conjunct touches both sides and stays above the join as residual.
+TEST_CASE("logical_plan::pushdown_filter_splits_conjunction_with_residual_join") {
+    auto resource = std::pmr::synchronized_pool_resource();
+    auto c = coll();
+    auto left_data = make_data(&resource, {"a", "b"});
+    auto right_data = make_data(&resource, {"c", "d"});
+
+    auto join = make_node_join(&resource, c, join_type::inner);
+    join->append_child(left_data);
+    join->append_child(right_data);
+
+    auto cmp_a =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "a", side_t::left), id_par{1});
+    auto cmp_ac = make_compare_expression(&resource,
+                                          compare_type::eq,
+                                          key(&resource, "a", side_t::left),
+                                          key(&resource, "c"));
+    auto conj = make_compare_union_expression(&resource, compare_type::union_and);
+    conj->append_child(cmp_a);
+    conj->append_child(cmp_ac);
+
+    node_aggregate_ptr outer = make_node_aggregate(&resource, c);
+    outer->append_child(join);
+    outer->append_child(make_node_match(&resource, c, conj));
+
+    plan_optimizer_t optimizer;
+    node_ptr out = optimizer.optimize(outer);
+
+    REQUIRE(out == outer);
+    REQUIRE(outer->children().size() == 2);
+    REQUIRE(outer->children()[0] == join);
+    REQUIRE(outer->children()[1]->type() == node_type::match_t);
+    REQUIRE(join->children()[0]->type() == node_type::aggregate_t);
+    REQUIRE(join->children()[1]->type() == node_type::data_t);
+
+    auto left_pushed = join->children()[0];
+    REQUIRE(left_pushed->children().size() == 2);
+    REQUIRE(left_pushed->children()[0]->type() == node_type::data_t);
+    REQUIRE(left_pushed->children()[1]->type() == node_type::match_t);
+}

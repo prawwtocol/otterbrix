@@ -1,2 +1,0 @@
-name,group,nruns,min_ms,max_ms,avg_ms,median_ms,verified
-join,sql,5,19690.273,19832.030,19738.132,19728.742,OK
