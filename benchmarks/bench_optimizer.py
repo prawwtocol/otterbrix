@@ -402,38 +402,46 @@ def scenario_filter_over_sort_selectivity(spark: SparkSession, data: List[Tuple]
 # Main runner
 # ---------------------------------------------------------------------------
 
+def current_pushdown_mode() -> str:
+    """Detect filter pushdown state from process env.
+
+    Returns "pushdown_off" when OTTERBRIX_DISABLE_PUSHDOWN is set to a truthy
+    value, otherwise "pushdown_on". The C++ dispatcher reads the same env once
+    per process, so the label here is the authoritative tag for this run.
+    """
+    v = os.environ.get("OTTERBRIX_DISABLE_PUSHDOWN", "")
+    return "pushdown_off" if (v and v != "0") else "pushdown_on"
+
+
 def _build_task_list(sizes_override=None):
     """Pre-compute the list of (label, ...) tasks for progress tracking.
 
-    When *sizes_override* is given (from --sizes CLI), it applies to ALL
-    scenarios uniformly. Otherwise each scenario uses its own size list
-    from SCENARIO_SIZES.
+    Each (scenario, size) produces a single task. Filter pushdown is now a
+    process-wide switch via OTTERBRIX_DISABLE_PUSHDOWN — cross-process
+    comparison happens in bench_compare.py.
     """
     tasks = []
+    mode = current_pushdown_mode()
 
     def _sizes_for(scenario_key):
         if sizes_override is not None:
             return sizes_override
         return SCENARIO_SIZES.get(scenario_key, SIZES_FAST)
 
-    # Regular scenarios
+    # Regular scenarios — single pass per (scenario, size)
     for name in SCENARIOS:
         for size in _sizes_for(name):
-            for optimize in [False, True]:
-                mode = "no_opt" if not optimize else "opt"
-                tasks.append(("scenario", size, name, mode, optimize))
+            tasks.append(("scenario", size, name, mode, True))
 
     # Selectivity sweep
     for size in _sizes_for("selectivity"):
         for threshold, pct in SELECTIVITY_POINTS:
-            for mode in ["no_opt", "opt"]:
-                tasks.append(("selectivity", size, f"join_filter_sel_{pct}", mode, threshold))
+            tasks.append(("selectivity", size, f"join_filter_sel_{pct}", mode, threshold))
 
-    # Filter-over-sort selectivity sweep (O(n log n), runs on fast sizes)
+    # Filter-over-sort selectivity sweep
     for size in _sizes_for("filter_over_sort_sel"):
         for threshold, pct in SELECTIVITY_POINTS:
-            for mode in ["no_opt", "opt"]:
-                tasks.append(("filter_over_sort_sel", size, f"filter_over_sort_sel_{pct}", mode, threshold))
+            tasks.append(("filter_over_sort_sel", size, f"filter_over_sort_sel_{pct}", mode, threshold))
 
     return tasks
 
@@ -536,36 +544,8 @@ def run_benchmarks(sizes=None):
 
     pbar.close()
 
-    # Post-process: compute pairwise significance for each (scenario, rows) pair
-    runs_lookup = {}
-    for r in results:
-        key = (r["scenario"], r["mode"], r["rows"])
-        runs_lookup[key] = r.get("raw_runs", [])
-
-    for r in results:
-        scenario, mode, rows = r["scenario"], r["mode"], r["rows"]
-        runs_no = runs_lookup.get((scenario, "no_opt", rows), [])
-        runs_opt = runs_lookup.get((scenario, "opt", rows), [])
-        if runs_no and runs_opt:
-            cmp = compare_significance(runs_no, runs_opt)
-            r["sig"] = "*" if cmp["significant"] else "ns"
-            r["p_value"] = cmp["p_value"]
-            # Speedup vs baseline no_opt: 1 on no_opt rows; mean(no_opt)/mean(opt) on opt.
-            if mode == "no_opt":
-                r["speedup"] = 1.0
-                r["bootstrap_l"] = 1.0
-                r["bootstrap_r"] = 1.0
-            else:
-                r["speedup"] = cmp["speedup"]
-                r["bootstrap_l"] = cmp["ci_95"][0]
-                r["bootstrap_r"] = cmp["ci_95"][1]
-        else:
-            r["sig"] = ""
-            r["p_value"] = None
-            r["speedup"] = None
-            r["bootstrap_l"] = None
-            r["bootstrap_r"] = None
-
+    # No in-process speedup comparison anymore — each run is a single pushdown
+    # state. Cross-process comparison is bench_compare.py's job.
     return results
 
 
@@ -582,93 +562,38 @@ def save_csv(results: list, path: str = None):
     return df
 
 
+def save_raw_json(results: list, path: str):
+    """Dump per-run timings as JSON for downstream aggregators.
+
+    Key format: "<scenario>||<mode>||<rows>" → list[float]. Aggregator (bench_compare.py)
+    joins entries across processes by this key.
+    """
+    import json
+    payload = {
+        f"{r['scenario']}||{r['mode']}||{r['rows']}": list(r.get("raw_runs", []))
+        for r in results
+    }
+    with open(path, "w") as f:
+        json.dump(payload, f)
+    print(f"Raw runs saved to {path}")
+
+
 def print_summary_table(df, raw_results=None):
-    """Print a formatted comparison table with CI and significance."""
-    print(f"\n{'='*120}")
-    print("SUMMARY: No Optimization vs Optimization")
-    print(f"{'='*120}")
-    print(f"{'Scenario':25s} {'Rows':>8s} {'NoOpt(s)':>10s} {'NO CI95':>16s} {'Opt(s)':>10s} "
-          f"{'O CI95':>16s} {'Speedup':>8s} {'Sig?':>5s} {'NO CV':>6s} {'O CV':>6s}")
-    print(f"{'-'*120}")
-
-    # Build lookup for raw_runs
-    runs_lookup = {}
-    if raw_results:
-        for r in raw_results:
-            key = (r["scenario"], r["mode"], r["rows"])
-            runs_lookup[key] = r.get("raw_runs", [])
-
+    """Print per-scenario timing stats for the current process's pushdown state."""
+    mode = current_pushdown_mode()
+    print(f"\n{'='*100}")
+    print(f"SUMMARY  ({mode})")
+    print(f"{'='*100}")
+    print(f"{'Scenario':25s} {'Rows':>8s} {'Mean(s)':>10s} {'CI95':>22s} {'CV':>6s} {'N':>5s}")
+    print(f"{'-'*100}")
     for scenario in df["scenario"].unique():
         for size in sorted(df["rows"].unique()):
-            row_no = df[(df["scenario"] == scenario) & (df["mode"] == "no_opt") & (df["rows"] == size)]
-            row_opt = df[(df["scenario"] == scenario) & (df["mode"] == "opt") & (df["rows"] == size)]
-            if row_no.empty or row_opt.empty:
+            row = df[(df["scenario"] == scenario) & (df["rows"] == size)]
+            if row.empty:
                 continue
-            no = row_no.iloc[0]
-            o = row_opt.iloc[0]
-            speedup = no["mean_s"] / o["mean_s"] if o["mean_s"] > 0 else float("inf")
-
-            # Significance test
-            sig = ""
-            runs_no = runs_lookup.get((scenario, "no_opt", size), [])
-            runs_opt = runs_lookup.get((scenario, "opt", size), [])
-            if runs_no and runs_opt:
-                cmp = compare_significance(runs_no, runs_opt)
-                sig = "*" if cmp["significant"] else "ns"
-
-            no_ci = f"[{no['ci_95_low']:.4f},{no['ci_95_high']:.4f}]"
-            o_ci = f"[{o['ci_95_low']:.4f},{o['ci_95_high']:.4f}]"
-            print(f"{scenario:25s} {size:8,d} {no['mean_s']:10.4f} {no_ci:>16s} {o['mean_s']:10.4f} "
-                  f"{o_ci:>16s} {speedup:7.2f}x {sig:>5s} {no['cv']:5.1%} {o['cv']:5.1%}")
-        print()
-
-
-
-def print_selectivity_summary(df, raw_results=None):
-    """Print selectivity sweep results with pushdown speedup (no_opt vs opt)."""
-    sel_scenarios = sorted(
-        s for s in df["scenario"].unique()
-        if s.startswith("join_filter_sel_") or s.startswith("filter_over_sort_sel_")
-    )
-    if not sel_scenarios:
-        return
-
-    # Build lookup for raw_runs
-    runs_lookup = {}
-    if raw_results:
-        for r in raw_results:
-            key = (r["scenario"], r["mode"], r["rows"])
-            runs_lookup[key] = r.get("raw_runs", [])
-
-    print(f"\n{'='*100}")
-    print("SELECTIVITY SWEEP: Predicate Pushdown Impact")
-    print(f"  Pushdown speedup = no_opt / opt")
-    print(f"{'='*100}")
-    print(f"{'Scenario':25s} {'Rows':>8s} {'NoOpt(s)':>10s} {'Opt(s)':>10s} "
-          f"{'Pushdown':>10s} {'Sig?':>5s} {'Opt CV':>7s}")
-    print(f"{'-'*100}")
-
-    for scenario in sorted(sel_scenarios):
-        for size in sorted(df["rows"].unique()):
-            row_no = df[(df["scenario"] == scenario) & (df["mode"] == "no_opt") & (df["rows"] == size)]
-            row_opt = df[(df["scenario"] == scenario) & (df["mode"] == "opt") & (df["rows"] == size)]
-            if row_no.empty or row_opt.empty:
-                continue
-            no = row_no.iloc[0]["mean_s"]
-            opt = row_opt.iloc[0]["mean_s"]
-            opt_cv = row_opt.iloc[0].get("cv", 0.0)
-            pushdown_speedup = no / opt if opt > 0 else float("inf")
-
-            # Significance of pushdown (no_opt vs opt)
-            sig = ""
-            runs_no = runs_lookup.get((scenario, "no_opt", size), [])
-            runs_opt = runs_lookup.get((scenario, "opt", size), [])
-            if runs_no and runs_opt:
-                cmp = compare_significance(runs_no, runs_opt)
-                sig = "*" if cmp["significant"] else "ns"
-
-            print(f"{scenario:25s} {size:8,d} {no:10.4f} {opt:10.4f} "
-                  f"{pushdown_speedup:9.2f}x {sig:>5s} {opt_cv:6.1%}")
+            r = row.iloc[0]
+            ci = f"[{r['ci_95_low']:.4f},{r['ci_95_high']:.4f}]"
+            print(f"{scenario:25s} {size:8,d} {r['mean_s']:10.4f} {ci:>22s} {r['cv']:5.1%} {int(r['actual_runs']):5d}")
 
 
 if __name__ == "__main__":
@@ -687,11 +612,20 @@ if __name__ == "__main__":
         "--sizes", type=int, nargs="+", default=None,
         help="Override data sizes for ALL scenarios (e.g. --sizes 1000 5000)",
     )
+    parser.add_argument(
+        "--output", type=str, default=None,
+        help="Override CSV output path (default: benchmarks/results.csv)",
+    )
+    parser.add_argument(
+        "--raw-output", type=str, default=None,
+        help="If set, dump per-run timings to this JSON file (for bench_compare.py)",
+    )
     args = parser.parse_args()
     # None → per-scenario defaults
     sizes = args.sizes if args.sizes else None
 
     results = run_benchmarks(sizes=sizes)
-    df = save_csv(results)
+    df = save_csv(results, path=args.output)
+    if args.raw_output:
+        save_raw_json(results, args.raw_output)
     print_summary_table(df, raw_results=results)
-    print_selectivity_summary(df, raw_results=results)
