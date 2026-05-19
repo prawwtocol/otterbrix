@@ -3,6 +3,7 @@ project(test_translator)
 set(${PROJECT_NAME}_SOURCES
         test_logical_plan.cpp
         test_optimizer.cpp
+        test_optimizer_pushdown.cpp
 )
 
 add_executable(${PROJECT_NAME} main.cpp ${${PROJECT_NAME}_SOURCES})

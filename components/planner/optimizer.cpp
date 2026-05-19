@@ -2,6 +2,7 @@
 
 #include "optimizer/rules/column_pruning.hpp"
 #include "optimizer/rules/constant_folding.hpp"
+#include "optimizer/rules/pushdown_filter.hpp"
 
 namespace components::planner {
 
@@ -17,6 +18,10 @@ namespace components::planner {
         if (parameters) {
             optimizer::fold_constants(resource, node, parameters);
         }
+
+        // Filter pushdown: relocate node_match_t closer to its data source.
+        // Safe to run before validate_schema — operates on symbolic column names.
+        node = optimizer::pushdown_filter(node);
 
         return node;
     }
