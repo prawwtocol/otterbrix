@@ -128,6 +128,72 @@ namespace components::logical_plan {
             return conj;
         }
 
+        size_t type_width(const components::types::complex_logical_type& t) {
+            return t.size();
+        }
+
+        const node_data_t* find_data_node(const node_ptr& node) {
+            if (!node) {
+                return nullptr;
+            }
+            if (node->type() == node_type::data_t) {
+                return static_cast<const node_data_t*>(node.get());
+            }
+            for (const auto& child : node->children()) {
+                if (auto* found = find_data_node(child)) {
+                    return found;
+                }
+            }
+            return nullptr;
+        }
+
+        size_t estimate_row_width(const node_ptr& node) {
+            const node_data_t* data = find_data_node(node);
+            if (!data) {
+                return 0;
+            }
+            size_t width = 0;
+            for (const auto& t : data->data_chunk().types()) {
+                width += type_width(t);
+            }
+            return width;
+        }
+
+        size_t estimate_projection_width(const node_select_t& sel, const node_ptr& subtree) {
+            const node_data_t* data = find_data_node(subtree);
+            if (!data) {
+                return 0;
+            }
+            const auto types = data->data_chunk().types();
+            const auto& exprs = sel.expressions();
+            const size_t hidden = sel.internal_aggregate_count;
+            if (exprs.size() < hidden) {
+                return 0;
+            }
+            const size_t visible = exprs.size() - hidden;
+            size_t width = 0;
+            for (size_t i = 0; i < visible; ++i) {
+                const auto& expr = exprs[i];
+                if (expr->group() != expressions::expression_group::scalar) {
+                    return 0;
+                }
+                auto* sc = static_cast<expressions::scalar_expression_t*>(expr.get());
+                const std::string out_name = sc->key().as_string();
+                bool found = false;
+                for (const auto& t : types) {
+                    if (t.alias() == out_name) {
+                        width += type_width(t);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return 0;
+                }
+            }
+            return width;
+        }
+
     } // anonymous namespace
 
     std::set<std::string> collect_referenced_columns(const expressions::expression_ptr& expr) {
@@ -250,8 +316,13 @@ namespace components::logical_plan {
                     collect_subtree_columns(source_agg->children()[0], input_cols);
                     auto* src_select = static_cast<node_select_t*>(src_select_wrapped.get());
                     if (filter_supported_through_identity_select(*src_select, filter_cols, input_cols)) {
-                        source_agg->append_child(match_child);
-                        return pushdown_filter(source);
+                        size_t width_full = estimate_row_width(source_agg->children()[0]);
+                        size_t width_proj = estimate_projection_width(*src_select, source_agg->children()[0]);
+                        bool cost_ok = width_full == 0 || width_proj == 0 || width_full <= width_proj;
+                        if (cost_ok) {
+                            source_agg->append_child(match_child);
+                            return pushdown_filter(source);
+                        }
                     }
                 }
             }
