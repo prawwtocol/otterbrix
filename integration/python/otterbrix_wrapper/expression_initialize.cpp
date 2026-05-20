@@ -263,13 +263,6 @@ namespace otterbrix {
     }
     
     static void InitializeImplicitConversion(py::class_<PyExpression, shared_ptr<PyExpression>> & /*m*/) {
-    	// m.def(py::init<>([](const string &name) { return PyExpression::ColumnExpression(name); }));
-        /*m.def(py::init<>([](const py::object &obj) {
-    		auto val = TransformPythonValue(obj);
-    		return PyExpression::InternalConstantExpression(std::move(val));
-    	}));*/
-    	// py::implicitly_convertible<py::str, PyExpression>();
-    	//py::implicitly_convertible<py::object, PyExpression>();
     }
     void PyExpression::Initialize(py::module_ &m) {
         auto expression =

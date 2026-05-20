@@ -29,8 +29,6 @@ namespace components::arrow::appender {
 
     // This struct is used to save state for appending a column
     // afterwards the ownership is passed to the arrow array, as 'private_data'
-    // FIXME: we should separate the append state variables from the variables required by the ArrowArray into
-    // ArrowAppendState
     struct ArrowAppendData {
     	explicit ArrowAppendData(ArrowOptions options_p = {}) : options(options_p) {
     		dictionary.release = nullptr;

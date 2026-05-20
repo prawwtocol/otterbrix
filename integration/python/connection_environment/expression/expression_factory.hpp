@@ -20,13 +20,7 @@ namespace otterbrix {
     using Expression = std::variant<
         core::parameter_id_t,
         components::expressions::key_t,
-        //components::document::value_t,
-        //components::types::logical_value_t,
         components::expressions::expression_ptr>;
-
-    //using PrepExpression = std::variant<core::parameter_id_t,
-    //    components::expressions::key_t,
-    //    components::expressions::expression_ptr>;
 
     
     class ExpressionFactory {
@@ -70,8 +64,6 @@ namespace otterbrix {
         components::expressions::compare_expression_ptr UnionExpressionToExpressionPtr(const Expression& expr);
         string ConvertToString(const Expression& expr);
     
-        //PrepExpression PrepareExpression(const Expression& expr);
-
         components::logical_plan::parameter_node_ptr GetParams(); 
 
     private:
@@ -79,7 +71,6 @@ namespace otterbrix {
         std::unordered_map<core::parameter_id_t, components::types::logical_value_t> values; 
         uint64_t counter;
         boost::intrusive_ptr<otterbrix_t> space;
-        //components::logical_plan::parameter_node_ptr params;
 
     };
 } // namespace otterbrix

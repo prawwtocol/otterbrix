@@ -4,7 +4,6 @@
 
 #include <components/arrow/arrow.hpp>
 #include <components/arrow/arrow_wrapper.hpp>
-//#include <components/function/table/arrow.hpp>
 #include <core/typedefs.hpp>
 #include <core/types/memory.hpp>
 #include <core/types/unordered_map.hpp>

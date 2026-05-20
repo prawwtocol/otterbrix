@@ -199,10 +199,8 @@ namespace otterbrix {
         return make_shared<PyExpression>(expr.factory->ScalarUnaryExpression(type, expr.expr), expr.factory);
     }
 
-    pyexpr_ptr PyExpression::ComparisonExpression(components::expressions::compare_type type, 
+    pyexpr_ptr PyExpression::ComparisonExpression(components::expressions::compare_type type,
         const PyExpression& left, const PyExpression& right) {
-        // 	auto left = left_p.GetExpression().Copy();
-	    // auto right = right_p.GetExpression().Copy();
         return make_shared<PyExpression>(left.factory->ComparisonExpression(type, left.expr, right.expr), left.factory);
     
     }

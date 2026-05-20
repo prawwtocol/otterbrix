@@ -35,7 +35,6 @@ class DataFrameWriter:
         if partitionBy:
             raise NotImplementedError
 
-        # relation.write_parquet(path, compression=compression)
         raise NotImplementedError
 
 
@@ -75,19 +74,6 @@ class DataFrameWriter:
         if lineSep:
             raise NotImplementedError
         relation = self.dataframe.relation
-        # relation.write_csv(
-        #     path,
-        #     sep=sep,
-        #     na_rep=nullValue,
-        #     quotechar=quote,
-        #     compression=compression,
-        #     escapechar=escape,
-        #     header=header if isinstance(header, bool) else header == "True",
-        #     encoding=encoding,
-        #     quoting=quoteAll,
-        #     date_format=dateFormat,
-        #     timestamp_format=timestampFormat,
-        # )
         raise NotImplementedError
 
 
@@ -111,15 +97,7 @@ class DataFrameReader:
 
         rel = None
         if format:
-            # format = format.lower()
-            # if format == "csv" or format == "tsv":
-            #     rel = self.session.conn.read_csv(path)
-            # elif format == "json":
-            #     rel = self.session.conn.read_json(path)
-            # elif format == "parquet":
-            #     rel = self.session.conn.read_parquet(path)
-            # else:
-                raise ContributionsAcceptedError
+            raise ContributionsAcceptedError
         else:
             rel = self.session.conn.sql(f"select * from {path}")
         df = DataFrame(rel, self.session)

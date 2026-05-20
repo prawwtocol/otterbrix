@@ -173,7 +173,6 @@ void PandasScanFunction::PandasScanFunc(TableFunctionInput &data_p, components::
     output.set_cardinality(this_count);
     for (idx_t idx = 0; idx < state.column_ids.size(); idx++) {
          auto col_idx = state.column_ids[idx];
-         //components::table::COLUMN_IDENTIFIER_ROW_ID
          if (col_idx == static_cast<uint64_t>(-1)) {
               output.data[idx].sequence(static_cast<int64_t>(state.start), 1, this_count);
          } else {

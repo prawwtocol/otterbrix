@@ -35,10 +35,6 @@ namespace otterbrix {
 
     public:
 
-        //pyexpr_ptr ConstantExpression(const py::object& value);
-
-    public:
-
         string ToString() const;
         void Print() const;        
 

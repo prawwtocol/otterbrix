@@ -232,22 +232,6 @@ namespace otterbrix {
 
     }
 
-    /*PrepExpression ExpressionFactory::PrepareExpression(const Expression& expr) {
-        return std::visit([this](const auto& expr) -> PrepExpression {
-            using T = std::decay_t<decltype(expr)>;
-            if constexpr (std::is_same_v<T, document::value_t>) {
-                auto param = this->params->add_parameter(expr);
-                return PrepExpression(param);
-            } else if constexpr (std::is_same_v<T, expressions::expression_ptr> || 
-                std::is_same_v<T, expressions::key_t> ){
-                return PrepExpression(expr);
-            } else {
-                throw std::runtime_error("Implementation Error: Couldn\'t convert Expression to PrepExpression");
-            }
-        }, expr);
-    }*/
-
-    
     core::parameter_id_t ExpressionFactory::AddValue(components::types::logical_value_t&& value) {
         auto param = core::parameter_id_t(counter);
         counter++;

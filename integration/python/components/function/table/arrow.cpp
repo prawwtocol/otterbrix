@@ -359,7 +359,7 @@ void ArrowTableFunction::ArrowScanFunction(TableFunctionInput &data_p, component
 	if (!data_p.local_state) {
 		return;
 	}
-	auto &data = data_p.bind_data->CastNoConst<ArrowScanFunctionData>(); // FIXME
+	auto &data = data_p.bind_data->CastNoConst<ArrowScanFunctionData>();
 	auto &state = data_p.local_state->Cast<ArrowScanLocalState>();
 	auto &global_state = data_p.global_state->Cast<ArrowScanGlobalState>();
 

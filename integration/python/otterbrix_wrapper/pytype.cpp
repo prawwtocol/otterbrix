@@ -53,7 +53,6 @@ namespace otterbrix {
     
     shared_ptr<OtterBrixPyType> OtterBrixPyType::GetAttribute(const string &name) const {
     	if (type.type() == logical_type::STRUCT || type.type() == logical_type::UNION) {
-    		//auto &children = StructType::GetChildTypes(type);
             const auto& children = type.child_types();
     		for (idx_t i = 0; i < children.size(); i++) {
     			const auto &child = children[i];
@@ -179,7 +178,6 @@ namespace otterbrix {
     	} else if (type_str == "uint64") {
     		result = logical_type::UBIGINT;
     	} else if (type_str == "float16") {
-    		// FIXME: should we even support this?
     		result = logical_type::FLOAT;
     	} else if (type_str == "float32") {
     		result = logical_type::FLOAT;
@@ -256,8 +254,7 @@ namespace otterbrix {
             members.back().set_alias(name);
     	}
     
-    	//return LogicalType::UNION(std::move(members));
-        throw std::runtime_error("Could\'t transrom object to OtterBrix Union. "
+    	throw std::runtime_error("Could\'t transrom object to OtterBrix Union. "
                 "Has no complex_logical_type::create_union");
     }
     
@@ -348,22 +345,12 @@ namespace otterbrix {
     
     	type_module.def("__repr__", &OtterBrixPyType::ToString, "Stringified representation of the type object");
     	type_module.def("__eq__", &OtterBrixPyType::Equals, "Compare two types for equality", py::arg("other"));
-    	//type_module.def("__eq__", &OtterBrixPyType::EqualsString, "Compare two types for equality", py::arg("other"));
     	type_module.def_property_readonly("id", &OtterBrixPyType::GetId);
     	type_module.def_property_readonly("children", &OtterBrixPyType::Children);
-    	type_module.def(py::init<>([](const string &type_str) //shared_ptr<PyConnection> connection = nullptr) {
-        {	
-            auto ltype = FromString(type_str);//, std::move(connection));
+    	type_module.def(py::init<>([](const string &type_str) {
+            auto ltype = FromString(type_str);
     		return make_shared_ptr<OtterBrixPyType>(ltype);
     	}));
-    	/*type_module.def(py::init<>([](const PyGenericAlias &obj) {
-    		auto ltype = FromGenericAlias(obj);
-    		return make_shared_ptr<OtterBrixPyType>(ltype);
-    	}));
-    	type_module.def(py::init<>([](const PyUnionType &obj) {
-    		auto ltype = FromUnionType(obj);
-    		return make_shared_ptr<OtterBrixPyType>(ltype);
-    	}));*/
     	type_module.def(py::init<>([](const py::object &obj) {
     		auto ltype = FromObject(obj);
     		return make_shared_ptr<OtterBrixPyType>(ltype);
@@ -373,14 +360,11 @@ namespace otterbrix {
     
     	py::implicitly_convertible<py::object, OtterBrixPyType>();
     	py::implicitly_convertible<py::str, OtterBrixPyType>();
-    	// py::implicitly_convertible<PyGenericAlias, OtterBrixPyType>();
-    	// py::implicitly_convertible<PyUnionType, OtterBrixPyType>();
     }
     
     string OtterBrixPyType::ToString() const {
 		auto name = magic_enum::enum_name(type.type());
     	return string(name);
-        //std::runtime_error("OtterBrix doesn\'t implement ToString method");
     }
     
     py::list OtterBrixPyType::Children() const {
@@ -411,14 +395,6 @@ namespace otterbrix {
     		return children;
     	}
     	if (id == logical_type::ENUM) {
-    		/*auto &values_insert_order = EnumType::GetValuesInsertOrder(type);
-    		auto strings = FlatVector::GetData<string_t>(values_insert_order);
-    		py::list strings_list;
-    		for (size_t i = 0; i < EnumType::GetSize(type); i++) {
-    			strings_list.append(py::str(strings[i].GetString()));
-    		}
-    		children.append(py::make_tuple("values", strings_list));
-    		return children;*/
             std::runtime_error("OtterBrix doesn\'t implement OtterBrix Enum methods");
     	}
     	if (id == logical_type::STRUCT || id == logical_type::UNION) {
@@ -446,7 +422,6 @@ namespace otterbrix {
     }
     
     string OtterBrixPyType::GetId() const {
-    	//return string_utils::Lower(LogicalTypeIdToString(type.type()));
         if (type.type() == logical_type::NA) {
             return "null";
         }

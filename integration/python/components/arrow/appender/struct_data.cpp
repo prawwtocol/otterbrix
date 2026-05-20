@@ -20,7 +20,6 @@ namespace components::arrow::appender {
     	uint64_t size = to - from;
     	AppendValidity(append_data, format, from, to);
     	// append the children of the struct
-    	//auto &children = StructVector::GetEntries(input);
         auto& children = input.entries();
     	for (uint64_t child_idx = 0; child_idx < children.size(); child_idx++) {
     		auto &child = children[child_idx];

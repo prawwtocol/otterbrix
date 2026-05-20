@@ -1,7 +1,5 @@
 #include "python_replacement_scan.hpp"
 
-//#include <arrow/arrow_array_stream.hpp>
-
 #include <connection_environment/framework_object_detection.hpp>
 #include <otterbrix_wrapper/python_dependency.hpp>
 #include <pandas/pandas_scan.hpp>
@@ -21,47 +19,6 @@ using namespace components;
 
 namespace otterbrix {
 
-    //using components::table::ArrowScanFunction;
-    //using components::table::ArrowScanBind;
-    //using components::table::ArrowScanInitGlobal;
-    //using components::table::ArrowScanInitLocal;
-
-
-    // static void CreateArrowScan(const string &name, py::object entry, 
-    //         components::reference::TableFunctionRef &table_function,
-    //         vector<unique_ptr<ParsedExpression>> &children, PyArrowObjectType type) {
-
-    //     if (type == PyArrowObjectType::PyCapsuleInterface) {
-    //         entry = entry.attr("__arrow_c_stream__")();
-    //         type = PyArrowObjectType::PyCapsule;
-    //     }
-    
-    //     auto stream_factory = make_uniq<PythonTableArrowArrayStreamFactory>(entry.ptr());
-    //     auto stream_factory_produce = PythonTableArrowArrayStreamFactory::Produce;
-    //     auto stream_factory_get_schema = PythonTableArrowArrayStreamFactory::GetSchema;
-    
-    //     children.emplace_back(static_cast<void*>(stream_factory.get()));
-    //     children.emplace_back(static_cast<void*>(stream_factory_produce));
-    //     children.emplace_back(static_cast<void*>(stream_factory_get_schema));
-    
-    //     if (type == PyArrowObjectType::PyCapsule) {
-    //         // Disable projection+filter pushdown
-    //         table_function.function = make_uniq<FunctionExpression>("arrow_scan_dumb", std::move(children));
-    //     } else {
-    //         table_function.function = make_uniq<FunctionExpression>("arrow_scan", std::move(children));
-    //     }
-    //     table_function.children = std::move(children);
-    //     table_function.function = make_unique<TableFunction>("arrow_scan_dumb", 
-    //             {logical_type::POINTER, logical_type::POINTER, logical_type::POINTER},
-    //             ArrowScanFunction, ArrowScanBind, ArrowScanInitGlobal, ArrowScanInitLocal);
-    
-    //     auto dependency = make_uniq<ExternalDependency>();
-    //     auto dependency_item = PythonDependencyItem::Create(make_uniq<RegisteredArrow>(std::move(stream_factory), entry));
-    //     dependency->AddDependency("replacement_cache", std::move(dependency_item));
-    //     table_function.external_dependency = std::move(dependency);
-    // }
-
-
     void ThrowScanFailureError(const py::object &entry, const string &name) {
         auto py_object_type = string(py::str(entry.get_type().attr("__name__")));
         string error =
@@ -75,21 +32,14 @@ namespace otterbrix {
         auto table_function = make_unique<components::tableref::TableRef>();
         vector<components::types::logical_value_t> children;
         NumpyObjectType numpy_type;
-        //PyArrowObjectType arrow_type;
         if (FrameworkObjectDetection::IsPandasDataframe(entry)) {
-           // if (PandasDataFrame::IsPyArrowBacked(entry)) { 
-           //     auto table = PandasDataFrame::ToArrowTable(entry);
-           //     CreateArrowScan(name, table, *table_function, children, client_properties, PyArrowObjectType::Table);
-           // } else {
                 auto new_df = PandasScanFunction::PandasReplaceCopiedNames(entry);
                 table_function->external_dependency = make_shared<ExternalDependency>();
                 children.emplace_back(std::pmr::get_default_resource(), static_cast<void*>(new_df.ptr()));
                 table_function->function = make_unique<PandasScanFunction>();
                 table_function->children = std::move(children);
                 table_function->external_dependency->AddDependency("data", PythonDependencyItem::Create(new_df));
-           // }
-        } else if (false) {//(arrow_type = FrameworkObjectDetection::GetArrowType(entry)) != PyArrowObjectType::Invalid) {
-        } else 
+        } else
         if ((numpy_type = FrameworkObjectDetection::GetNumpyObjectType(entry)) != NumpyObjectType::INVALID) {
 		    py::dict data; // we will convert all the supported format to dict{"key": np.array(value)}.
 		    idx_t idx = 0;

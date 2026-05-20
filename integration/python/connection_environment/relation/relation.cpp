@@ -105,11 +105,6 @@ namespace otterbrix {
                     type = find_type(name, initial);
                 }
 
-                /*if (scalar_expr->key().is_null()) {
-                    name = founded_name.first;
-                } else {
-                    name = scalar_expr->key().as_string();
-                }*/
                 return column_definition_t(name, type);
         }
     public:

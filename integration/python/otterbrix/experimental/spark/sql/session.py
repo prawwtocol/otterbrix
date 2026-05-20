@@ -44,9 +44,6 @@ class SparkSession:
         except ImportError:
             has_pandas = False
         if has_pandas and isinstance(data, pandas.DataFrame):
-            #unique_name = f'pyspark_pandas_df_{uuid.uuid1()}'
-            #self.conn.register(unique_name, data)
-            #return DataFrame(self.conn.sql(f'select * from "{unique_name}"'), self)
             return DataFrame(self.conn.from_df(data), self)
 
         def verify_tuple_integrity(tuples):
@@ -106,9 +103,6 @@ class SparkSession:
             data.columns = names
         df = self._create_dataframe(data)
 
-        # Cast to types
-        #if types:
-        #    df = df._cast_types(*types)
         return df
 
     def createDataFrame(

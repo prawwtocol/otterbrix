@@ -8,7 +8,6 @@
 #include <components/types/types.hpp>
 #include <components/vector/vector.hpp>
 
-//#include "function/scalar/nested_functions.hpp"
 #include <utf8proc.h>
 
 #include <cstring>
@@ -64,7 +63,6 @@ void ScanNumpyCategory(py::array &column, idx_t count, idx_t offset, vector_t &o
 		throw std::runtime_error("The Pandas type " + src_type + " for categorical types is not implemented yet");
 	}
 }
-//666
 static void ApplyMask(PandasColumnBindData &bind_data, components::vector::validity_mask_t &validity, idx_t count, idx_t offset) {
     assert(bind_data.mask);
     auto mask = reinterpret_cast<const bool *>(bind_data.mask->numpy_array.data());
@@ -137,15 +135,12 @@ static std::string_view DecodePythonUnicode(T *codepoints, idx_t codepoint_count
             utf8_length -= 1;
         }
 
-		//int len = Utf8Proc::CodepointLength(int(codepoints[i]));
 		assert(utf8_length >= 1);
 	}
 	int sz;
     auto buffer = static_cast<components::vector::string_vector_buffer_t*>(out.auxiliary().get());
     auto target = reinterpret_cast<utf8proc_uint8_t*>(buffer->empty_string(utf8_length));
     std::string_view result(reinterpret_cast<const char*>(target), utf8_length);
-	//auto result = out.get_auxi(out, utf8_length);
-	//auto target = result.GetDataWriteable();
     // utf8proc_reencode for array
 	for (idx_t i = 0; i < codepoint_count; i++) {
 		sz = utf8proc_encode_char(static_cast<utf8proc_int32_t>(codepoints[i]), target);
@@ -181,32 +176,6 @@ void ScanNumpyObject(PyObject *object, idx_t offset, vector_t &out) {
 	out.set_value(offset, val);
 }
 
-// has no constraints
-/*static void VerifyMapConstraints(vector_t &vec, idx_t count) {
-	auto invalid_reason = MapVector::CheckMapValidity(vec, count);
-	switch (invalid_reason) {
-	case MapInvalidReason::VALID:
-		return;
-	case MapInvalidReason::DUPLICATE_KEY:
-		throw std::runtime_error("Dict->Map conversion failed because 'key' list contains duplicates");
-	case MapInvalidReason::NULL_KEY:
-		throw std::runtime_error("Dict->Map conversion failed because 'key' list contains None");
-	default:
-		throw std::runtime_error("Option not implemented for MapInvalidReason");
-	}
-}*/
-
-/*void VerifyTypeConstraints(vector_t &vec, idx_t count) {
-	switch (vec.type().type()) {
-        case components::types::logical_type::MAP: {
-		VerifyMapConstraints(vec, count);
-		break;
-	}
-	default:
-		return;
-	}
-}*/
-
 void NumpyScan::ScanObjectColumn(PyObject **col, idx_t stride, idx_t count, idx_t offset, vector_t &out) {
 	// numpy_col is a sequential list of objects, that make up one "column" (Vector)
 	out.set_vector_type(components::vector::vector_type::FLAT);
@@ -223,7 +192,6 @@ void NumpyScan::ScanObjectColumn(PyObject **col, idx_t stride, idx_t count, idx_
 			ScanNumpyObject(src_ptr, i, out);
 		}
 	}
-//	VerifyTypeConstraints(out, count);
 }
 
 //! 'offset' is the offset within the column
@@ -332,7 +300,7 @@ void NumpyScan::Scan(PandasColumnBindData &bind_data, idx_t count, idx_t offset,
 			}
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
-			if (/*!PyUnicode_Check(val) &&*/ PyUnicode_IS_COMPACT_ASCII(val))
+			if (PyUnicode_IS_COMPACT_ASCII(val))
 #pragma GCC diagnostic pop
 			{
 				// ascii string: we can zero copy

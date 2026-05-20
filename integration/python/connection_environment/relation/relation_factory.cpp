@@ -185,19 +185,11 @@ namespace otterbrix {
         }
         return make_join_relation(relation, other, std::move(conditions), type);
     }
-    // // bad, because no columns info
-    // Relation RelationFactory::CreateFromTable(const collection_full_name_t& name) {
-    //     auto aggregator = logical_plan::make_node_aggregate(space->dispatcher()->resource(), name);
-
-    //     return Relation{aggregator};
-    // }
-
     shared_ptr<Relation> RelationFactory::LimitRelation(shared_ptr<Relation> relation, int64_t count) {
         return make_shared<Relation>(relation, count);
     }
 
     shared_ptr<Relation> RelationFactory::CreateFromSelect(components::logical_plan::node_ptr /*plan*/) {
-        //return Relation::make_relation(boost::static_pointer_cast<components::logical_plan::node_aggregate_t>(plan));
         return nullptr;
     }
 

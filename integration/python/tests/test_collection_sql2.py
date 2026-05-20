@@ -49,12 +49,6 @@ def test_select_all(col):
     assert len(c) == 100
     c.close()
 
-# TODO:
-# def test_select_count(col):
-#     c = col.execute("SELECT COUNT(*) FROM {}.{};".format(database_name, collection_name))
-#     assert len(c) == 1
-#     c.close()
-
 
 def test_select_where_eq(col):
     c = col.execute("SELECT * FROM {}.{} WHERE count = 50;".format(database_name, collection_name))

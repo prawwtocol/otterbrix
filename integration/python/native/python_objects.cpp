@@ -13,8 +13,6 @@
 #include <stdexcept>
 #include <limits>
 
-// #include "datetime.h" // Python datetime initialize #1
-
 using components::types::logical_type;
 using components::types::logical_value_t;
 using components::types::complex_logical_type;
@@ -122,17 +120,7 @@ static bool WidthFitsInDecimal(int32_t width) {
 
 template <class OP>
 logical_value_t PyDecimalCastSwitch(std::pmr::memory_resource* r, PyDecimal &decimal, uint8_t width, uint8_t scale) {
-	/*if (width > DecimalWidth<int64_t>::max) {
-		return OP::template Operation<int128_t>(r, decimal.signed_value, decimal.digits, width, scale);
-	}*/
-	//if (width > DecimalWidth<int32_t>::max) {
 		return OP::template Operation<int64_t>(r, decimal.signed_value, decimal.digits, width, scale);
-	//}
-	/*if (width > DecimalWidth<int16_t>::max) {
-		return OP::template Operation<int32_t>(decimal.signed_value, decimal.digits, width, scale);
-	}
-	return OP::template Operation<int16_t>(decimal.signed_value, decimal.digits, width, scale);
-    */
 }
 
 // Wont fit in a DECIMAL, fall back to DOUBLE
@@ -251,7 +239,7 @@ static bool KeyIsHashable(const complex_logical_type &type) {
 	case logical_type::UNION: {
 		const auto& child_types = type.child_types();
 		for (idx_t i = 0; i < child_types.size(); i++) {
-			if (!KeyIsHashable(child_types[i])) { /*UnionType::GetMemberType(type, i)) */
+			if (!KeyIsHashable(child_types[i])) {
 				return false;
 			}
 		}
@@ -261,7 +249,7 @@ static bool KeyIsHashable(const complex_logical_type &type) {
 	case logical_type::STRUCT:
 		return false;
 	default:
-		throw std::runtime_error("Unsupported type: "); //+ type.ToString());
+		throw std::runtime_error("Unsupported type: ");
 	}
 }
 
@@ -291,15 +279,9 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 		return py::cast(val.value<uint64_t>());
 	case logical_type::HUGEINT: {
         std::stringstream ss;
-        // ss << val.value<int128_t>();
-        // auto res = ss.str();
-		// return py::reinterpret_steal<py::object>(PyLong_FromString(res.c_str(), nullptr, 10));
 		throw std::runtime_error("OtterBrix doen\'t support hugeint conversation to python object");
     }
 	case logical_type::UHUGEINT: {
-        // ss << val.value<uint128_t>();
-        // auto res = ss.str();
-		// return py::reinterpret_steal<py::object>(PyLong_FromString(res.c_str(), nullptr, 10));
 		throw std::runtime_error("OtterBrix doen\'t support uhugeint conversation to python object");
     }
 	case logical_type::FLOAT:
@@ -402,14 +384,11 @@ py::object PythonObject::FromValue(const logical_value_t &val, const complex_log
 		return FromStruct(val, type);
 	}
 	case logical_type::UUID: {
-		// auto uuid_value = val.GetValueUnsafe<int128_t>();
-		// return import_cache.uuid.UUID()(UUID::ToString(uuid_value));
 		throw std::runtime_error("OtterBrix doen\'t support uhugeint conversation to python object");
-
 	}
 
 	default:
-		throw std::runtime_error("Unsupported type: "); //+ type.ToString());
+		throw std::runtime_error("Unsupported type: ");
 	}
 }
 

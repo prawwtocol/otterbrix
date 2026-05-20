@@ -1,6 +1,5 @@
 #pragma once
 
-//#include "pyexpression.hpp"
 #include "pyresult.hpp"
 
 #include <pybind11/pybind_wrapper.hpp>

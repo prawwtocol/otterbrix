@@ -150,30 +150,16 @@ components::types::complex_logical_type NumpyToLogicalType(const NumpyType &col_
 		return logical_type::STRING_LITERAL;
 	case NumpyNullableType::OBJECT:
 		return logical_type::STRING_LITERAL;
-	//case NumpyNullableType::TIMEDELTA:
-	//	return logical_type::INTERVAL;
 	case NumpyNullableType::DATETIME_MS: {
-		/*if (col_type.has_timezone) {
-			return logical_type::TIMESTAMP_TZ;
-		}*/
 		return logical_type::TIMESTAMP_MS;
 	}
 	case NumpyNullableType::DATETIME_NS: {
-		/*if (col_type.has_timezone) {
-			return logical_type::TIMESTAMP_TZ;
-		}*/
 		return logical_type::TIMESTAMP_NS;
 	}
 	case NumpyNullableType::DATETIME_S: {
-		/*if (col_type.has_timezone) {
-			return logical_type::TIMESTAMP_TZ;
-		}*/
 		return logical_type::TIMESTAMP_SEC;
 	}
 	case NumpyNullableType::DATETIME_US: {
-		/*if (col_type.has_timezone) {
-			return logical_type::TIMESTAMP_TZ;
-		}*/
 		return logical_type::TIMESTAMP_US;
 	}
 	default:

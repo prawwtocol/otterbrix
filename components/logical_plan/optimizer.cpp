@@ -1,4 +1,5 @@
 #include "optimizer.hpp"
+#include <optional>
 #include <components/expressions/compare_expression.hpp>
 #include <components/expressions/scalar_expression.hpp>
 #include <components/expressions/aggregate_expression.hpp>
@@ -147,10 +148,11 @@ namespace components::logical_plan {
             return nullptr;
         }
 
-        size_t estimate_row_width(const node_ptr& node) {
+        // std::nullopt = no data node in the subtree; otherwise the summed byte width of all columns.
+        std::optional<size_t> estimate_row_width(const node_ptr& node) {
             const node_data_t* data = find_data_node(node);
             if (!data) {
-                return 0;
+                return std::nullopt;
             }
             size_t width = 0;
             for (const auto& t : data->data_chunk().types()) {
@@ -159,27 +161,28 @@ namespace components::logical_plan {
             return width;
         }
 
-        size_t estimate_projection_width(const node_select_t& sel, const node_ptr& subtree) {
+        // std::nullopt = width inestimable (computed/constant column, or output missing from input); else summed width.
+        std::optional<size_t> estimate_projection_width(const node_select_t& sel, const node_ptr& subtree) {
             const node_data_t* data = find_data_node(subtree);
             if (!data) {
-                return 0;
+                return std::nullopt;
             }
             const auto& types = data->data_chunk().types();
             const auto& exprs = sel.expressions();
             const size_t hidden = sel.internal_aggregate_count;
             if (exprs.size() < hidden) {
-                return 0;
+                return std::nullopt;
             }
             const size_t visible = exprs.size() - hidden;
             size_t width = 0;
             for (size_t i = 0; i < visible; ++i) {
                 const auto& expr = exprs[i];
                 if (expr->group() != expressions::expression_group::scalar) {
-                    return 0;
+                    return std::nullopt;
                 }
                 auto* sc = static_cast<expressions::scalar_expression_t*>(expr.get());
                 if (sc->type() != expressions::scalar_type::get_field) {
-                    return 0;
+                    return std::nullopt;
                 }
                 const std::string out_name = sc->key().as_string();
                 bool found = false;
@@ -191,7 +194,7 @@ namespace components::logical_plan {
                     }
                 }
                 if (!found) {
-                    return 0;
+                    return std::nullopt;
                 }
             }
             return width;
@@ -267,6 +270,7 @@ namespace components::logical_plan {
         if (node->type() != node_type::aggregate_t) return node;
 
         auto* agg = static_cast<node_aggregate_t*>(node.get());
+        // child[0] = data source, child[1..] = pipeline operations; <2 means nothing to rewrite.
         if (agg->children().size() < 2) return node;
 
         node_ptr match_child = nullptr;
@@ -319,9 +323,10 @@ namespace components::logical_plan {
                     collect_subtree_columns(source_agg->children()[0], input_cols);
                     auto* src_select = static_cast<node_select_t*>(src_select_wrapped.get());
                     if (filter_supported_through_identity_select(*src_select, filter_cols, input_cols)) {
-                        size_t width_full = estimate_row_width(source_agg->children()[0]);
-                        size_t width_proj = estimate_projection_width(*src_select, source_agg->children()[0]);
-                        bool cost_ok = width_full == 0 || width_proj == 0 || width_full <= width_proj;
+                        auto width_full = estimate_row_width(source_agg->children()[0]);
+                        auto width_proj = estimate_projection_width(*src_select, source_agg->children()[0]);
+                        // Veto only if both widths are known and the projection is strictly narrower than its input.
+                        bool cost_ok = !width_full || !width_proj || *width_full <= *width_proj;
                         if (cost_ok) {
                             source_agg->append_child(match_child);
                             return pushdown_filter(source);
@@ -410,6 +415,7 @@ namespace components::logical_plan {
 
         if (source->type() == node_type::join_t) {
             auto* join = static_cast<node_join_t*>(source.get());
+            // a join is binary: child[0] = left input, child[1] = right input.
             if (join->children().size() >= 2 && !match_child->expressions().empty()) {
                 std::set<std::string> left_cols, right_cols;
                 collect_subtree_columns(join->children()[0], left_cols);

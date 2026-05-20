@@ -45,7 +45,6 @@ from otterbrix.experimental.spark.sql.types import (
 
 class TestTypes(object):
     def test_all_types_schema(self):
-        #pass
         assert OtterBrixPyType('NULL') == NullType().otterbrix_type; 
         assert OtterBrixPyType('VARCHAR') == StringType().otterbrix_type; 
         assert OtterBrixPyType('BLOB') == BinaryType().otterbrix_type; 

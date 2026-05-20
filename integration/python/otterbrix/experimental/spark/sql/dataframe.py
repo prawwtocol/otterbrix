@@ -1026,8 +1026,6 @@ class DataFrame:
         if not allowMissingColumns:
             raise ContributionsAcceptedError
         raise NotImplementedError
-        # The relational API does not have support for 'union_by_name' yet
-        # return DataFrame(self.relation.union_by_name(other.relation, allowMissingColumns), self.session)
 
     def dropDuplicates(self, subset: Optional[List[str]] = None) -> "DataFrame":
         """Return a new :class:`DataFrame` with duplicate rows removed,

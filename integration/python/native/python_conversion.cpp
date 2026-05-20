@@ -8,8 +8,6 @@
 #include <core/string_util/case_insensitive.hpp>
 #include <core/typedefs.hpp>
 
-// #include "datetime.h" //From Python
-
 #include <limits>
 #include <memory_resource>
 #include <core/types/string.hpp>
@@ -772,8 +770,6 @@ namespace otterbrix
         else if (py::isinstance(ele, import_cache.numpy.datetime64()))
         {
             return PythonObjectType::NdDatetime;
-            /*} else if (py::isinstance(ele, import_cache.otterbrix.Value())) {
-                return PythonObjectType::Value;*/
         }
         else
         {
@@ -820,10 +816,9 @@ namespace otterbrix
             case logical_type::DECIMAL:
                 {
                     throw std::runtime_error("Can't losslessly convert from object of float to type ");
-                    //+target_type.ToString());
                 }
             default:
-                throw std::runtime_error("Could not convert 'float' to type "); //+target_type.ToString());
+                throw std::runtime_error("Could not convert 'float' to type ");
             }
         case PythonObjectType::Decimal:
             {
@@ -846,16 +841,11 @@ namespace otterbrix
             }
         case PythonObjectType::ByteArray:
             {
-                // const_data_ptr_t bytes = const_data_ptr_cast(PyByteArray_AsString(byte_array.ptr())); // NOLINT
-                // idx_t byte_length = PyUtil::PyByteArrayGetSize(byte_array);                           // NOLINT
-                // return logical_value_t::Blob(bytes, byte_length);
                 throw std::runtime_error("OtterBrix doens\'t support byte array conversation");
             }
         case PythonObjectType::MemoryView:
             {
                 py::memoryview py_view = ele.cast<py::memoryview>();
-                // Py_buffer *py_buf = PyUtil::PyMemoryViewGetBuffer(py_view); // NOLINT
-                // return logical_value_t::Blob(const_data_ptr_t(py_buf->buf), idx_t(py_buf->len));
                 throw std::runtime_error("OtterBrix doens\'t support memory view conversation");
             }
         case PythonObjectType::Bytes:
@@ -865,16 +855,14 @@ namespace otterbrix
                 {
                 case logical_type::UNKNOWN:
                 case logical_type::BLOB:
-                    // return logical_value_t::Blob(const_data_ptr_t(ele_string.data()), ele_string.size());
                     throw std::runtime_error("OtterBrix doens\'t support blob conversation");
 
                 case logical_type::BIT:
                     {
-                        // return logical_value_t::Bit(ele_string);
                         throw std::runtime_error("OtterBrix doens\'t support blob conversation");
 
                     default:
-                        throw std::runtime_error("Could not convert 'bytes' to type"); //%s", target_type.ToString());
+                        throw std::runtime_error("Could not convert 'bytes' to type");
                     }
                 }
             }
@@ -912,7 +900,7 @@ namespace otterbrix
                 case logical_type::ARRAY:
                     return TransformArrayValue(resource, ele, target_type);
                 default:
-                    throw std::runtime_error("Can't convert tuple to a Value of type "); //+target_type.ToString());
+                    throw std::runtime_error("Can't convert tuple to a Value of type ");
                 }
             }
         case PythonObjectType::NdArray:

@@ -62,7 +62,6 @@ namespace components::arrow {
     
     bool ArrowSchemaMetadata::HasExtension() {
     	auto arrow_extension = GetOption(ArrowSchemaMetadata::ARROW_EXTENSION_NAME);
-    	// FIXME: We are currently ignoring the ogc extensions
         auto start_with = [](const std::string& prefix, const std::string& word) {
             return word.length() >= prefix.length() &&
                 std::mismatch(prefix.begin(), prefix.end(), 

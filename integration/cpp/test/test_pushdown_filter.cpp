@@ -34,7 +34,8 @@ static node_data_ptr make_data(std::pmr::memory_resource* r,
     for (const char* name : col_names) {
         types.emplace_back(components::types::logical_type::BIGINT, name);
     }
-    auto chunk = gen_data_chunk(1, 0, types, r);
+    // The optimizer reads only the schema, so a minimal 1-row chunk suffices.
+    auto chunk = gen_data_chunk(/*size=*/1, /*start=*/0, types, r);
     return make_node_raw_data(r, std::move(chunk));
 }
 

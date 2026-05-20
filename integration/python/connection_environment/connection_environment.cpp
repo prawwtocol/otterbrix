@@ -40,7 +40,6 @@ namespace otterbrix {
     }
 
     void ConnectionEnvironment::ThrowConnectionException() {
-           // throw PyConnectionException("Connection already closed!");
             throw std::runtime_error("Connection already closed!");
     }
 

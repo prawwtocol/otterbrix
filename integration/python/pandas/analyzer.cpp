@@ -121,7 +121,6 @@ static bool SatisfiesMapConstraints(const complex_logical_type &left, const comp
 }
 
 static complex_logical_type ConvertStructToMap(complex_logical_type &map_value_type) {
-	// TODO: find a way to figure out actual type of the keys, not just the converted one
 	return complex_logical_type::create_map(logical_type::STRING_LITERAL, map_value_type);
 }
 
@@ -142,7 +141,6 @@ static bool UpgradeType(complex_logical_type &left, const complex_logical_type &
     case logical_type::LIST: {
 		if (right.type() != left.type()) {
 			// Not both sides are LIST, not compatible
-			// FIXME: maybe compatible with ARRAY type??
 			return false;
 		}
 		complex_logical_type child_type = logical_type::NA;
@@ -246,7 +244,6 @@ static bool UpgradeType(complex_logical_type &left, const complex_logical_type &
 		if (!CheckTypeCompatibility(left, right)) {
 			return false;
 		}
-		//left = complex_logical_type::ForceMaxLogicalType(left, right);
 		return true;
 	}
 	}

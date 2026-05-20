@@ -24,7 +24,6 @@ smaller sizes (O(n²)).
 Data types covered: int (id, age), float (value), string (name, group_key).
 """
 
-# todo 1
 # Запрос сценария filter_over_groupby_key:
 #   df.groupBy("group_key").agg(sum("value")).filter(col("group_key") == "g0")
 #

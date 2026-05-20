@@ -33,7 +33,6 @@ class TestPandasDataFrame(object):
     def test_pd_conversion_basic(self, spark, pandasDF):
         sparkDF = spark.createDataFrame(pandasDF)
         res = sparkDF.collect()
-        #//sparkDF.show()
         expected = [
             Row(Name='Scott', Age=50),
             Row(Name='Jeff', Age=45),
@@ -45,7 +44,6 @@ class TestPandasDataFrame(object):
     def test_pd_conversion_schema(self, spark, pandasDF):
         mySchema = StructType([StructField("First Name", StringType(), True), StructField("Age", IntegerType(), True)])
         sparkDF = spark.createDataFrame(pandasDF, schema=mySchema)
-        #sparkDF.show()
         res = sparkDF.collect()
         expected = "[Row(First Name='Scott', Age=50), Row(First Name='Jeff', Age=45), Row(First Name='Thomas', Age=54), Row(First Name='Ann', Age=34)]"
         assert str(res) == expected

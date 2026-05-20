@@ -182,17 +182,6 @@ struct StructConvert {
 		return py_struct;
 	}
 };
-/*
-struct UnionConvert {
-	static py::object ConvertValue(vector_t &input, idx_t chunk_offset, NumpyAppendData &append_data) {
-		auto &client_properties = append_data.client_properties;
-		auto val = input.GetValue(chunk_offset);
-		auto value = UnionValue::GetValue(val);
-
-		return PythonObject::FromValue(value, UnionValue::GetType(val), client_properties);
-	}
-};
-*/
 struct MapConvert {
 	static py::dict ConvertValue(vector_t &input, idx_t chunk_offset, NumpyAppendData &append_data) {
 		(void)append_data;
@@ -413,18 +402,7 @@ static bool ConvertDecimal(NumpyAppendData &append_data) {
     auto* decimal_extension = static_cast<decimal_logical_type_extension*>(decimal_type.extension());
 	auto dec_scale = decimal_extension->scale();
 	double division = pow(10, dec_scale);
-	/*switch (decimal_type.to_physical_type()) {
-	case physical_type::INT16:
-		return ConvertDecimalInternal<int16_t>(append_data, division);
-	case physical_type::INT32:
-		return ConvertDecimalInternal<int32_t>(append_data, division);
-	case physical_type::INT64:*/
-		return ConvertDecimalInternal<int64_t>(append_data, division);
-    /*case physical_type::INT128:
-		return ConvertDecimalInternal<absl::int128>(append_data, division);
-	default:
-		throw std::runtime_error("Unimplemented internal type for DECIMAL");
-	}*/
+	return ConvertDecimalInternal<int64_t>(append_data, division);
 }
 
 ArrayWrapper::ArrayWrapper(const complex_logical_type &type, bool pandas)
@@ -469,20 +447,6 @@ void ArrayWrapper::Append(idx_t current_offset, vector_t &input, idx_t source_si
 	append_data.pandas = pandas;
 
 	switch (input.type().type()) {
-	/*case logical_type::ENUM: {
-		auto size = EnumType::GetSize(input.GetType());
-		append_data.physical_type = input.GetType().InternalType();
-		if (size <= (idx_t)NumericLimits<int8_t>::Maximum()) {
-			may_have_null = ConvertColumnCategorical<int8_t>(append_data);
-		} else if (size <= (idx_t)NumericLimits<int16_t>::Maximum()) {
-			may_have_null = ConvertColumnCategorical<int16_t>(append_data);
-		} else if (size <= (idx_t)NumericLimits<int32_t>::Maximum()) {
-			may_have_null = ConvertColumnCategorical<int32_t>(append_data);
-		} else {
-			throw std::runtime_error("Size not supported on ENUM types");
-		}
-		break;
-	}*/
 	case logical_type::BOOLEAN:
 		may_have_null = ConvertColumnRegular<bool>(append_data);
 		break;
@@ -526,7 +490,6 @@ void ArrayWrapper::Append(idx_t current_offset, vector_t &input, idx_t source_si
 		may_have_null = ConvertDecimal(append_data);
 		break;
 	case logical_type::TIMESTAMP_US:
-	//case logical_type::TIMESTAMP_TZ:
 	case logical_type::TIMESTAMP_SEC:
 	case logical_type::TIMESTAMP_MS:
 	case logical_type::TIMESTAMP_NS:

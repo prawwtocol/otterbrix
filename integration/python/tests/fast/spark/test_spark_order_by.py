@@ -39,20 +39,9 @@ class TestDataFrameOrderBy(object):
         res1 = df2.collect()
         for i in range(1, len(simpleData)):
             assert (
-                    (res1[i - 1]["department"], res1[i - 1]["state"]) <= 
+                    (res1[i - 1]["department"], res1[i - 1]["state"]) <=
                     (res1[i]["department"], res1[i]["state"])
             )
-#        assert res1 == [
-#            Row(employee_name='Maria', department='Finance', state='CA', salary=90000, age=24, bonus=23000),
-#            Row(employee_name='Raman', department='Finance', state='CA', salary=99000, age=40, bonus=24000),
-#            Row(employee_name='Scott', department='Finance', state='NY', salary=83000, age=36, bonus=19000),
-#            Row(employee_name='Jen', department='Finance', state='NY', salary=79000, age=53, bonus=15000),
-#            Row(employee_name='Jeff', department='Marketing', state='CA', salary=80000, age=25, bonus=18000),
-#            Row(employee_name='Kumar', department='Marketing', state='NY', salary=91000, age=50, bonus=21000),
-#            Row(employee_name='Robert', department='Sales', state='CA', salary=81000, age=30, bonus=23000),
-#            Row(employee_name='James', department='Sales', state='NY', salary=90000, age=34, bonus=10000),
-#            Row(employee_name='Michael', department='Sales', state='NY', salary=86000, age=56, bonus=20000),
-#        ]
 
         df2 = df.sort(col("department"), col("state"))
         res2 = df2.collect()
@@ -66,20 +55,9 @@ class TestDataFrameOrderBy(object):
         res1 = df2.collect()
         for i in range(1, len(simpleData)):
             assert (
-                    (res1[i - 1]["department"] <= res1[i]["department"]) and 
+                    (res1[i - 1]["department"] <= res1[i]["department"]) and
                     (res1[i - 1]["department"] != res1[i]["department"] or res1[i - 1]["state"] >= res1[i]["state"])
             )
-#        assert res1 == [
-#            Row(employee_name='Scott', department='Finance', state='NY', salary=83000, age=36, bonus=19000),
-#            Row(employee_name='Jen', department='Finance', state='NY', salary=79000, age=53, bonus=15000),
-#            Row(employee_name='Maria', department='Finance', state='CA', salary=90000, age=24, bonus=23000),
-#            Row(employee_name='Raman', department='Finance', state='CA', salary=99000, age=40, bonus=24000),
-#            Row(employee_name='Kumar', department='Marketing', state='NY', salary=91000, age=50, bonus=21000),
-#            Row(employee_name='Jeff', department='Marketing', state='CA', salary=80000, age=25, bonus=18000),
-#            Row(employee_name='James', department='Sales', state='NY', salary=90000, age=34, bonus=10000),
-#            Row(employee_name='Michael', department='Sales', state='NY', salary=86000, age=56, bonus=20000),
-#            Row(employee_name='Robert', department='Sales', state='CA', salary=81000, age=30, bonus=23000),
-#        ]
 
         df2 = df.sort(col("department").asc(), col("state").desc())
         res2 = df2.collect()

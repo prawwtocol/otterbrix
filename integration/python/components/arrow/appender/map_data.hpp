@@ -47,8 +47,6 @@ namespace components::arrow::appender {
     		ArrowListData<BUFTYPE>::AppendOffsets(append_data, format, from, to, child_indices);
     
             vector::indexing_vector_t child_sel(child_indices.data());
-    		//auto &key_vector = MapVector::GetKeys(input);
-    		//auto &value_vector = MapVector::GetValues(input);
             auto &key_vector = input.entries().at(0);
             auto &value_vector = input.entries().at(1);
     		auto list_size = child_indices.size();

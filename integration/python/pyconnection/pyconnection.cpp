@@ -100,8 +100,6 @@ namespace otterbrix {
         }
 
         pyconnection_ptr con = nullptr;
-        //auto default_path = std::filesystem::absolute(ConnectionEnvironment::DEFAULT_FOLDER);
-        //if (std::filesystem::equivalent(path, default_path)) {
         if (db_str == ConnectionEnvironment::DEFAULT_FOLDER) {
             con = default_connection.Get();
         } else {
@@ -234,82 +232,10 @@ namespace otterbrix {
     
     void PyConnection::SetResult(Result res) {
         if (res) {
-            //result = std::move(make_unique<PyResult>(this, res));
-            result =  nullptr;
+            result = nullptr;
         } else {
             result = nullptr;
         }
     }
 
-    // pycursor_ptr PyConnection::Execute(const py::object& query, py::object params) {
-    //     py::gil_scoped_acquire gil;
-    //     SetResult(nullptr);
-    //     // execute->check ans->move to relation->SetResult 
-    //     //SetResult(make_unique<int>(nullptr, {}));
-    //
-    //     return shared_from_this();
-    // }
-
-    // unique_ptr<PyRelation> PyConnection::FromDF(const PandasDataFrame &value) {
-    //     string name = "df_" + string_utils::GenerateRandomName();
-    //     auto tableref = PythonReplacementScan::ReplacementObject(value, name);
-    //     return CreateViewRelation(std::move(tableref), name);
-    // }
-
-    // Optional<py::tuple> PyConnection::FetchOne() {
-    //     if (!HasResult()) {
-    //         throw std::runtime_error("No open result set");
-    //     }
-    //     auto& result = GetResult();
-    //     return py::make_tuple(py::cast(5));//py::cast(result));//.FetchOne()
-    // }
-
-    /*pyarrow::Table PyConnection::FetchArrow(idx_t rows_per_batch) {
-        if (!HasResult()) {
-            throw std::runtime_error("No open result set");
-        }    
-        auto &result = con.GetResult();
-        return result.ToArrowTable(rows_per_batch);
-    }*/
-    
-/*    py::tuple PyConnection::test(py::array& np) {
-        //return py::make_tuple(py::hasattr(np, "strides"), np.attr("strides").attr("__getitem__")(0));
-       auto* resource = &(space->resource); 
-        std::vector<components::table::column_definition_t> col_defs;
-        col_defs.emplace_back(
-                "test", components::types::logical_type::BIGINT);
-        std::vector<components::types::complex_logical_type> types = {components::types::logical_type::BIGINT};
-        components::vector::data_chunk_t chunk(resource, types, 4);
-        chunk.set_cardinality(4);
-        auto src_ptr = (int64_t*)np.data();
-        chunk.data[0].set_data(reinterpret_cast<std::byte*>(src_ptr));
-
-        core::filesystem::local_file_system_t fs; 
-        auto buffer_pool =
-            components::table::storage::buffer_pool_t(resource, uint64_t(1) << 32, false, uint64_t(1) << 24);
-        auto buffer_manager = components::table::storage::standard_buffer_manager_t(resource, fs, buffer_pool);
-        auto block_manager = components::table::storage::in_memory_block_manager_t(buffer_manager, components::table::storage::DEFAULT_BLOCK_ALLOC_SIZE);
-
-
-        components::table::data_table_t table(resource, block_manager, std::move(col_defs));
-        components::table::table_append_state state(resource);
-        table.append_lock(state); 
-        table.initialize_append(state);
-        table.append(chunk, state);
-        table.finalize_append(state);
-        
-        //components::relation::LimitRelation rel(nullptr, 1, 2);
-        auto relation = std::make_shared<DocumentRelation>(space, std::move(table));
-        auto session = otterbrix::session_id_t();
-        auto node1 = relation->GetQueryNode();
-        auto cur1 = space->dispatcher()->execute_plan(session, node1);
-        auto node2 = relation->Limit(2)->GetQueryNode();
-        session = otterbrix::session_id_t();
-        auto cur2 = space->dispatcher()->execute_plan(session, node2);
-
-
-        return py::make_tuple(cur1->size(), cur2->size());
-       return py::make_tuple();
-    }*/
-    
 } // namespace otterbrix
