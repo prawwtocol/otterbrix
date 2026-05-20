@@ -95,7 +95,7 @@ class DataFrame:
                 col = col.alias(newName)
             cols.append(col)
         rel = self.relation.select(*cols)
-        return DataFrame(rel, self.session)
+        return DataFrame(rel, self.session, optimize=self._optimize)
 
     def withColumn(self, columnName: str, col: Column) -> "DataFrame":
         if not isinstance(col, Column):
@@ -115,7 +115,7 @@ class DataFrame:
             cols = [ColumnExpression(x, SparkContext._active_spark_context) for x in self.relation.columns]
             cols.append(col.expr.alias(columnName))
         rel = self.relation.select(*cols)
-        return DataFrame(rel, self.session)
+        return DataFrame(rel, self.session, optimize=self._optimize)
 
     def transform(
         self, func: Callable[..., "DataFrame"], *args: Any, **kwargs: Any
@@ -705,7 +705,7 @@ class DataFrame:
         +-----+-----+---+
         """
         assert isinstance(alias, str), "alias should be a string"
-        return DataFrame(self.relation.set_alias(alias), self.session)
+        return DataFrame(self.relation.set_alias(alias), self.session, optimize=self._optimize)
 
     def drop(self, *cols: "ColumnOrName") -> "DataFrame":  # type: ignore[misc]
         if len(cols) == 1:
@@ -724,7 +724,7 @@ class DataFrame:
         # Filter out the columns that don't exist in the relation
         exclude = [x for x in exclude if x in self.relation.columns]
         expr = None#StarExpression(exclude=exclude)
-        return DataFrame(self.relation.select(expr), self.session)
+        return DataFrame(self.relation.select(expr), self.session, optimize=self._optimize)
 
     def __repr__(self) -> str:
         return str(self.relation)
@@ -961,7 +961,7 @@ class DataFrame:
         |   1|   2|   3|
         +----+----+----+
         """
-        return DataFrame(self.relation.union(other.relation), self.session)
+        return DataFrame(self.relation.union(other.relation), self.session, optimize=self._optimize)
 
     unionAll = union
 
@@ -1083,7 +1083,7 @@ class DataFrame:
             rn_col = f"tmp_col_{uuid.uuid1().hex}"
             subset_str = ', '.join([f'"{c}"' for c in subset])
             window_spec = f"OVER(PARTITION BY {subset_str}) AS {rn_col}"
-            df = DataFrame(self.relation.row_number(window_spec, "*"), self.session)
+            df = DataFrame(self.relation.row_number(window_spec, "*"), self.session, optimize=self._optimize)
             return df.filter(f"{rn_col} = 1").drop(rn_col)
 
         return self.distinct()
@@ -1108,7 +1108,7 @@ class DataFrame:
         2
         """
         distinct_rel = self.relation.distinct()
-        return DataFrame(distinct_rel, self.session)
+        return DataFrame(distinct_rel, self.session, optimize=self._optimize)
 
     def count(self) -> int:
         """Returns the number of rows in this :class:`DataFrame`.
@@ -1143,7 +1143,7 @@ class DataFrame:
         ]
         cast_expressions = ", ".join(cast_expressions)
         new_rel = self.relation.project(cast_expressions)
-        return DataFrame(new_rel, self.session)
+        return DataFrame(new_rel, self.session, optimize=self._optimize)
 
     def toDF(self, *cols) -> "DataFrame":
         existing_columns = self.relation.columns
@@ -1158,7 +1158,7 @@ class DataFrame:
             existing.alias(new) for existing, new in zip(existing_columns, cols)
         ]
         new_rel = self.relation.project(*projections)
-        return DataFrame(new_rel, self.session)
+        return DataFrame(new_rel, self.session, optimize=self._optimize)
 
     def collect(self, optimize=None) -> List[Row]:
 
