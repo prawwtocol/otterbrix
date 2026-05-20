@@ -178,6 +178,9 @@ namespace components::logical_plan {
                     return 0;
                 }
                 auto* sc = static_cast<expressions::scalar_expression_t*>(expr.get());
+                if (sc->type() != expressions::scalar_type::get_field) {
+                    return 0;
+                }
                 const std::string out_name = sc->key().as_string();
                 bool found = false;
                 for (const auto& t : types) {
