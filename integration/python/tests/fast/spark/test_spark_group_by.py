@@ -136,3 +136,31 @@ class TestDataFrameGroupBy(object):
 
         res = df.groupBy("name").count().columns
         assert res == ['name', 'count']
+
+    def test_group_by_empty_dataframe(self, spark):
+        empty = spark.createDataFrame([], ["dep", "salary"])
+        res = empty.groupBy("dep").count().collect()
+        assert res == []
+
+    def test_group_by_single_row_groups(self, spark):
+        df = spark.createDataFrame([("a", 10), ("b", 20), ("c", 30)], ["name", "val"])
+        res = df.groupBy("name").sum("val").collect()
+        sums = {r.name: r[1] for r in res}
+        assert sums == {"a": 10, "b": 20, "c": 30}
+
+    def test_group_by_null_in_key(self, spark):
+        # NULL group keys arise from a left join with non-matching rows;
+        # createDataFrame does not accept None directly.
+        left = spark.createDataFrame([(1, 10), (2, 99), (3, 10)], ["id", "k"])
+        right = spark.createDataFrame([(10, 100)], ["k", "val"])
+        joined = left.join(right, "k", "left")
+        counts = {r.k: r[1] for r in joined.groupBy("k").count().collect()}
+        assert counts == {10: 2, None: 1}
+
+    def test_group_by_aggregate_over_nulls(self, spark):
+        # k=99 has no match, so its joined `val` is NULL for the whole group.
+        left = spark.createDataFrame([(1, 10), (2, 99), (3, 10)], ["id", "k"])
+        right = spark.createDataFrame([(10, 100)], ["k", "val"])
+        joined = left.join(right, "k", "left")
+        sums = {r.k: r[1] for r in joined.groupBy("k").sum("val").collect()}
+        assert sums == {10: 200, None: None}

@@ -39,3 +39,27 @@ class TestDataFrameSelectProjection(object):
         projected = df.select(col("id"), col("age"))
         rows = projected.collect()
         assert len(rows) == 5
+
+    def test_select_duplicate_column(self, spark):
+        df = spark.createDataFrame(self.data, ["id", "name", "age"])
+        projected = df.select("id", "id")
+        assert projected.columns == ["id", "id"]
+        rows = projected.collect()
+        assert len(rows) == 5
+        for r in rows:
+            assert r[0] == r[1]
+
+    def test_select_empty_dataframe(self, spark):
+        empty = spark.createDataFrame([], ["id", "name", "age"])
+        rows = empty.select("id", "name").collect()
+        assert rows == []
+
+    def test_select_no_arguments_raises(self, spark):
+        df = spark.createDataFrame(self.data, ["id", "name", "age"])
+        with pytest.raises(AttributeError):
+            df.select().collect()
+
+    def test_select_nonexistent_column_raises(self, spark):
+        df = spark.createDataFrame(self.data, ["id", "name", "age"])
+        with pytest.raises(KeyError):
+            df.select("does_not_exist")

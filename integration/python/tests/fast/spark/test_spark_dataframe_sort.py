@@ -50,3 +50,16 @@ class TestDataFrameSort(object):
         with pytest.raises(PySparkTypeError):
             df = df.sort(["age"], ascending="no")
 
+    def test_sort_empty_dataframe(self, spark):
+        empty = spark.createDataFrame([], ["age", "name"])
+        assert empty.sort("age").collect() == []
+
+    def test_sort_by_nullable_column(self, spark):
+        # NULL values come from a left join with non-matching rows;
+        # createDataFrame does not accept None directly.
+        left = spark.createDataFrame([(1, 10), (2, 99), (3, 20), (4, 99)], ["id", "k"])
+        right = spark.createDataFrame([(10, "a"), (20, "b")], ["k", "v"])
+        joined = left.join(right, "k", "left")
+        vals = [r.v for r in joined.sort("v").collect()]
+        assert vals == ["a", "b", None, None]
+

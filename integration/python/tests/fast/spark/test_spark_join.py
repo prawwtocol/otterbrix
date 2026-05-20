@@ -396,3 +396,15 @@ class TestDataFrameJoin(object):
                 Row(age=3, name="Dave", id=5, rank="B"),
             ]
         )
+
+    def test_join_with_empty_side(self, spark):
+        non_empty = spark.createDataFrame([(1, 10), (2, 20)], ["id", "k"])
+        empty = spark.createDataFrame([], ["k", "v"])
+        assert non_empty.join(empty, "k", "inner").collect() == []
+        assert empty.join(non_empty, "k", "inner").collect() == []
+
+    def test_self_join(self, spark):
+        df = spark.createDataFrame([(1, 10), (2, 20)], ["id", "k"])
+        res = df.join(df, "k", "inner").collect()
+        assert len(res) == 2
+        assert sorted((r.id, r.k) for r in res) == [(1, 10), (2, 20)]
