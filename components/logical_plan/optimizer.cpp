@@ -164,7 +164,7 @@ namespace components::logical_plan {
             if (!data) {
                 return 0;
             }
-            const auto types = data->data_chunk().types();
+            const auto& types = data->data_chunk().types();
             const auto& exprs = sel.expressions();
             const size_t hidden = sel.internal_aggregate_count;
             if (exprs.size() < hidden) {

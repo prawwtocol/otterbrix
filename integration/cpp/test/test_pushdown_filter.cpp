@@ -354,6 +354,122 @@ TEST_CASE("logical_plan::pushdown_filter_splits_conjunction_with_residual_join")
     REQUIRE(left_pushed->children()[1]->type() == node_type::match_t);
 }
 
+// in:  aggregate[ join[data(a,b), data(c,d)], match((a > ?) AND (c > ?) AND (a == c)) ]
+// out: aggregate[ join[ aggregate[data(a,b), match(a > ?)],
+//                       aggregate[data(c,d), match(c > ?)] ],
+//                 match(a == c) ]
+// All three buckets are populated at once: the left-only and right-only
+// conjuncts descend into their branches, the cross-side conjunct stays as residual.
+TEST_CASE("logical_plan::pushdown_filter_splits_conjunction_into_all_three_buckets") {
+    auto resource = std::pmr::synchronized_pool_resource();
+    auto c = coll();
+    auto left_data = make_data(&resource, {"a", "b"});
+    auto right_data = make_data(&resource, {"c", "d"});
+
+    auto join = make_node_join(&resource, c, join_type::inner);
+    join->append_child(left_data);
+    join->append_child(right_data);
+
+    auto cmp_a =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "a", side_t::left), id_par{1});
+    auto cmp_c =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "c", side_t::left), id_par{2});
+    auto cmp_ac = make_compare_expression(&resource,
+                                          compare_type::eq,
+                                          key(&resource, "a", side_t::left),
+                                          key(&resource, "c"));
+    auto conj = make_compare_union_expression(&resource, compare_type::union_and);
+    conj->append_child(cmp_a);
+    conj->append_child(cmp_c);
+    conj->append_child(cmp_ac);
+
+    node_aggregate_ptr outer = make_node_aggregate(&resource, c);
+    outer->append_child(join);
+    outer->append_child(make_node_match(&resource, c, conj));
+
+    plan_optimizer_t optimizer;
+    node_ptr out = optimizer.optimize(outer);
+
+    REQUIRE(out == outer);
+    REQUIRE(outer->children().size() == 2);
+    REQUIRE(outer->children()[0] == join);
+    REQUIRE(outer->children()[1]->type() == node_type::match_t);
+    REQUIRE(join->children().size() == 2);
+    REQUIRE(join->children()[0]->type() == node_type::aggregate_t);
+    REQUIRE(join->children()[1]->type() == node_type::aggregate_t);
+
+    auto left_pushed = join->children()[0];
+    REQUIRE(left_pushed->children().size() == 2);
+    REQUIRE(left_pushed->children()[0]->type() == node_type::data_t);
+    REQUIRE(left_pushed->children()[1]->type() == node_type::match_t);
+
+    auto right_pushed = join->children()[1];
+    REQUIRE(right_pushed->children().size() == 2);
+    REQUIRE(right_pushed->children()[0]->type() == node_type::data_t);
+    REQUIRE(right_pushed->children()[1]->type() == node_type::match_t);
+}
+
+// in:  aggregate[ join[data(a,b), data(c,d)], match((a > ?) AND ((b < ?) AND (c > ?))) ]
+// out: join[ aggregate[data(a,b), match((a > ?) AND (b < ?))],
+//            aggregate[data(c,d), match(c > ?)] ]
+// The nested AND is flattened before classification. Were it treated as one
+// opaque conjunct, (b < ?) AND (c > ?) would touch both join sides and stay as
+// residual; flattening lets b descend left and c descend right independently.
+TEST_CASE("logical_plan::pushdown_filter_flattens_nested_conjunction") {
+    auto resource = std::pmr::synchronized_pool_resource();
+    auto c = coll();
+    auto left_data = make_data(&resource, {"a", "b"});
+    auto right_data = make_data(&resource, {"c", "d"});
+
+    auto join = make_node_join(&resource, c, join_type::inner);
+    join->append_child(left_data);
+    join->append_child(right_data);
+
+    auto cmp_a =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "a", side_t::left), id_par{1});
+    auto cmp_b =
+        make_compare_expression(&resource, compare_type::lt, key(&resource, "b", side_t::left), id_par{2});
+    auto cmp_c =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "c", side_t::left), id_par{3});
+    auto inner_conj = make_compare_union_expression(&resource, compare_type::union_and);
+    inner_conj->append_child(cmp_b);
+    inner_conj->append_child(cmp_c);
+    auto conj = make_compare_union_expression(&resource, compare_type::union_and);
+    conj->append_child(cmp_a);
+    conj->append_child(inner_conj);
+
+    node_aggregate_ptr outer = make_node_aggregate(&resource, c);
+    outer->append_child(join);
+    outer->append_child(make_node_match(&resource, c, conj));
+
+    plan_optimizer_t optimizer;
+    node_ptr out = optimizer.optimize(outer);
+
+    REQUIRE(out == join);
+    REQUIRE(join->children().size() == 2);
+    REQUIRE(join->children()[0]->type() == node_type::aggregate_t);
+    REQUIRE(join->children()[1]->type() == node_type::aggregate_t);
+
+    auto left_pushed = join->children()[0];
+    REQUIRE(left_pushed->children().size() == 2);
+    REQUIRE(left_pushed->children()[0]->type() == node_type::data_t);
+    REQUIRE(left_pushed->children()[1]->type() == node_type::match_t);
+    auto left_match = left_pushed->children()[1];
+    REQUIRE(left_match->expressions().size() == 1);
+    auto* left_cmp = static_cast<compare_expression_t*>(left_match->expressions()[0].get());
+    REQUIRE(left_cmp->type() == compare_type::union_and);
+    REQUIRE(left_cmp->children().size() == 2);
+
+    auto right_pushed = join->children()[1];
+    REQUIRE(right_pushed->children().size() == 2);
+    REQUIRE(right_pushed->children()[0]->type() == node_type::data_t);
+    REQUIRE(right_pushed->children()[1]->type() == node_type::match_t);
+    auto right_match = right_pushed->children()[1];
+    REQUIRE(right_match->expressions().size() == 1);
+    auto* right_cmp = static_cast<compare_expression_t*>(right_match->expressions()[0].get());
+    REQUIRE(right_cmp->type() == compare_type::gt);
+}
+
 // --- Conjunction splitting through group by --------------------------------
 
 // in:  aggregate[ aggregate[data, group(key a, sum b->sum_b)],
@@ -443,6 +559,39 @@ TEST_CASE("logical_plan::pushdown_filter_allowed_through_non_narrowing_projectio
     auto select = make_node_select(&resource, c);
     select->append_expression(make_scalar_expression(&resource, scalar_type::get_field, key(&resource, "b")));
     select->append_expression(make_scalar_expression(&resource, scalar_type::get_field, key(&resource, "a")));
+    inner->append_child(select);
+
+    auto cmp =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "a", side_t::left), id_par{1});
+    node_aggregate_ptr outer = make_node_aggregate(&resource, c);
+    outer->append_child(inner);
+    outer->append_child(make_node_match(&resource, c, std::move(cmp)));
+
+    plan_optimizer_t optimizer;
+    node_ptr out = optimizer.optimize(outer);
+
+    REQUIRE(out == inner);
+    REQUIRE(inner->children().size() == 3);
+    REQUIRE(inner->children()[0]->type() == node_type::data_t);
+    REQUIRE(inner->children()[1]->type() == node_type::select_t);
+    REQUIRE(inner->children()[2]->type() == node_type::match_t);
+}
+
+// A projection whose visible columns are not all plain get_field (here an
+// identity column alongside a computed/constant one) has an inestimable width:
+// estimate_projection_width returns 0. The cost guard treats width 0 as
+// "unknown", not "narrow", so it does not veto and the pushdown still happens —
+// even though the three-column source is wider than the two-column projection.
+TEST_CASE("logical_plan::pushdown_filter_allowed_when_projection_width_unknown") {
+    auto resource = std::pmr::synchronized_pool_resource();
+    auto c = coll();
+    auto data = make_data(&resource, {"a", "b", "c"});
+
+    node_aggregate_ptr inner = make_node_aggregate(&resource, c);
+    inner->append_child(data);
+    auto select = make_node_select(&resource, c);
+    select->append_expression(make_scalar_expression(&resource, scalar_type::get_field, key(&resource, "a")));
+    select->append_expression(make_scalar_expression(&resource, scalar_type::constant, key(&resource, "k")));
     inner->append_child(select);
 
     auto cmp =
