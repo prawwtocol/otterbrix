@@ -43,7 +43,7 @@ def _api_internal(self: "GroupedData", name: str, *cols: str) -> DataFrame:
         group_expr=group_by,  # groups
         projected_columns=projections,  # projections
     )
-    return DataFrame(jdf, self.session)
+    return DataFrame(jdf, self.session, optimize=self._optimize)
 
 def df_varargs_api(f: Callable[..., DataFrame]) -> Callable[..., DataFrame]:
     def _api(self: "GroupedData", *cols: str) -> DataFrame:
