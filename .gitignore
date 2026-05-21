@@ -562,3 +562,6 @@ wal/.wal_0_000000
 wal/.wal_1_000000
 wal/indexes_METADATA
 wal/WAL_ID
+log/python-1779354763.txt
+log/python-1779354801.txt
+*.tbl
