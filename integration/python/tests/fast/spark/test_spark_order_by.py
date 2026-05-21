@@ -89,3 +89,15 @@ class TestDataFrameOrderBy(object):
         res3 = df2.collect()
         assert res3 == res1
 
+    def test_order_by_empty_dataframe(self, spark):
+        empty = spark.createDataFrame([], ["age", "name"])
+        assert empty.orderBy("age").collect() == []
+
+    def test_order_by_nullable_column(self, spark):
+        # NULL values come from a left join with non-matching rows.
+        left = spark.createDataFrame([(1, 10), (2, 99), (3, 20), (4, 99)], ["id", "k"])
+        right = spark.createDataFrame([(10, "a"), (20, "b")], ["k", "v"])
+        joined = left.join(right, "k", "left")
+        vals = [r.v for r in joined.orderBy("v").collect()]
+        assert vals == ["a", "b", None, None]
+
