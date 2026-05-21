@@ -91,6 +91,112 @@ namespace components::logical_plan {
             }
         }
 
+        std::vector<expressions::expression_ptr>
+        split_conjuncts(const expressions::expression_ptr& expr) {
+            std::vector<expressions::expression_ptr> result;
+            if (!expr) {
+                return result;
+            }
+            if (expr->group() == expressions::expression_group::compare) {
+                auto* cmp = static_cast<expressions::compare_expression_t*>(expr.get());
+                if (cmp->type() == expressions::compare_type::union_and) {
+                    for (const auto& child : cmp->children()) {
+                        auto sub = split_conjuncts(child);
+                        result.insert(result.end(), sub.begin(), sub.end());
+                    }
+                    return result;
+                }
+            }
+            result.push_back(expr);
+            return result;
+        }
+
+        expressions::expression_ptr
+        rebuild_conjunction(std::pmr::memory_resource* resource,
+                            const std::vector<expressions::expression_ptr>& conjuncts) {
+            if (conjuncts.empty()) {
+                return nullptr;
+            }
+            if (conjuncts.size() == 1) {
+                return conjuncts.front();
+            }
+            auto conj = expressions::make_compare_union_expression(
+                resource, expressions::compare_type::union_and);
+            for (const auto& c : conjuncts) {
+                conj->append_child(c);
+            }
+            return conj;
+        }
+
+        size_t type_width(const components::types::complex_logical_type& t) {
+            return t.size();
+        }
+
+        const node_data_t* find_data_node(const node_ptr& node) {
+            if (!node) {
+                return nullptr;
+            }
+            if (node->type() == node_type::data_t) {
+                return static_cast<const node_data_t*>(node.get());
+            }
+            for (const auto& child : node->children()) {
+                if (auto* found = find_data_node(child)) {
+                    return found;
+                }
+            }
+            return nullptr;
+        }
+
+        size_t estimate_row_width(const node_ptr& node) {
+            const node_data_t* data = find_data_node(node);
+            if (!data) {
+                return 0;
+            }
+            size_t width = 0;
+            for (const auto& t : data->data_chunk().types()) {
+                width += type_width(t);
+            }
+            return width;
+        }
+
+        size_t estimate_projection_width(const node_select_t& sel, const node_ptr& subtree) {
+            const node_data_t* data = find_data_node(subtree);
+            if (!data) {
+                return 0;
+            }
+            const auto types = data->data_chunk().types();
+            const auto& exprs = sel.expressions();
+            const size_t hidden = sel.internal_aggregate_count;
+            if (exprs.size() < hidden) {
+                return 0;
+            }
+            const size_t visible = exprs.size() - hidden;
+            size_t width = 0;
+            for (size_t i = 0; i < visible; ++i) {
+                const auto& expr = exprs[i];
+                if (expr->group() != expressions::expression_group::scalar) {
+                    return 0;
+                }
+                auto* sc = static_cast<expressions::scalar_expression_t*>(expr.get());
+                if (sc->type() != expressions::scalar_type::get_field) {
+                    return 0;
+                }
+                const std::string out_name = sc->key().as_string();
+                bool found = false;
+                for (const auto& t : types) {
+                    if (t.alias() == out_name) {
+                        width += type_width(t);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return 0;
+                }
+            }
+            return width;
+        }
+
     } // anonymous namespace
 
     std::set<std::string> collect_referenced_columns(const expressions::expression_ptr& expr) {
@@ -213,8 +319,13 @@ namespace components::logical_plan {
                     collect_subtree_columns(source_agg->children()[0], input_cols);
                     auto* src_select = static_cast<node_select_t*>(src_select_wrapped.get());
                     if (filter_supported_through_identity_select(*src_select, filter_cols, input_cols)) {
-                        source_agg->append_child(match_child);
-                        return pushdown_filter(source);
+                        size_t width_full = estimate_row_width(source_agg->children()[0]);
+                        size_t width_proj = estimate_projection_width(*src_select, source_agg->children()[0]);
+                        bool cost_ok = width_full == 0 || width_proj == 0 || width_full <= width_proj;
+                        if (cost_ok) {
+                            source_agg->append_child(match_child);
+                            return pushdown_filter(source);
+                        }
                     }
                 }
             }
@@ -269,12 +380,29 @@ namespace components::logical_plan {
                     }
                 }
                 if (!group_keys.empty() && !match_child->expressions().empty()) {
-                    auto filter_cols = collect_referenced_columns(match_child->expressions()[0]);
-                    bool subset = std::includes(group_keys.begin(), group_keys.end(),
-                                                filter_cols.begin(), filter_cols.end());
-                    if (subset) {
-                        source_agg->append_child(match_child);
-                        return pushdown_filter(source);
+                    auto conjuncts = split_conjuncts(match_child->expressions()[0]);
+                    std::vector<expressions::expression_ptr> pushable, residual;
+                    for (const auto& conj : conjuncts) {
+                        auto cols = collect_referenced_columns(conj);
+                        if (!cols.empty() &&
+                            std::includes(group_keys.begin(), group_keys.end(),
+                                          cols.begin(), cols.end())) {
+                            pushable.push_back(conj);
+                        } else {
+                            residual.push_back(conj);
+                        }
+                    }
+                    if (!pushable.empty()) {
+                        source_agg->append_child(make_node_match(
+                            node->resource(), match_child->collection_full_name(),
+                            rebuild_conjunction(node->resource(), pushable)));
+                        auto residual_expr = rebuild_conjunction(node->resource(), residual);
+                        if (!residual_expr) {
+                            return pushdown_filter(source);
+                        }
+                        match_child->expressions()[0] = residual_expr;
+                        node->children()[0] = pushdown_filter(source);
+                        return node;
                     }
                 }
             }
@@ -282,35 +410,57 @@ namespace components::logical_plan {
 
         if (source->type() == node_type::join_t) {
             auto* join = static_cast<node_join_t*>(source.get());
-            if (join->children().size() >= 2) {
+            if (join->children().size() >= 2 && !match_child->expressions().empty()) {
                 std::set<std::string> left_cols, right_cols;
                 collect_subtree_columns(join->children()[0], left_cols);
                 collect_subtree_columns(join->children()[1], right_cols);
 
-                if (!match_child->expressions().empty()) {
-                    auto filter_cols = collect_referenced_columns(match_child->expressions()[0]);
-                    bool all_left = true, all_right = true;
-                    for (const auto& c : filter_cols) {
-                        if (left_cols.find(c) == left_cols.end()) all_left = false;
-                        if (right_cols.find(c) == right_cols.end()) all_right = false;
+                auto conjuncts = split_conjuncts(match_child->expressions()[0]);
+                std::vector<expressions::expression_ptr> left_bucket, right_bucket, residual;
+                for (const auto& conj : conjuncts) {
+                    auto cols = collect_referenced_columns(conj);
+                    bool in_left = !cols.empty() &&
+                        std::includes(left_cols.begin(), left_cols.end(),
+                                      cols.begin(), cols.end());
+                    bool in_right = !cols.empty() &&
+                        std::includes(right_cols.begin(), right_cols.end(),
+                                      cols.begin(), cols.end());
+                    if (in_left && !in_right) {
+                        left_bucket.push_back(conj);
+                    } else if (in_right && !in_left) {
+                        right_bucket.push_back(conj);
+                    } else {
+                        residual.push_back(conj);
                     }
+                }
 
-                    if (all_left && !all_right) {
+                if (!left_bucket.empty() || !right_bucket.empty()) {
+                    auto coll = match_child->collection_full_name();
+                    if (!left_bucket.empty()) {
                         auto new_agg = make_node_aggregate(
                             node->resource(), join->children()[0]->collection_full_name());
                         new_agg->append_child(join->children()[0]);
-                        new_agg->append_child(match_child);
+                        new_agg->append_child(make_node_match(
+                            node->resource(), coll,
+                            rebuild_conjunction(node->resource(), left_bucket)));
                         join->children()[0] = boost::static_pointer_cast<node_t>(new_agg);
-                        return pushdown_filter(source);
                     }
-                    if (all_right && !all_left) {
+                    if (!right_bucket.empty()) {
                         auto new_agg = make_node_aggregate(
                             node->resource(), join->children()[1]->collection_full_name());
                         new_agg->append_child(join->children()[1]);
-                        new_agg->append_child(match_child);
+                        new_agg->append_child(make_node_match(
+                            node->resource(), coll,
+                            rebuild_conjunction(node->resource(), right_bucket)));
                         join->children()[1] = boost::static_pointer_cast<node_t>(new_agg);
+                    }
+                    auto residual_expr = rebuild_conjunction(node->resource(), residual);
+                    if (!residual_expr) {
                         return pushdown_filter(source);
                     }
+                    match_child->expressions()[0] = residual_expr;
+                    node->children()[0] = pushdown_filter(source);
+                    return node;
                 }
             }
         }
