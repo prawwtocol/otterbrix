@@ -101,14 +101,14 @@ class SparkSession:
         return DataFrame(rel, self)
 
     def _createDataFrameFromPandas(self, data: "PandasDataFrame", types, names) -> DataFrame:
+        if names:
+            data = data.copy()
+            data.columns = names
         df = self._create_dataframe(data)
 
         # Cast to types
         #if types:
         #    df = df._cast_types(*types)
-        # Alias to names
-        if names:
-            df = df.toDF(*names)
         return df
 
     def createDataFrame(
@@ -117,6 +117,7 @@ class SparkSession:
         schema: Optional[Union[StructType, List[str]]] = None,
         samplingRatio: Optional[float] = None,
         verifySchema: bool = True,
+        optimize: bool = False,
     ) -> DataFrame:
         if samplingRatio:
             raise NotImplementedError
@@ -146,11 +147,15 @@ class SparkSession:
         # Falsey check on pandas dataframe is not defined, so first check if it's not a pandas dataframe
         # Then check if 'data' is None or []
         if has_pandas and isinstance(data, pandas.DataFrame):
-            return self._createDataFrameFromPandas(data, types, names)
+            df = self._createDataFrameFromPandas(data, types, names)
+            df._optimize = optimize
+            return df
 
-        # TODO temporary decision
+        # TODO 1 temporary decision
         if has_pandas:
-            return DataFrame(self.conn.from_df(pandas.DataFrame(data=data, columns=names)), self)
+            df = DataFrame(self.conn.from_df(pandas.DataFrame(data=data, columns=names)), self)
+            df._optimize = optimize
+            return df
         
         raise RuntimeError("Has no select value in OtterBrix to continue process")
 

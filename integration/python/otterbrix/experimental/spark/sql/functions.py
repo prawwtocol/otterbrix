@@ -405,7 +405,7 @@ def max(col: "ColumnOrName") -> Column:
     +-------+
     """
     #return _invoke_function_over_columns("max", col)
-    return Column(_to_column_expr(col).max())    
+    return Column(_to_column_expr(col).max())
 
 
 
@@ -440,7 +440,7 @@ def mean(col: "ColumnOrName") -> Column:
     +-------+
     """
     #return _invoke_function_over_columns("mean", col)
-    return Column(_to_column_expr(col).avg())   
+    return Column(_to_column_expr(col).avg())
 
 
 
@@ -474,7 +474,7 @@ def min(col: "ColumnOrName") -> Column:
     +-------+
     """
     #return _invoke_function_over_columns("min", col)
-    return Column(_to_column_expr(col).min())    
+    return Column(_to_column_expr(col).min())
 
 
 
@@ -543,7 +543,7 @@ def count(col: "ColumnOrName") -> Column:
     +--------+----------------+
     """
     #return _invoke_function_over_columns("count", col)
-    return Column(_to_column_expr(col).count())    
+    return Column(_to_column_expr(col).count())
 
 
 

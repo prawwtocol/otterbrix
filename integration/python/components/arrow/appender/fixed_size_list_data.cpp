@@ -8,9 +8,9 @@ namespace components::arrow::appender {
     // Arrays
     //===--------------------------------------------------------------------===//
     void ArrowFixedSizeListData::Initialize(ArrowAppendData &result, const complex_logical_type &type, uint64_t capacity) {
-        auto array_extention = static_cast<types::array_logical_type_extention*>(type.extention());
-    	auto array_size = array_extention->size();
-    	auto &child_type = array_extention->internal_type();
+        auto array_extension = static_cast<types::array_logical_type_extension*>(type.extension());
+    	auto array_size = array_extension->size();
+    	auto &child_type = array_extension->internal_type();
 
     	auto child_buffer = ArrowAppender::InitializeChild(child_type, capacity * array_size);
     	result.child_data.push_back(std::move(child_buffer));
@@ -24,8 +24,8 @@ namespace components::arrow::appender {
     	AppendValidity(append_data, format, from, to);
     	input.flatten(input_size);
 
-        auto array_extention = static_cast<types::array_logical_type_extention*>(input.type().extention());
-    	auto array_size = array_extention->size();
+        auto array_extension = static_cast<types::array_logical_type_extension*>(input.type().extension());
+    	auto array_size = array_extension->size();
     	auto &child_vector = input.entry(); 
     	auto &child_data = *append_data.child_data[0];
     	child_data.append_vector(child_data, child_vector, from * array_size, to * array_size, size * array_size);

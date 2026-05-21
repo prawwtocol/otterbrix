@@ -1,7 +1,6 @@
 project(logical_plan CXX)
 
 set(SOURCE_${PROJECT_NAME}
-        forward.cpp
         node.cpp
         node_aggregate.cpp
         node_checkpoint.cpp
@@ -32,6 +31,8 @@ set(SOURCE_${PROJECT_NAME}
         node_sort.cpp
         node_update.cpp
         node_vacuum.cpp
+        forward.cpp
+        optimizer.cpp
         param_storage.cpp
 )
 
@@ -49,10 +50,10 @@ target_link_libraries(
         otterbrix::expressions
         otterbrix::serialization
         otterbrix::table
-
+        magic_enum::magic_enum
+        msgpackc-cxx
         absl::int128
         Boost::boost
-        msgpackc-cxx
 )
 
 target_include_directories(

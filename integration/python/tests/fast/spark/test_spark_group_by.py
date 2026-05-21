@@ -72,12 +72,13 @@ class TestDataFrameGroupBy(object):
         res = df2.collect()
         assert (
             str(res)
-            == "[Row(department='Finance', avg(salary)=87750.0), Row(department='Marketing', avg(salary)=85500.0), Row(department='Sales', avg(salary)=85666.6640625)]"
+            == "[Row(department='Finance', avg(salary)=87750.0), Row(department='Marketing', avg(salary)=85500.0), Row(department='Sales', avg(salary)=85666.66666666667)]"
         )
 
         df2 = df.groupBy("department").mean("salary").sort("department")
         res = df2.collect()
-        expected_res_str = "[Row(department='Finance', avg(salary)=87750.0), Row(department='Marketing', avg(salary)=85500.0), Row(department='Sales', avg(salary)=85666.6640625)]"
+        expected_res_str = "[Row(department='Finance', avg(salary)=87750.0), Row(department='Marketing', avg(salary)=85500.0), Row(department='Sales', avg(salary)=85666.66666666667)]"
+        assert str(res) == expected_res_str
 
         df2 = df.groupBy("department", "state").sum("salary", "bonus").sort("department", "state")
         res = df2.collect()
@@ -99,7 +100,7 @@ class TestDataFrameGroupBy(object):
         res = df2.collect()
         assert (
             str(res)
-            == "[Row(department='Finance', sum_salary=351000, avg_salary=87750.0, sum_bonus=81000, max_bonus=24000), Row(department='Marketing', sum_salary=171000, avg_salary=85500.0, sum_bonus=39000, max_bonus=21000), Row(department='Sales', sum_salary=257000, avg_salary=85666.6640625, sum_bonus=53000, max_bonus=23000)]"
+            == "[Row(department='Finance', sum_salary=351000, avg_salary=87750.0, sum_bonus=81000, max_bonus=24000), Row(department='Marketing', sum_salary=171000, avg_salary=85500.0, sum_bonus=39000, max_bonus=21000), Row(department='Sales', sum_salary=257000, avg_salary=85666.66666666667, sum_bonus=53000, max_bonus=23000)]"
         )
 
         df2 = (
@@ -114,10 +115,9 @@ class TestDataFrameGroupBy(object):
             .sort("department")
         )
         res = df2.collect()
-        print(str(res))
         assert (
             str(res)
-            == "[Row(department='Finance', sum_salary=351000, avg_salary=87750.0, sum_bonus=81000, max_bonus=24000), Row(department='Sales', sum_salary=257000, avg_salary=85666.6640625, sum_bonus=53000, max_bonus=23000)]"
+            == "[Row(department='Finance', sum_salary=351000, avg_salary=87750.0, sum_bonus=81000, max_bonus=24000), Row(department='Sales', sum_salary=257000, avg_salary=85666.66666666667, sum_bonus=53000, max_bonus=23000)]"
         )
 
     def test_group_by_empty(self, spark):

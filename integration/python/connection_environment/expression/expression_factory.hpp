@@ -45,7 +45,7 @@ namespace otterbrix {
         Expression SortExpression(const Expression& arg);
             
 
-        Expression AggregationUnaryExpression(components::expressions::aggregate_type type, 
+        Expression AggregationUnaryExpression(const string& function_name,
                 const Expression& expr);
 
         Expression ScalarUnaryExpression(components::expressions::scalar_type type, 
@@ -77,7 +77,6 @@ namespace otterbrix {
         core::parameter_id_t AddValue(components::types::logical_value_t&& value);
         std::unordered_map<core::parameter_id_t, components::types::logical_value_t> values; 
         uint64_t counter;
-    private:
         boost::intrusive_ptr<otterbrix_t> space;
         //components::logical_plan::parameter_node_ptr params;
 
