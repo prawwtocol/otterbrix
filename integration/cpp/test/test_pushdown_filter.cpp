@@ -352,3 +352,50 @@ TEST_CASE("logical_plan::pushdown_filter_splits_conjunction_with_residual_join")
     REQUIRE(left_pushed->children()[0]->type() == node_type::data_t);
     REQUIRE(left_pushed->children()[1]->type() == node_type::match_t);
 }
+
+// --- Conjunction splitting through group by --------------------------------
+
+// in:  aggregate[ aggregate[data, group(key a, sum b->sum_b)],
+//                 match((a > ?) AND (sum_b > ?)) ]
+// out: aggregate[ aggregate[data, group(...), match(a > ?)], match(sum_b > ?) ]
+// The grouping-key conjunct descends below group; the aggregate-output
+// conjunct stays above as residual.
+TEST_CASE("logical_plan::pushdown_filter_splits_conjunction_through_group_by") {
+    auto resource = std::pmr::synchronized_pool_resource();
+    auto c = coll();
+    auto data = make_data(&resource, {"a", "b"});
+
+    auto group = make_node_group(&resource, c);
+    group->append_expression(make_scalar_expression(&resource, scalar_type::group_field, key(&resource, "a")));
+    auto sum_expr = make_aggregate_expression(&resource, "sum", key(&resource, "sum_b"));
+    sum_expr->append_param(key(&resource, "b"));
+    group->append_expression(std::move(sum_expr));
+
+    node_aggregate_ptr inner = make_node_aggregate(&resource, c);
+    inner->append_child(data);
+    inner->append_child(group);
+
+    auto cmp_key =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "a", side_t::left), id_par{1});
+    auto cmp_agg =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "sum_b", side_t::left), id_par{2});
+    auto conj = make_compare_union_expression(&resource, compare_type::union_and);
+    conj->append_child(cmp_key);
+    conj->append_child(cmp_agg);
+
+    node_aggregate_ptr outer = make_node_aggregate(&resource, c);
+    outer->append_child(inner);
+    outer->append_child(make_node_match(&resource, c, conj));
+
+    plan_optimizer_t optimizer;
+    node_ptr out = optimizer.optimize(outer);
+
+    REQUIRE(out == outer);
+    REQUIRE(outer->children().size() == 2);
+    REQUIRE(outer->children()[0] == inner);
+    REQUIRE(outer->children()[1]->type() == node_type::match_t);
+    REQUIRE(inner->children().size() == 3);
+    REQUIRE(inner->children()[0]->type() == node_type::data_t);
+    REQUIRE(inner->children()[1]->type() == node_type::group_t);
+    REQUIRE(inner->children()[2]->type() == node_type::match_t);
+}

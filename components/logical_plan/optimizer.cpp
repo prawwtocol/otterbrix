@@ -306,12 +306,29 @@ namespace components::logical_plan {
                     }
                 }
                 if (!group_keys.empty() && !match_child->expressions().empty()) {
-                    auto filter_cols = collect_referenced_columns(match_child->expressions()[0]);
-                    bool subset = std::includes(group_keys.begin(), group_keys.end(),
-                                                filter_cols.begin(), filter_cols.end());
-                    if (subset) {
-                        source_agg->append_child(match_child);
-                        return pushdown_filter(source);
+                    auto conjuncts = split_conjuncts(match_child->expressions()[0]);
+                    std::vector<expressions::expression_ptr> pushable, residual;
+                    for (const auto& conj : conjuncts) {
+                        auto cols = collect_referenced_columns(conj);
+                        if (!cols.empty() &&
+                            std::includes(group_keys.begin(), group_keys.end(),
+                                          cols.begin(), cols.end())) {
+                            pushable.push_back(conj);
+                        } else {
+                            residual.push_back(conj);
+                        }
+                    }
+                    if (!pushable.empty()) {
+                        source_agg->append_child(make_node_match(
+                            node->resource(), match_child->collection_full_name(),
+                            rebuild_conjunction(node->resource(), pushable)));
+                        auto residual_expr = rebuild_conjunction(node->resource(), residual);
+                        if (!residual_expr) {
+                            return pushdown_filter(source);
+                        }
+                        match_child->expressions()[0] = residual_expr;
+                        node->children()[0] = pushdown_filter(source);
+                        return node;
                     }
                 }
             }
