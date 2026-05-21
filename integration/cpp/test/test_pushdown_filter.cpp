@@ -51,6 +51,7 @@ TEST_CASE("logical_plan::pushdown_filter_under_identity_select") {
     inner->append_child(data);
     auto select = make_node_select(&resource, c);
     select->append_expression(make_scalar_expression(&resource, scalar_type::get_field, key(&resource, "a")));
+    select->append_expression(make_scalar_expression(&resource, scalar_type::get_field, key(&resource, "b")));
     inner->append_child(select);
 
     auto cmp =
@@ -397,5 +398,65 @@ TEST_CASE("logical_plan::pushdown_filter_splits_conjunction_through_group_by") {
     REQUIRE(inner->children().size() == 3);
     REQUIRE(inner->children()[0]->type() == node_type::data_t);
     REQUIRE(inner->children()[1]->type() == node_type::group_t);
+    REQUIRE(inner->children()[2]->type() == node_type::match_t);
+}
+
+// --- Cost guard: pushdown under a projection -------------------------------
+
+// data has 3 columns, the projection narrows to 1 -> pushing the filter below
+// it would widen the filter's input rows, so the cost guard vetoes the move.
+TEST_CASE("logical_plan::pushdown_filter_vetoed_by_narrowing_projection") {
+    auto resource = std::pmr::synchronized_pool_resource();
+    auto c = coll();
+    auto data = make_data(&resource, {"a", "b", "c"});
+
+    node_aggregate_ptr inner = make_node_aggregate(&resource, c);
+    inner->append_child(data);
+    auto select = make_node_select(&resource, c);
+    select->append_expression(make_scalar_expression(&resource, scalar_type::get_field, key(&resource, "a")));
+    inner->append_child(select);
+
+    auto cmp =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "a", side_t::left), id_par{1});
+    node_aggregate_ptr outer = make_node_aggregate(&resource, c);
+    outer->append_child(inner);
+    outer->append_child(make_node_match(&resource, c, std::move(cmp)));
+
+    plan_optimizer_t optimizer;
+    node_ptr out = optimizer.optimize(outer);
+
+    REQUIRE(out == outer);
+    REQUIRE(outer->children().size() == 2);
+    REQUIRE(outer->children()[1]->type() == node_type::match_t);
+    REQUIRE(inner->children().size() == 2);
+}
+
+// A non-narrowing projection that merely reorders columns keeps the same row
+// width, so the cost guard allows the pushdown.
+TEST_CASE("logical_plan::pushdown_filter_allowed_through_non_narrowing_projection") {
+    auto resource = std::pmr::synchronized_pool_resource();
+    auto c = coll();
+    auto data = make_data(&resource, {"a", "b"});
+
+    node_aggregate_ptr inner = make_node_aggregate(&resource, c);
+    inner->append_child(data);
+    auto select = make_node_select(&resource, c);
+    select->append_expression(make_scalar_expression(&resource, scalar_type::get_field, key(&resource, "b")));
+    select->append_expression(make_scalar_expression(&resource, scalar_type::get_field, key(&resource, "a")));
+    inner->append_child(select);
+
+    auto cmp =
+        make_compare_expression(&resource, compare_type::gt, key(&resource, "a", side_t::left), id_par{1});
+    node_aggregate_ptr outer = make_node_aggregate(&resource, c);
+    outer->append_child(inner);
+    outer->append_child(make_node_match(&resource, c, std::move(cmp)));
+
+    plan_optimizer_t optimizer;
+    node_ptr out = optimizer.optimize(outer);
+
+    REQUIRE(out == inner);
+    REQUIRE(inner->children().size() == 3);
+    REQUIRE(inner->children()[0]->type() == node_type::data_t);
+    REQUIRE(inner->children()[1]->type() == node_type::select_t);
     REQUIRE(inner->children()[2]->type() == node_type::match_t);
 }
