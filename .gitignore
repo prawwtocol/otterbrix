@@ -564,4 +564,10 @@ wal/indexes_METADATA
 wal/WAL_ID
 log/python-1779354763.txt
 log/python-1779354801.txt
+log/python-1779357624.txt
 *.tbl
+build-verify/log/python-1779359035.txt
+build-verify/wal/.wal_0_000000
+build-verify/wal/.wal_1_000000
+build-verify/wal/indexes_METADATA
+build-verify/wal/WAL_ID
