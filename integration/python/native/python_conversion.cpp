@@ -307,7 +307,6 @@ namespace otterbrix
 
         if (py::none().is(keys) || py::none().is(values))
         {
-            // todo(recheck) should create logical_value with field is_null=true, but the field was removed
             return logical_value_t(r, logical_type::NA);
         }
 
@@ -511,7 +510,6 @@ namespace otterbrix
     }
 
 
-    // TODO(recheck): add support for HUGEINT
     bool TryTransformPythonNumeric(logical_value_t& res, py::handle ele, const complex_logical_type& target_type)
     {
         auto ptr = ele.ptr();
