@@ -1,5 +1,3 @@
-// todo 1 is this file needed?
-
 #pragma once
 
 #include "pybind11/pybind_wrapper.hpp"
@@ -8,32 +6,10 @@
 namespace otterbrix {
 
 struct PyUtil {
-	static idx_t PyByteArrayGetSize(py::handle &obj) {
-		return static_cast<idx_t>(PyByteArray_GET_SIZE(obj.ptr())); // NOLINT
-	}
-
-	static Py_buffer *PyMemoryViewGetBuffer(py::handle &obj) {
-		return PyMemoryView_GET_BUFFER(obj.ptr());
-	}
-
-	static bool PyUnicodeIsCompactASCII(py::handle &obj) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-		return PyUnicode_IS_COMPACT_ASCII(obj.ptr());
-#pragma GCC diagnostic pop
-	}
-
 	static const char *PyUnicodeData(py::handle &obj) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 		return const_char_ptr_cast(PyUnicode_DATA(obj.ptr()));
-#pragma GCC diagnostic pop
-	}
-
-	static char *PyUnicodeDataMutable(py::handle &obj) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-		return char_ptr_cast(PyUnicode_DATA(obj.ptr()));
 #pragma GCC diagnostic pop
 	}
 

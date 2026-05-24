@@ -101,14 +101,12 @@ namespace otterbrix {
 
     Result ConnectionEnvironment::Execute(const Relation& rel, bool optimize) {
         auto session = session_id_t();
-        // todo(recheck) split node and plan; check select statement, use node.type
-        auto plan = RelationFactory::Execute(rel);
+        auto node = RelationFactory::Execute(rel);
         if (optimize) {
             components::logical_plan::plan_optimizer_t optimizer;
-            plan = optimizer.optimize(plan);
+            node = optimizer.optimize(node);
         }
-        auto cursor = space->dispatcher()->execute_plan(session, plan, ExpressionFactory::GetParams());
-        return cursor;
+        return space->dispatcher()->execute_plan(session, node, ExpressionFactory::GetParams());
     }
 
     cursor::cursor_t_ptr ConnectionEnvironment::QueryRelation(const components::logical_plan::node_ptr &rel) {

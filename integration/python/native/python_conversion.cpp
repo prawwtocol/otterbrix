@@ -223,7 +223,6 @@ namespace otterbrix
 
         if (py::none().is(dict.keys) || py::none().is(dict.values))
         {
-            // todo(recheck) should create logical_value with field is_null=true, but the field was removed
             return logical_value_t(r, logical_type::NA);
         }
 
