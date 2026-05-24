@@ -13,7 +13,6 @@ namespace components::arrow {
 
     enum class ArrowOffsetSize : uint8_t { REGULAR, LARGE };
 
-    // todo(recheck) move to parameters
     struct ArrowOptions {
         bool use_list_view = false;
         ArrowOffsetSize offset_size = ArrowOffsetSize::REGULAR;
