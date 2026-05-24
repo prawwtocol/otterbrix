@@ -180,7 +180,6 @@ static std::unique_ptr<ArrowType> GetArrowLogicalTypeNoDictionary(ArrowSchema &s
 		// OtterBrix has no dedicated TIMESTAMP_TZ type, so we map the value onto the matching plain
 		// TIMESTAMP_* (the underlying value is already an instant in UTC per the Arrow spec) and
 		// preserve the IANA timezone name on the type alias so downstream code can recover it.
-		// TODO right now we just get the UTC value. We probably want to support this properly in the future
 		std::unique_ptr<ArrowTypeInfo> type_info;
 		logical_type ob_type;
 		if (format[2] == 'n') {
