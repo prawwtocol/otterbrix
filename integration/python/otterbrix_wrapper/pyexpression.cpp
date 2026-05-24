@@ -212,7 +212,6 @@ namespace otterbrix {
     }
 
     pyexpr_ptr PyExpression::SortExpression(components::expressions::sort_order type, const PyExpression& expr) {
-        //todo(recheck) remove to factory
         return make_shared<PyExpression>(expr.factory->SortExpression(expr.expr, type), expr.factory);
     }
 
