@@ -223,6 +223,7 @@ namespace otterbrix
 
         if (py::none().is(dict.keys) || py::none().is(dict.values))
         {
+            // todo(recheck) should create logical_value with field is_null=true, but the field was removed
             return logical_value_t(r, logical_type::NA);
         }
 
@@ -244,6 +245,7 @@ namespace otterbrix
             logical_value_t new_key = TransformPythonValue(dict.keys.attr("__getitem__")(i), key_target);
             logical_value_t new_value = TransformPythonValue(dict.values.attr("__getitem__")(i), value_target);
 
+            // todo(recheck) common type
             if (key_type.type() == logical_type::NA && new_key.type().type() != logical_type::NA)
             {
                 key_type = new_key.type();
@@ -285,6 +287,7 @@ namespace otterbrix
 
         if (py::none().is(keys) || py::none().is(values))
         {
+            // todo(recheck) should create logical_value with field is_null=true, but the field was removed
             return logical_value_t(r, logical_type::NA);
         }
 
@@ -324,6 +327,7 @@ namespace otterbrix
             logical_value_t new_key = key_children[i];
             logical_value_t new_value = value_children[i];
 
+            // todo(recheck) common type
             if (key_type.type() == logical_type::NA && new_key.type().type() != logical_type::NA)
             {
                 key_type = new_key.type();
@@ -386,6 +390,8 @@ namespace otterbrix
         for (idx_t i = 0; i < size; i++)
         {
             logical_value_t new_value = TransformPythonValue(ele.attr("__getitem__")(i), child_type);
+            // todo(recheck) common type
+            // todo(recheck) remove if ForceMaxLogicalType exists
             if (!list_target && element_type.type() == logical_type::NA
                 && new_value.type().type() != logical_type::NA)
             {
@@ -411,6 +417,8 @@ namespace otterbrix
         for (idx_t i = 0; i < size; i++)
         {
             logical_value_t new_value = TransformPythonValue(ele.attr("__getitem__")(i), child_type);
+            // todo(recheck) common type
+            // todo(recheck) remove if ForceMaxLogicalType exists
             if (!array_target && element_type.type() == logical_type::NA
                 && new_value.type().type() != logical_type::NA)
             {
@@ -496,6 +504,7 @@ namespace otterbrix
     }
 
 
+    // TODO(recheck): add support for HUGEINT
     bool TryTransformPythonNumeric(logical_value_t& res, py::handle ele, const complex_logical_type& target_type)
     {
         auto ptr = ele.ptr();

@@ -473,6 +473,7 @@ complex_logical_type PandasAnalyzer::InnerAnalyze(py::object column, bool &can_c
 	auto pandas_series = pandas_module.attr("core").attr("series").attr("Series");
 
 	if (py::isinstance(column, pandas_series)) {
+		// TODO(recheck): check if '_values' is more portable, and behaves the same as '__array__()'
 		column = column.attr("to_numpy")();
 	}
 	auto row = column.attr("__getitem__");

@@ -101,6 +101,7 @@ namespace otterbrix {
 
     Result ConnectionEnvironment::Execute(const Relation& rel, bool optimize) {
         auto session = session_id_t();
+        // todo(recheck) split node and plan; check select statement, use node.type
         auto plan = RelationFactory::Execute(rel);
         if (optimize) {
             components::logical_plan::plan_optimizer_t optimizer;

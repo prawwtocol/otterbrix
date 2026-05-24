@@ -10,6 +10,7 @@
 
 namespace otterbrix {
 
+// TODO(recheck): add to config
 class PandasAnalyzer {
 public:
 	explicit PandasAnalyzer(const configuration::config_pandas& cfg = {})

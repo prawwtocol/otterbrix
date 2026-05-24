@@ -145,6 +145,7 @@ class SparkSession:
 
         # Falsey check on pandas dataframe is not defined, so first check if it's not a pandas dataframe
         # Then check if 'data' is None or []
+        # TODO(recheck) 1 temporary decision
         if isinstance(data, pandas.DataFrame):
             pandas_df = data
             forward_names = names

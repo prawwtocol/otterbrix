@@ -62,6 +62,7 @@ public:
 
 private:
 	//! We transform a TableFilterSet to an Arrow Expression Object
+	//todo(recheck) std::unordered_map
 	static py::object TransformFilter(components::table::table_filer_set_t &filters,
 	                                  std::unordered_map<idx_t, string> &columns,
 	                                  std::unordered_map<idx_t, idx_t> filter_to_col,
