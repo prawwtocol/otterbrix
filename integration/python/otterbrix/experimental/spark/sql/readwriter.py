@@ -88,26 +88,11 @@ class DataFrameReader:
         schema: Optional[Union[StructType, str]] = None,
         **options: OptionalPrimitiveType,
     ) -> "DataFrame":
-        from otterbrix.experimental.spark.sql.dataframe import DataFrame
-
         if not isinstance(path, str):
             raise ImportError
         if options:
             raise ContributionsAcceptedError
 
-        rel = None
-        if format:
-            raise ContributionsAcceptedError
-        else:
-            rel = self.session.conn.sql(f"select * from {path}")
-        df = DataFrame(rel, self.session)
-        if schema:
-            if not isinstance(schema, StructType):
-                raise ContributionsAcceptedError
-            schema = cast(StructType, schema)
-            types, names = schema.extract_types_and_names()
-            df = df._cast_types(types)
-            df = df.toDF(names)
         raise NotImplementedError
 
     def csv(

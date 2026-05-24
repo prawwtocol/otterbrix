@@ -41,13 +41,24 @@ class SparkSession:
         return DataFrame(self.conn.from_df(data), self)
 
     def _createDataFrameFromPandas(self, data: "PandasDataFrame", types, names) -> DataFrame:
-        # TODO apply `types` via _cast_types once it handles quoted identifiers
-        # (column names with spaces) and maps Spark type names to SQL casts -
-        # right now it builds `First Name::STRING_LITERAL as First Name` and
-        # relation.project rejects the resulting string.
-        if names:
+        # Apply the declared schema by coercing pandas dtypes before handing
+        # the frame to conn.from_df. The engine has no value-cast operator
+        # (::TYPE is a path-selection hint, not a conversion), so this is the
+        # only place an explicit schema can actually change column types.
+        if names or types:
             data = data.copy()
+        if names:
             data.columns = names
+        if types:
+            from .type_utils import spark_type_to_pandas_dtype
+            dtype_map = {}
+            target_names = names if names else list(data.columns)
+            for col, t in zip(target_names, types):
+                pandas_dtype = spark_type_to_pandas_dtype(t)
+                if pandas_dtype is not None:
+                    dtype_map[col] = pandas_dtype
+            if dtype_map:
+                data = data.astype(dtype_map)
         return self._create_dataframe(data)
 
     def createDataFrame(

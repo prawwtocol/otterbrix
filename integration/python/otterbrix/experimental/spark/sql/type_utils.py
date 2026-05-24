@@ -97,3 +97,28 @@ def convert_type(dtype: OtterBrixPyType) -> DataType:
 def otterbrix_to_spark_schema(names: List[str], types: List[OtterBrixPyType]) -> StructType:
     fields = [StructField(name, dtype) for name, dtype in zip(names, [convert_type(x) for x in types])]
     return StructType(fields)
+
+
+# Spark DataType → pandas dtype used to coerce pandas DataFrames before they
+# reach conn.from_df. The engine does not perform value casts (::TYPE acts only
+# as a path-selection hint for polymorphic columns, see key_t::set_cast_type
+# usage in validate_logical_plan.cpp), so a declared schema can only take
+# effect by converting the data in pandas first.
+_spark_class_to_pandas_dtype = {
+    StringType: 'str',
+    BooleanType: 'bool',
+    ByteType: 'int8',
+    UnsignedByteType: 'uint8',
+    ShortType: 'int16',
+    UnsignedShortType: 'uint16',
+    IntegerType: 'int32',
+    UnsignedIntegerType: 'uint32',
+    LongType: 'int64',
+    UnsignedLongType: 'uint64',
+    FloatType: 'float32',
+    DoubleType: 'float64',
+}
+
+
+def spark_type_to_pandas_dtype(dtype: DataType):
+    return _spark_class_to_pandas_dtype.get(type(dtype))

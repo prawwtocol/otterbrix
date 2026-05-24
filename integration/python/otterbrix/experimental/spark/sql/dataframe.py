@@ -1130,19 +1130,6 @@ class DataFrame:
         count_rel = self.relation.count("*")
         return int(count_rel.fetchone()[0])
 
-    def _cast_types(self, *types) -> "DataFrame":
-        existing_columns = self.relation.columns
-        types_count = len(types)
-        assert types_count == len(existing_columns)
-
-        cast_expressions = [
-            f"{existing}::{target_type} as {existing}"
-            for existing, target_type in zip(existing_columns, types)
-        ]
-        cast_expressions = ", ".join(cast_expressions)
-        new_rel = self.relation.project(cast_expressions)
-        return DataFrame(new_rel, self.session, optimize=self._optimize)
-
     def toDF(self, *cols) -> "DataFrame":
         existing_columns = self.relation.columns
         column_count = len(cols)
