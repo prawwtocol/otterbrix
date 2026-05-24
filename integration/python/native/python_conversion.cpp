@@ -63,6 +63,34 @@ namespace otterbrix
         }
     }
 
+    static void promote_element_type(complex_logical_type& acc, const complex_logical_type& observed)
+    {
+        auto observed_t = observed.type();
+        if (observed_t == logical_type::NA)
+        {
+            return;
+        }
+        auto acc_t = acc.type();
+        if (acc_t == logical_type::NA)
+        {
+            acc = observed;
+            return;
+        }
+        if (acc_t == observed_t)
+        {
+            return;
+        }
+        auto promoted = components::types::promote_type(acc_t, observed_t);
+        if (promoted == logical_type::NA)
+        {
+            throw std::runtime_error(
+                "Cannot infer common type for elements: incompatible logical_types "
+                + std::to_string(static_cast<int>(acc_t)) + " and "
+                + std::to_string(static_cast<int>(observed_t)));
+        }
+        acc = complex_logical_type(promoted);
+    }
+
     static logical_value_t EmptyMapValue()
     {
         return logical_value_t::create_map(std::pmr::get_default_resource(),
@@ -244,15 +272,8 @@ namespace otterbrix
             logical_value_t new_key = TransformPythonValue(dict.keys.attr("__getitem__")(i), key_target);
             logical_value_t new_value = TransformPythonValue(dict.values.attr("__getitem__")(i), value_target);
 
-            // todo(recheck) common type
-            if (key_type.type() == logical_type::NA && new_key.type().type() != logical_type::NA)
-            {
-                key_type = new_key.type();
-            }
-            if (value_type.type() == logical_type::NA && new_value.type().type() != logical_type::NA)
-            {
-                value_type = new_value.type();
-            }
+            promote_element_type(key_type, new_key.type());
+            promote_element_type(value_type, new_value.type());
 
             new_key.set_alias("key");
             new_value.set_alias("value");
@@ -326,15 +347,8 @@ namespace otterbrix
             logical_value_t new_key = key_children[i];
             logical_value_t new_value = value_children[i];
 
-            // todo(recheck) common type
-            if (key_type.type() == logical_type::NA && new_key.type().type() != logical_type::NA)
-            {
-                key_type = new_key.type();
-            }
-            if (value_type.type() == logical_type::NA && new_value.type().type() != logical_type::NA)
-            {
-                value_type = new_value.type();
-            }
+            promote_element_type(key_type, new_key.type());
+            promote_element_type(value_type, new_value.type());
 
             new_key.set_alias("key");
             new_value.set_alias("value");
@@ -389,12 +403,9 @@ namespace otterbrix
         for (idx_t i = 0; i < size; i++)
         {
             logical_value_t new_value = TransformPythonValue(ele.attr("__getitem__")(i), child_type);
-            // todo(recheck) common type
-            // todo(recheck) remove if ForceMaxLogicalType exists
-            if (!list_target && element_type.type() == logical_type::NA
-                && new_value.type().type() != logical_type::NA)
+            if (!list_target)
             {
-                element_type = new_value.type();
+                promote_element_type(element_type, new_value.type());
             }
             values.push_back(std::move(new_value));
         }
@@ -416,12 +427,9 @@ namespace otterbrix
         for (idx_t i = 0; i < size; i++)
         {
             logical_value_t new_value = TransformPythonValue(ele.attr("__getitem__")(i), child_type);
-            // todo(recheck) common type
-            // todo(recheck) remove if ForceMaxLogicalType exists
-            if (!array_target && element_type.type() == logical_type::NA
-                && new_value.type().type() != logical_type::NA)
+            if (!array_target)
             {
-                element_type = new_value.type();
+                promote_element_type(element_type, new_value.type());
             }
             values.push_back(std::move(new_value));
         }
