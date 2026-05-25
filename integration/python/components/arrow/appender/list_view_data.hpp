@@ -24,8 +24,8 @@ namespace components::arrow::appender {
     		auto &child_type = type.child_type();
     		result.GetMainBuffer().reserve(capacity * sizeof(BUFTYPE));
     		result.GetAuxBuffer().reserve(capacity * sizeof(BUFTYPE));
-    
-    		auto child_buffer = ArrowAppender::InitializeChild(child_type, capacity);
+
+    		auto child_buffer = ArrowAppender::InitializeChild(child_type, capacity, result.options);
     		result.child_data.push_back(std::move(child_buffer));
     	}
     
