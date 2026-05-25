@@ -7,9 +7,9 @@ namespace components::arrow::appender {
     // Structs
     //===--------------------------------------------------------------------===//
     void ArrowStructData::Initialize(ArrowAppendData &result, const complex_logical_type &type, uint64_t capacity) {
-    	auto &children = type.child_types(); 
+    	auto &children = type.child_types();
     	for (auto &child : children) {
-    		auto child_buffer = ArrowAppender::InitializeChild(child, capacity);
+    		auto child_buffer = ArrowAppender::InitializeChild(child, capacity, result.options);
     		result.child_data.push_back(std::move(child_buffer));
     	}
     }
@@ -20,7 +20,6 @@ namespace components::arrow::appender {
     	uint64_t size = to - from;
     	AppendValidity(append_data, format, from, to);
     	// append the children of the struct
-    	//auto &children = StructVector::GetEntries(input);
         auto& children = input.entries();
     	for (uint64_t child_idx = 0; child_idx < children.size(); child_idx++) {
     		auto &child = children[child_idx];

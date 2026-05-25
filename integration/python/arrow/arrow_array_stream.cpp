@@ -169,7 +169,7 @@ string ConvertTimestampUnit(ArrowDateTimeType unit) {
 	}
 }
 
-py::object GetScalar(components::types::logical_value_t &constant, const ArrowType &type) {
+py::object GetScalar(components::types::logical_value_t &constant, const ArrowType & /*type*/) {
 	py::object scalar = py::module_::import("pyarrow").attr("scalar");
 	auto &import_cache = ConnectionEnvironment::ImportCache();
 	py::object dataset_scalar = import_cache.pyarrow.dataset().attr("scalar");
@@ -231,10 +231,10 @@ py::object GetScalar(components::types::logical_value_t &constant, const ArrowTy
 		return dataset_scalar(constant.value<std::string_view>());
 	case logical_type::DECIMAL: {
 		py::object date_type = py::module_::import("pyarrow").attr("decimal128");
-        auto* decimal_extention = 
-            static_cast<components::types::decimal_logical_type_extention*>(constant.type()->extention());
-		uint8_t width = decimal_extention->width();
-		uint8_t scale = decimal_extention->scale();
+        auto* decimal_extension =
+            static_cast<components::types::decimal_logical_type_extension*>(constant.type()->extension());
+		uint8_t width = decimal_extension->width();
+		uint8_t scale = decimal_extension->scale();
 		return dataset_scalar(scalar(constant.value<int64_t>(), date_type(width, scale)));
 	}
 	default:

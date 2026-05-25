@@ -1,0 +1,2 @@
+name,group,nruns,min_ms,max_ms,avg_ms,median_ms,verified
+join,sql,5,4919.427,5201.027,5018.408,4926.773,OK
