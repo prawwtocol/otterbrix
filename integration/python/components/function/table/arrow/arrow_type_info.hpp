@@ -27,7 +27,6 @@ public:
 		assert(dynamic_cast<TARGET *>(this));
 		if (type != TARGET::TYPE) {
 			throw std::runtime_error("Failed to cast ArrowTypeInfo, type mismatch (expected: %s, got: %s)");
-//			                        EnumUtil::ToString(TARGET::TYPE), EnumUtil::ToString(type));
 		}
 		return reinterpret_cast<TARGET &>(*this);
 	}
@@ -36,7 +35,6 @@ public:
 		assert(dynamic_cast<const TARGET *>(this));
 		if (type != TARGET::TYPE) {
 			throw std::runtime_error("Failed to cast ArrowTypeInfo, type mismatch (expected: %s, got: %s)");
-//			                        EnumUtil::ToString(TARGET::TYPE), EnumUtil::ToString(type));
 		}
 		return reinterpret_cast<const TARGET &>(*this);
 	}

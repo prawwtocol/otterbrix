@@ -2,7 +2,7 @@
 
 namespace components::arrow::appender {
 
-    void ArrowBoolData::Initialize(ArrowAppendData &result, const types::complex_logical_type &type, uint64_t capacity) {
+    void ArrowBoolData::Initialize(ArrowAppendData &result, const types::complex_logical_type & /*type*/, uint64_t capacity) {
     	auto byte_count = (capacity + 7) / 8;
     	result.GetMainBuffer().reserve(byte_count);
     	(void)AppendValidity; // silence a compiler warning about unused static function
@@ -37,7 +37,7 @@ namespace components::arrow::appender {
     	append_data.row_count += size;
     }
     
-    void ArrowBoolData::Finalize(ArrowAppendData &append_data, const types::complex_logical_type &type, ArrowArray *result) {
+    void ArrowBoolData::Finalize(ArrowAppendData &append_data, const types::complex_logical_type & /*type*/, ArrowArray *result) {
     	result->n_buffers = 2;
     	result->buffers[1] = append_data.GetMainBuffer().data();
     }
