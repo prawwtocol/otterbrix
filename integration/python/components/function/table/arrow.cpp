@@ -124,32 +124,6 @@ static std::unique_ptr<ArrowType> GetArrowLogicalTypeNoDictionary(ArrowSchema &s
 		auto type_info = std::make_unique<ArrowStructInfo>(std::move(children));
 		auto struct_type = std::make_unique<ArrowType>(complex_logical_type::create_struct(std::move(child_types)), std::move(type_info));
 		return struct_type;
-	/*} else if (format[0] == '+' && format[1] == 'u') {
-		if (format[2] != 's') {
-			throw std::runtime_error("Unsupported Internal Arrow Type: "+std::string(format[2])+" Union");
-		}
-		assert(format[3] == ':');
-
-		std::string prefix = "+us:";
-		// TODO: what are these type ids actually for?
-		// auto type_ids = StringUtil::Split(format.substr(prefix.size()), ',');
-
-		//child_list_t<LogicalType> members;
-        std::vector<complex_logical_type> members;
-		std::vector<std::unique_ptr<ArrowType>> children;
-		if (schema.n_children == 0) {
-			throw std::runtime_error("Attempted to convert a UNION with no fields to OtterBrix which is not supported");
-		}
-		for (uint64_t type_idx = 0; type_idx < (uint64_t)schema.n_children; type_idx++) {
-			auto type = schema.children[type_idx];
-
-			children.emplace_back(ArrowTableFunction::GetArrowLogicalType(*type));
-			members.emplace_back(type->name, children.back()->GetDuckType());
-		}
-
-		auto type_info = std::make_unique<ArrowStructInfo>(std::move(children));
-		auto union_type = std::make_unique<ArrowType>(complex_logical_type::create_union(members), std::move(type_info));
-		return union_type;*/
 	} else if (format == "+r") {
         std::vector<complex_logical_type> members;
 		std::vector<std::unique_ptr<ArrowType>> children;
@@ -202,21 +176,35 @@ static std::unique_ptr<ArrowType> GetArrowLogicalTypeNoDictionary(ArrowSchema &s
 		auto type_info = std::make_unique<ArrowStringInfo>(fixed_size);
 		return std::make_unique<ArrowType>(logical_type::BLOB, std::move(type_info));
 	} else if (format[0] == 't' && format[1] == 's') {
-		// Timestamp with Timezone
-		// TODO right now we just get the UTC value. We probably want to support this properly in the future
-        std::unique_ptr<ArrowTypeInfo> type_info;
+		// Timestamp with Timezone: "ts<precision>:<timezone>" (e.g. "tsu:UTC", "tsn:America/Los_Angeles").
+		// OtterBrix has no dedicated TIMESTAMP_TZ type, so we map the value onto the matching plain
+		// TIMESTAMP_* (the underlying value is already an instant in UTC per the Arrow spec) and
+		// preserve the IANA timezone name on the type alias so downstream code can recover it.
+		std::unique_ptr<ArrowTypeInfo> type_info;
+		logical_type ob_type;
 		if (format[2] == 'n') {
 			type_info = std::make_unique<ArrowDateTimeInfo>(ArrowDateTimeType::NANOSECONDS);
+			ob_type = logical_type::TIMESTAMP_NS;
 		} else if (format[2] == 'u') {
 			type_info = std::make_unique<ArrowDateTimeInfo>(ArrowDateTimeType::MICROSECONDS);
+			ob_type = logical_type::TIMESTAMP_US;
 		} else if (format[2] == 'm') {
 			type_info = std::make_unique<ArrowDateTimeInfo>(ArrowDateTimeType::MILLISECONDS);
+			ob_type = logical_type::TIMESTAMP_MS;
 		} else if (format[2] == 's') {
 			type_info = std::make_unique<ArrowDateTimeInfo>(ArrowDateTimeType::SECONDS);
+			ob_type = logical_type::TIMESTAMP_SEC;
 		} else {
-        throw std::runtime_error(" Timestamptz precision of not accepted");
+			throw std::runtime_error("Unsupported Timestamptz precision: " + format);
+		}
+		complex_logical_type ts_type(ob_type);
+		auto colon = format.find(':');
+		if (colon != std::string::npos && colon + 1 < format.size()) {
+			ts_type.set_alias(format.substr(colon + 1));
+		}
+		return std::make_unique<ArrowType>(ts_type, std::move(type_info));
 	} else {
-		throw std::runtime_error("Unsupported Internal Arrow Type "+format);
+		throw std::runtime_error("Unsupported Internal Arrow Type " + format);
 	}
 }
 
@@ -299,11 +287,11 @@ std::unique_ptr<ArrowArrayStreamWrapper> ProduceArrowScan(const ArrowScanFunctio
 	return function.scanner_producer(function.stream_factory_ptr, parameters);
 }
 
-uint64_t ArrowTableFunction::ArrowScanMaxThreads(const FunctionData *bind_data_p) {
+uint64_t ArrowTableFunction::ArrowScanMaxThreads(const FunctionData * /*bind_data_p*/) {
 	return 999999;//context.db->NumberOfThreads();
 }
 
-bool ArrowTableFunction::ArrowScanParallelStateNext(const FunctionData *bind_data_p,
+bool ArrowTableFunction::ArrowScanParallelStateNext(const FunctionData * /*bind_data_p*/,
                                                     ArrowScanLocalState &state, ArrowScanGlobalState &parallel_state) {
     std::lock_guard<std::mutex> parallel_lock(parallel_state.main_mutex);
 	if (parallel_state.done) {
@@ -371,7 +359,7 @@ void ArrowTableFunction::ArrowScanFunction(TableFunctionInput &data_p, component
 	if (!data_p.local_state) {
 		return;
 	}
-	auto &data = data_p.bind_data->CastNoConst<ArrowScanFunctionData>(); // FIXME
+	auto &data = data_p.bind_data->CastNoConst<ArrowScanFunctionData>();
 	auto &state = data_p.local_state->Cast<ArrowScanLocalState>();
 	auto &global_state = data_p.global_state->Cast<ArrowScanGlobalState>();
 
@@ -398,7 +386,7 @@ void ArrowTableFunction::ArrowScanFunction(TableFunctionInput &data_p, component
 	state.chunk_offset += output.size();
 }
 
-std::unique_ptr<NodeStatistics> ArrowTableFunction::ArrowScanCardinality(const FunctionData *data) {
+std::unique_ptr<NodeStatistics> ArrowTableFunction::ArrowScanCardinality(const FunctionData * /*data*/) {
 	return std::make_unique<NodeStatistics>();
 }
 

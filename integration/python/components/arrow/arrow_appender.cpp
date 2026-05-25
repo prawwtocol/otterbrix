@@ -20,10 +20,10 @@ namespace components::arrow {
     // ArrowAppender
     //===--------------------------------------------------------------------===//
     
-    ArrowAppender::ArrowAppender(std::vector<complex_logical_type> types_p, const uint64_t initial_capacity) 
-        : types(std::move(types_p)) {
+    ArrowAppender::ArrowAppender(std::vector<complex_logical_type> types_p, const uint64_t initial_capacity, ArrowOptions options_p)
+        : types(std::move(types_p)), options(options_p) {
         for (auto &type : types) {
-            auto entry = InitializeChild(type, initial_capacity);
+            auto entry = InitializeChild(type, initial_capacity, options);
             root_data.push_back(std::move(entry));
         }
     }
@@ -145,44 +145,16 @@ namespace components::arrow {
     	case logical_type::SMALLINT:
     		InitializeAppenderForType<appender::ArrowScalarData<int16_t>>(append_data);
     		break;
-    	// case logical_type::DATE:
     	case logical_type::INTEGER:
     		InitializeAppenderForType<appender::ArrowScalarData<int32_t>>(append_data);
     		break;
-    	/*case logical_type::TIME_TZ: {
-    		if (append_data.options.arrow_lossless_conversion) {
-    			InitializeAppenderForType<appender::ArrowScalarData<int64_t>>(append_data);
-    		} else {
-    			InitializeAppenderForType<appender::ArrowScalarData<int64_t, dtime_tz_t, ArrowTimeTzConverter>>(append_data);
-    		}
-    		break;
-    	}
-    	case logical_type::TIME:*/
     	case logical_type::TIMESTAMP_SEC:
     	case logical_type::TIMESTAMP_MS:
     	case logical_type::TIMESTAMP_US:
     	case logical_type::TIMESTAMP_NS:
-    	// case logical_type::TIMESTAMP_TZ:
     	case logical_type::BIGINT:
     		InitializeAppenderForType<appender::ArrowScalarData<int64_t>>(append_data);
     		break;
-    	/* case logical_type::UUID:
-    		if (append_data.options.arrow_lossless_conversion) {
-    			InitializeAppenderForType<appender::ArrowScalarData<absl::int128, absl::int128, ArrowUUIDBlobConverter>>(append_data);
-    		} else {
-    			if (append_data.options.arrow_offset_size == ArrowOffsetSize::LARGE) {
-    				InitializeAppenderForType<appender::ArrowVarcharData<absl::int128, ArrowUUIDConverter>>(append_data);
-    			} else {
-    				InitializeAppenderForType<appender::ArrowVarcharData<absl::int128, ArrowUUIDConverter, int32_t>>(append_data);
-    			}
-    		}
-    		break;
-    	case logical_type::HUGEINT:
-    		InitializeAppenderForType<appender::ArrowScalarData<absl::int128>>(append_data);
-    		break;
-    	case logical_type::UHUGEINT:
-    		InitializeAppenderForType<appender::ArrowScalarData<absl::uint128>>(append_data);
-    		break;*/
     	case logical_type::UTINYINT:
     		InitializeAppenderForType<appender::ArrowScalarData<uint8_t>>(append_data);
     		break;
@@ -202,63 +174,8 @@ namespace components::arrow {
     		InitializeAppenderForType<appender::ArrowScalarData<double>>(append_data);
     		break;
     	case logical_type::DECIMAL:
-    		/*switch (type.InternalType()) {
-    		case physical_type::INT16:
-    			InitializeAppenderForType<appender::ArrowScalarData<absl::int128, int16_t>>(append_data);
-    			break;
-    		case physical_type::INT32:
-    			InitializeAppenderForType<appender::ArrowScalarData<absl::int128, int32_t>>(append_data);
-    			break;*/
-    		//case physical_type::INT64:
-    			InitializeAppenderForType<appender::ArrowScalarData<absl::int128, int64_t>>(append_data);
-    		//	break;
-    		/*case physical_type::INT128:
-    			InitializeAppenderForType<appender::ArrowScalarData<absl::int128>>(append_data);
-    			break;
-    		default:
-    			throw std::runtime_error("Unsupported internal decimal type");
-    		}*/
+    		InitializeAppenderForType<appender::ArrowScalarData<absl::int128, int64_t>>(append_data);
     		break;
-    	/*case logical_type::VARCHAR:
-    		if (append_data.options.produce_arrow_string_view) {
-    			InitializeAppenderForType<appender::ArrowVarcharToStringViewData>(append_data);
-    		} else {
-    			if (append_data.options.arrow_offset_size == ArrowOffsetSize::LARGE) {
-    				InitializeAppenderForType<appender::ArrowVarcharData<>>(append_data);
-    			} else {
-    				InitializeAppenderForType<appender::ArrowVarcharData<string_t, ArrowVarcharConverter, int32_t>>(append_data);
-    			}
-    		}
-    		break;
-    	case logical_type::BLOB:*/
-    	/*case logical_type::BIT:
-    		if (arrow_offset_size == ArrowOffsetSize::LARGE) {
-    			InitializeAppenderForType<appender::ArrowVarcharData<>>(append_data);
-    		} else {
-    			InitializeAppenderForType<appender::ArrowVarcharData<string_t, ArrowVarcharConverter, int32_t>>(append_data);
-    		}
-    		break;*/
-    	/*case logical_type::ENUM:
-    		switch (type.InternalType()) {
-    		case physical_type::UINT8:
-    			InitializeAppenderForType<appender::ArrowEnumData<int8_t>>(append_data);
-    			break;
-    		case physical_type::UINT16:
-    			InitializeAppenderForType<appender::ArrowEnumData<int16_t>>(append_data);
-    			break;
-    		case physical_type::UINT32:
-    			InitializeAppenderForType<appender::ArrowEnumData<int32_t>>(append_data);
-    			break;
-    		default:
-    			throw std::runtime_error("Unsupported internal enum type");
-    		}
-    		break;
-    	case logical_type::INTERVAL:
-    		InitializeAppenderForType<appender::ArrowScalarData<ArrowInterval, interval_t, ArrowIntervalConverter>>(append_data);
-    		break;
-    	case logical_type::UNION:
-    		InitializeAppenderForType<appender::ArrowUnionData>(append_data);
-    		break;*/
     	case logical_type::STRUCT:
     		InitializeAppenderForType<appender::ArrowStructData>(append_data);
     		break;
@@ -266,14 +183,14 @@ namespace components::arrow {
     		InitializeAppenderForType<appender::ArrowFixedSizeListData>(append_data);
     		break;
     	case logical_type::LIST: {
-    		if (arrow_use_list_view) {
-    			if (arrow_offset_size == ArrowOffsetSize::LARGE) {
+    		if (append_data.options.use_list_view) {
+    			if (append_data.options.offset_size == ArrowOffsetSize::LARGE) {
     				InitializeAppenderForType<appender::ArrowListViewData<>>(append_data);
     			} else {
     				InitializeAppenderForType<appender::ArrowListViewData<int32_t>>(append_data);
     			}
     		} else {
-    			if (arrow_offset_size == ArrowOffsetSize::LARGE) {
+    			if (append_data.options.offset_size == ArrowOffsetSize::LARGE) {
     				InitializeAppenderForType<appender::ArrowListData<>>(append_data);
     			} else {
     				InitializeAppenderForType<appender::ArrowListData<int32_t>>(append_data);
@@ -290,10 +207,10 @@ namespace components::arrow {
     	}
     }
     
-    std::unique_ptr<ArrowAppendData> ArrowAppender::InitializeChild(const complex_logical_type &type, const uint64_t capacity) {
-    	auto result = std::make_unique<ArrowAppendData>();
+    std::unique_ptr<ArrowAppendData> ArrowAppender::InitializeChild(const complex_logical_type &type, uint64_t capacity, const ArrowOptions &options) {
+    	auto result = std::make_unique<ArrowAppendData>(options);
     	InitializeFunctionPointers(*result, type);
-    
+
     	const auto byte_count = (capacity + 7) / 8;
     	result->GetValidityBuffer().reserve(byte_count);
     	result->initialize(*result, type, capacity);
