@@ -8,7 +8,8 @@ namespace components::planner {
 
     logical_plan::node_ptr optimize(std::pmr::memory_resource* resource,
                                     logical_plan::node_ptr node,
-                                    logical_plan::parameter_node_t* parameters) {
+                                    logical_plan::parameter_node_t* parameters,
+                                    bool enable_pushdown) {
         if (!node) {
             return nullptr;
         }
@@ -20,7 +21,9 @@ namespace components::planner {
 
         // Predicate pushdown: move match_t under aggregate/join/group/select
         // when the rewrite is provably safe. May return a different root.
-        node = optimizer::pushdown_filter(resource, node);
+        if (enable_pushdown) {
+            node = optimizer::pushdown_filter(resource, node);
+        }
 
         return node;
     }

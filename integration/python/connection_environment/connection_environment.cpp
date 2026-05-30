@@ -120,9 +120,7 @@ namespace otterbrix {
     Result ConnectionEnvironment::Execute(const Relation& rel, bool optimize) {
         auto session = session_id_t();
         auto node = RelationFactory::Execute(rel);
-        if (optimize) {
-            node = components::planner::optimize(node->resource(), node, nullptr);
-        }
+        node->set_optimize_pushdown(optimize);
         return space->dispatcher()->execute_plan(session, node, ExpressionFactory::GetParams());
     }
 

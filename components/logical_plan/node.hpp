@@ -67,6 +67,10 @@ namespace components::logical_plan {
         components::catalog::oid_t table_oid() const noexcept { return table_oid_; }
         void set_table_oid(components::catalog::oid_t oid) noexcept { table_oid_ = oid; }
 
+        // Predicate-pushdown gate
+        bool optimize_pushdown() const noexcept { return optimize_pushdown_; }
+        void set_optimize_pushdown(bool enabled) noexcept { optimize_pushdown_ = enabled; }
+
         std::string to_string() const;
         std::pmr::memory_resource* resource() const noexcept;
 
@@ -78,6 +82,7 @@ namespace components::logical_plan {
         // See table_oid()/set_table_oid() above. Default INVALID_OID; enrich
         // is responsible for stamping the resolved oid before plan execution.
         components::catalog::oid_t table_oid_{components::catalog::INVALID_OID};
+        bool optimize_pushdown_{true};
 
         void table_oid_dependencies_(std::unordered_set<components::catalog::oid_t>& upper_dependencies);
 
