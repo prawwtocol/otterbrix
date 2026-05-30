@@ -287,3 +287,4 @@ build-verify/
 
 .diffs
 test_dynamic_schema/*
+benchmarks/results_tpch.csv
