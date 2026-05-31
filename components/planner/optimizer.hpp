@@ -9,9 +9,12 @@ namespace components::planner {
     // Safe rules only — those that don't need resolved column indices or
     // table OIDs.
     //   - constant_folding (on parameter expressions)
+    //   - pushdown_filter (predicate pushdown) — applied only when
+    //     enable_pushdown is true
     logical_plan::node_ptr optimize(std::pmr::memory_resource* resource,
                                     logical_plan::node_ptr node,
-                                    logical_plan::parameter_node_t* parameters);
+                                    logical_plan::parameter_node_t* parameters,
+                                    bool enable_pushdown = true);
 
     // Late optimization pass. Runs AFTER validate_schema +
     // stamp_oids_from_resolves, so node->table_oid() is populated and
