@@ -20,9 +20,9 @@ namespace components::arrow::appender {
     struct ArrowListData {
     public:
     	static void Initialize(ArrowAppendData &result, const complex_logical_type &type, uint64_t capacity) {
-    		auto &child_type = type.child_type(); 
+    		auto &child_type = type.child_type();
     		result.GetMainBuffer().reserve((capacity + 1) * sizeof(BUFTYPE));
-    		auto child_buffer = ArrowAppender::InitializeChild(child_type, capacity);
+    		auto child_buffer = ArrowAppender::InitializeChild(child_type, capacity, result.options);
     		result.child_data.push_back(std::move(child_buffer));
     	}
     
