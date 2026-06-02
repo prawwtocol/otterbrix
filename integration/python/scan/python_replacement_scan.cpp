@@ -1,6 +1,7 @@
 #include "python_replacement_scan.hpp"
 
 #include <connection_environment/framework_object_detection.hpp>
+#include <connection_environment/connection_environment.hpp>
 #include <otterbrix_wrapper/python_dependency.hpp>
 #include <pandas/pandas_scan.hpp>
 #include <components/tableref/tableref.hpp>
@@ -39,6 +40,17 @@ namespace otterbrix {
                 table_function->function = make_unique<PandasScanFunction>();
                 table_function->children = std::move(children);
                 table_function->external_dependency->AddDependency("data", PythonDependencyItem::Create(new_df));
+        } else
+        if (FrameworkObjectDetection::IsPolarsDataframe(entry)) {
+            // A polars.DataFrame is converted to pandas and reuses the pandas scan path.
+            // to_dict(as_series=False) + pandas.DataFrame avoids requiring pyarrow (which
+            // polars.to_pandas() would pull in). This branch must run before the numpy
+            // detection below, because a polars frame is iterable and would otherwise be
+            // misdetected as a numpy list.
+            auto& import_cache_py = ConnectionEnvironment::ImportCache();
+            py::object as_dict = entry.attr("to_dict")(py::arg("as_series") = false);
+            py::object pandas_df = import_cache_py.pandas.DataFrame()(as_dict);
+            return TryReplacementObject(pandas_df, "");
         } else
         if ((numpy_type = FrameworkObjectDetection::GetNumpyObjectType(entry)) != NumpyObjectType::INVALID) {
 		    py::dict data; // we will convert all the supported format to dict{"key": np.array(value)}.
