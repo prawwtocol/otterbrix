@@ -1,10 +1,3 @@
-"""Group-by aggregation on the raw conn relation API.
-
-Covers two engine fixes:
-  * avg over integer input must return DOUBLE (not truncate to integer);
-  * count('*') must route through CountExpression without undefined behaviour.
-"""
-
 import pandas as pd
 
 from otterbrix import ColumnExpression, CountExpression

@@ -1,9 +1,3 @@
-"""Ingestion of the supported dataframe frameworks through conn.from_df.
-
-Polars is covered separately in test_polars_ingest.py. This pins pandas and
-numpy, which must keep working alongside polars.
-"""
-
 import numpy as np
 import pandas as pd
 

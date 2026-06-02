@@ -1,10 +1,3 @@
-"""Polars ingestion through the raw conn API (conn.from_df).
-
-Polars is one of the dataframe frameworks the project must support directly,
-alongside pandas and numpy. These tests pin that a polars.DataFrame can be
-handed to conn.from_df and round-trips through the engine.
-"""
-
 import polars as pl
 
 import otterbrix

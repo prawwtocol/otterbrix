@@ -1,15 +1,3 @@
-"""Limit on the raw conn relation API.
-
-Covers the limit composition fixes: plain limit, limit larger than the row
-count, and limit composed after sort and after filter.
-
-Note on limit(0): at the raw relation level ``rel.limit(0)`` returns all rows
-(the engine treats 0 as "no limit"). The empty-result semantics of SQL
-``LIMIT 0`` were provided by the old Spark facade as a rewrite to an
-always-false filter, not by the engine, so they are intentionally not asserted
-here.
-"""
-
 import pandas as pd
 
 from otterbrix import ColumnExpression, ConstantExpression

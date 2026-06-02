@@ -1,5 +1,3 @@
-"""Sort and projection on the raw conn relation API."""
-
 import pandas as pd
 
 from otterbrix import ColumnExpression

@@ -195,8 +195,6 @@ namespace otterbrix {
 
     unique_ptr<PyRelation> PyConnection::FromDF(const py::object& value) {
         string name = "df_no_idea";
-        // Accepts any supported framework object (pandas, numpy, polars). The scan layer
-        // throws a descriptive error for anything it can't turn into a replacement scan.
         auto tableref = Scan::ReplacementObject(value, name);
 
         shared_ptr<Relation> relation = RelationFactory::CreateDFRelation(std::move(tableref));

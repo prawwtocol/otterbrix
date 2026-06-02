@@ -1,5 +1,3 @@
-"""Filter on the raw conn relation API (ports the spark filter coverage)."""
-
 import pandas as pd
 
 from otterbrix import ColumnExpression, ConstantExpression

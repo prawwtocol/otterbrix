@@ -42,11 +42,6 @@ namespace otterbrix {
                 table_function->external_dependency->AddDependency("data", PythonDependencyItem::Create(new_df));
         } else
         if (FrameworkObjectDetection::IsPolarsDataframe(entry)) {
-            // A polars.DataFrame is converted to pandas and reuses the pandas scan path.
-            // to_dict(as_series=False) + pandas.DataFrame avoids requiring pyarrow (which
-            // polars.to_pandas() would pull in). This branch must run before the numpy
-            // detection below, because a polars frame is iterable and would otherwise be
-            // misdetected as a numpy list.
             auto& import_cache_py = ConnectionEnvironment::ImportCache();
             py::object as_dict = entry.attr("to_dict")(py::arg("as_series") = false);
             py::object pandas_df = import_cache_py.pandas.DataFrame()(as_dict);
