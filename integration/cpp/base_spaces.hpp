@@ -10,6 +10,7 @@
 #include <core/file/file_system.hpp>
 
 #include <memory>
+#include <mutex>
 
 namespace services {
 

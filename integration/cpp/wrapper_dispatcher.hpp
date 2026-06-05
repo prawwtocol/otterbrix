@@ -1,9 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include <condition_variable>
 #include <functional>
-#include <mutex>
 #include <utility>
 #include <vector>
 
@@ -115,9 +113,6 @@ namespace otterbrix {
         log_t log_;
         std::atomic_int i = 0;
 
-        std::mutex event_loop_mutex_;
-        std::condition_variable event_loop_cv_;
-
         template<typename T>
         T wait_future(unique_future<T>& future);
         void wait_future_void(unique_future<void>& future);
@@ -129,15 +124,10 @@ namespace otterbrix {
 
     template<typename T>
     T wrapper_dispatcher_t::wait_future(unique_future<T>& future) {
-        while (!future.available()) {
-            std::unique_lock<std::mutex> lock(event_loop_mutex_);
-            if (!future.available()) {
-                event_loop_cv_.wait_for(lock, std::chrono::milliseconds(10));
-            }
-        }
-
-        event_loop_cv_.notify_all();
-
+        // actor_zeta::unique_future::get() already does the smart wait
+        // (fast-path -> bounded spin -> atomic_wait/futex): instant wakeup on
+        // completion, no polling. The previous hand-rolled 10ms timed poll
+        // reinvented this worse and added up to ~10ms latency per call.
         return std::move(future).get();
     }
 
