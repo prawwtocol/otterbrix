@@ -1,4 +1,6 @@
-import polars as pl
+import pytest
+
+pl = pytest.importorskip("polars")
 
 import otterbrix
 
