@@ -13,7 +13,6 @@
 #include <components/types/logical_value.hpp>
 #include <core/executor.hpp>
 #include <services/dispatcher/dispatcher.hpp>
-#include <thread>
 
 using namespace components::cursor;
 
@@ -34,15 +33,6 @@ namespace otterbrix {
     auto wrapper_dispatcher_t::make_type() const noexcept -> const char* { return "wrapper_dispatcher"; }
 
     void wrapper_dispatcher_t::wait_future_void(unique_future<void>& future) {
-        while (!future.available()) {
-            std::unique_lock<std::mutex> lock(event_loop_mutex_);
-            if (!future.available()) {
-                event_loop_cv_.wait_for(lock, std::chrono::milliseconds(10));
-            }
-        }
-
-        event_loop_cv_.notify_all();
-
         std::move(future).get();
     }
 
