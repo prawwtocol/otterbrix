@@ -1,5 +1,4 @@
 #include "pyconnection.hpp"
-#include <connection_environment/relation/relation_factory.hpp>
 #include <otterbrix_wrapper/pyresult.hpp>
 #include <otterbrix_wrapper/pyrelation.hpp>
 #include <core/string_util/string_util.hpp>
@@ -188,26 +187,32 @@ namespace otterbrix {
         if (alias.empty()) {
             alias = "unnamed_relation";
         }
-        return make_unique<PyRelation>(static_cast<ConnectionEnvironment*>(this), RelationFromQuery(string(py::str(query))));
-
+        auto* env = static_cast<ConnectionEnvironment*>(this);
+        auto frag = env->FromSqlQuery(string(py::str(query)));
+        return make_unique<PyRelation>(env, std::move(frag),
+                                       std::vector<std::shared_ptr<ExternalDependency>>{});
     }
 
 
     unique_ptr<PyRelation> PyConnection::FromDF(const py::object& value) {
         string name = "df_no_idea";
         auto tableref = Scan::ReplacementObject(value, name);
-
-        shared_ptr<Relation> relation = RelationFactory::CreateDFRelation(std::move(tableref));
-        return make_unique<PyRelation>(static_cast<ConnectionEnvironment*>(this), relation);
+        auto* env = static_cast<ConnectionEnvironment*>(this);
+        auto [frag, dep] = env->FromDataFrame(std::move(tableref));
+        std::vector<std::shared_ptr<ExternalDependency>> deps;
+        if (dep) deps.push_back(std::move(dep));
+        return make_unique<PyRelation>(env, std::move(frag), std::move(deps));
     }
 
     unique_ptr<PyRelation> PyConnection::FromObject(const py::object& value) {
-        string name = "object_no_idea"; 
+        string name = "object_no_idea";
         auto tableref = Scan::TryReplacementObject(value, name);
         assert(tableref);
-
-        shared_ptr<Relation> relation = RelationFactory::CreateDFRelation(std::move(tableref));
-        return make_unique<PyRelation>(static_cast<ConnectionEnvironment*>(this), relation);
+        auto* env = static_cast<ConnectionEnvironment*>(this);
+        auto [frag, dep] = env->FromDataFrame(std::move(tableref));
+        std::vector<std::shared_ptr<ExternalDependency>> deps;
+        if (dep) deps.push_back(std::move(dep));
+        return make_unique<PyRelation>(env, std::move(frag), std::move(deps));
     }
 
     bool PyConnection::HasResult() const {
