@@ -6,9 +6,14 @@
 #include <pybind11/dataframe.hpp>
 #include <components/logical_plan/node.hpp>
 #include <components/table/column_definition.hpp>
+#include <connection_environment/connection_environment.hpp>
+#include <core/external_dependencies.hpp>
 #include <core/types/memory.hpp>
 #include <core/types/string.hpp>
 #include <core/types/vector.hpp>
+
+#include <memory>
+#include <vector>
 
 namespace otterbrix {
     class ConnectionEnvironment;
@@ -17,9 +22,9 @@ namespace otterbrix {
 
     class PyRelation {
     public:
-        PyRelation(ConnectionEnvironment* env, shared_ptr<Relation> rel);
-        PyRelation(unique_ptr<PyResult> result);
-            
+        PyRelation(ConnectionEnvironment* env, PlanFragment frag,
+                   std::vector<std::shared_ptr<ExternalDependency>> deps);
+
         ~PyRelation();
         static void Initialize(py::handle& m);
 
@@ -32,15 +37,15 @@ namespace otterbrix {
         unique_ptr<PyRelation> Sort(const py::args& args);
 
         unique_ptr<PyRelation> Group(const py::args& args);
-        
+
         unique_ptr<PyRelation> Join(const PyRelation& other, const py::object& condition, const string& type);
         unique_ptr<PyRelation> Cross(const PyRelation& other);
 
         unique_ptr<PyRelation> Limit(int64_t count);
 
-        components::cursor::cursor_t_ptr ExecuteInternal(bool stream_result = false);
+        components::cursor::cursor_t_ptr ExecuteInternal();
 
-        void ExecuteOrThrow(bool stream_result = false);
+        void ExecuteOrThrow();
 
         // Fetch
         Optional<py::tuple> FetchOne();
@@ -53,11 +58,11 @@ namespace otterbrix {
 
         // Internal functions (not exposed to Python)
         ExpressionFactory* GetExpressionFactory();
-        void AssertRelation();
     private:
         bool executed;
         ConnectionEnvironment* env;
-        shared_ptr<Relation> rel;
+        PlanFragment frag_;
+        std::vector<std::shared_ptr<ExternalDependency>> deps_;
         unique_ptr<PyResult> result;
         bool optimize_ = false;
     };
